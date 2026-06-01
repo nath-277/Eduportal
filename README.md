@@ -17,9 +17,12 @@ eduportal/
 │   │   │   └── ui/          # shadcn/ui components
 │   │   └── src/lib/         # Utilities (cn helper)
 │   └── api/                 # Hono backend on Node.js
+│       ├── prisma/          # Prisma schema, migrations, seed
 │       └── src/
 │           ├── index.ts     # Server entry point
-│           └── config.ts    # Environment configuration
+│           ├── config.ts    # Environment configuration
+│           └── lib/
+│               └── prisma.ts # Prisma client singleton
 ├── packages/
 │   └── shared/              # Shared TypeScript types
 │       └── src/types/       # Domain models
@@ -55,9 +58,11 @@ eduportal/
 - Zod for validation
 
 ### Shared (packages/shared)
-- Domain types: `User`, `Course`, `Result`, `Resource`, `Announcement`,
-  `ForumPost`, `Notification`, `ApiResponse`, `PaginatedResponse`
-- Role and level enums: `UserRole`, `Level`, `Semester`
+- Domain types: `User`, `Department`, `AcademicSession`, `Course`,
+  `CourseAssignment`, `Enrollment`, `Result`, `Resource`,
+  `ResourceBookmark`, `Announcement`, `ForumPost`, `ForumReply`,
+  `Notification`, `AuditLog`, `ApiResponse`, `PaginatedResponse`
+- Enums: `UserRole`, `Level`, `Semester`, `ResourceType`, `NotificationCategory`
 
 ## Quick Start
 
@@ -96,6 +101,69 @@ pnpm lint
 ```bash
 pnpm type-check
 ```
+
+## Database
+
+The API uses Prisma with PostgreSQL. Two connection targets are supported:
+**Neon** (primary, production) and a **local PostgreSQL** (secondary,
+development).
+
+### First-time setup
+
+1. Create a database:
+   ```bash
+   createdb eduportal        # local Postgres
+   ```
+2. Copy the env template and set `DATABASE_URL`:
+   ```bash
+   cp apps/api/.env.example apps/api/.env
+   # edit DATABASE_URL=postgresql://user:pass@host:5432/eduportal?schema=public
+   ```
+3. Run the initial migration:
+   ```bash
+   pnpm --filter @eduportal/api db:migrate
+   # this applies migrations/ and runs prisma generate
+   ```
+4. Seed the database with sample data:
+   ```bash
+   pnpm --filter @eduportal/api db:seed
+   ```
+
+### Schema overview
+
+The Prisma schema defines 14 models with full referential integrity:
+
+- **Identity**: `Department`, `User`, `AcademicSession`
+- **Academics**: `Course`, `CourseAssignment`, `Enrollment`, `Result`
+- **Resources**: `Resource`, `ResourceBookmark`
+- **Communication**: `Announcement`, `ForumPost`, `ForumReply`, `Notification`
+- **Ops**: `AuditLog`
+
+Enums: `UserRole`, `Level` (L100–L500), `Semester`, `ResourceType`,
+`NotificationCategory`.
+
+### Seeded data
+
+Running `db:seed` creates:
+
+- 1 department: Computer Science (CSC)
+- 1 academic session: 2024/2025 (current)
+- 3 users with hashed passwords (bcrypt, cost 12):
+  - **Admin**: `admin@eduportal.com` / `Admin@1234`
+  - **Lecturer**: `lecturer@eduportal.com` / `Lecturer@1234` (staffId STF001)
+  - **Student**: `student@eduportal.com` / `Student@1234` (matric CSC/2021/001, L300)
+- 6 courses spanning L100–L400 across both semesters (CSC101, CSC102,
+  CSC201, CSC301, CSC302, CSC401)
+
+### Database scripts (apps/api)
+
+| Script | Description |
+|--------|-------------|
+| `pnpm db:migrate` | Apply pending migrations (creates dev migration if needed) |
+| `pnpm db:reset` | Drop and recreate the database, re-apply migrations, re-seed |
+| `pnpm db:seed` | Run the seed script |
+| `pnpm db:studio` | Open Prisma Studio |
+| `pnpm db:generate` | Regenerate the Prisma Client |
 
 ## Environment Variables
 
@@ -183,3 +251,7 @@ the single source of truth for cross-package types.
 
 - [x] **M0 — Scaffold**: monorepo, Next.js frontend, Hono backend, shared
   types, shadcn/ui installed, health check endpoint
+- [x] **M1 — Database**: Prisma schema with 14 models and 5 enums,
+  initial migration applied, seed script populating department,
+  session, 3 users, and 6 courses, Prisma client singleton with
+  dev/prod-aware logging

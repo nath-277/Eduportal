@@ -1,0 +1,281 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  STUDENT
+  LECTURER
+  ADMIN
+}
+
+enum Level {
+  L100
+  L200
+  L300
+  L400
+  L500
+}
+
+enum Semester {
+  FIRST
+  SECOND
+}
+
+enum ResourceType {
+  LECTURE_NOTE
+  PAST_QUESTION
+  ASSIGNMENT
+  TEXTBOOK
+  OTHER
+}
+
+enum NotificationCategory {
+  ANNOUNCEMENT
+  RESULT
+  RESOURCE
+  FORUM
+  SYSTEM
+}
+
+model Department {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  code        String    @unique
+  description String?
+  users       User[]
+  courses     Course[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model User {
+  id                  String              @id @default(cuid())
+  fullname            String
+  email               String              @unique
+  matricNumber        String?             @unique
+  staffId             String?             @unique
+  passwordHash        String
+  role                UserRole            @default(STUDENT)
+  level               Level?
+  semester            Semester?
+  avatarUrl           String?
+  isActive            Boolean             @default(true)
+  isEmailVerified     Boolean             @default(false)
+  emailVerifyToken    String?
+  passwordResetToken  String?
+  passwordResetExpiry DateTime?
+  department          Department?         @relation(fields: [departmentId], references: [id])
+  departmentId        String?
+  enrollments         Enrollment[]
+  results             Result[]
+  uploadedResources   Resource[]
+  announcements       Announcement[]
+  forumPosts          ForumPost[]
+  forumReplies        ForumReply[]
+  notifications       Notification[]
+  auditLogs           AuditLog[]
+  assignedCourses     CourseAssignment[]
+  uploadedResults     Result[]            @relation("ResultUploader")
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  @@index([email])
+  @@index([matricNumber])
+  @@index([role])
+}
+
+model AcademicSession {
+  id          String       @id @default(cuid())
+  name        String       @unique
+  isCurrent   Boolean      @default(false)
+  startDate   DateTime
+  endDate     DateTime
+  enrollments Enrollment[]
+  results     Result[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model Course {
+  id           String              @id @default(cuid())
+  code         String              @unique
+  title        String
+  creditUnits  Int
+  level        Level
+  semester     Semester
+  description  String?
+  department   Department          @relation(fields: [departmentId], references: [id])
+  departmentId String
+  assignments  CourseAssignment[]
+  enrollments  Enrollment[]
+  results      Result[]
+  resources    Resource[]
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  @@index([level, semester])
+  @@index([departmentId])
+}
+
+model CourseAssignment {
+  id         String   @id @default(cuid())
+  course     Course   @relation(fields: [courseId], references: [id])
+  courseId   String
+  lecturer   User     @relation(fields: [lecturerId], references: [id])
+  lecturerId String
+  session    String
+  createdAt  DateTime @default(now())
+
+  @@unique([courseId, lecturerId, session])
+}
+
+model Enrollment {
+  id        String          @id @default(cuid())
+  student   User            @relation(fields: [studentId], references: [id])
+  studentId String
+  course    Course          @relation(fields: [courseId], references: [id])
+  courseId  String
+  session   AcademicSession @relation(fields: [sessionId], references: [id])
+  sessionId String
+  semester  Semester
+  createdAt DateTime        @default(now())
+
+  @@unique([studentId, courseId, sessionId])
+  @@index([studentId])
+}
+
+model Result {
+  id           String          @id @default(cuid())
+  student      User            @relation(fields: [studentId], references: [id])
+  studentId    String
+  course       Course          @relation(fields: [courseId], references: [id])
+  courseId     String
+  session      AcademicSession @relation(fields: [sessionId], references: [id])
+  sessionId    String
+  semester     Semester
+  caScore      Float
+  examScore    Float
+  totalScore   Float
+  grade        String
+  gradePoint   Float
+  isPublished  Boolean         @default(false)
+  uploadedBy   User?           @relation("ResultUploader", fields: [uploadedById], references: [id])
+  uploadedById String?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  @@unique([studentId, courseId, sessionId])
+  @@index([studentId])
+  @@index([courseId])
+}
+
+model Resource {
+  id            String             @id @default(cuid())
+  title         String
+  description   String?
+  fileUrl       String
+  filePublicId  String?
+  fileType      String
+  fileSize      Int?
+  type          ResourceType       @default(OTHER)
+  course        Course?            @relation(fields: [courseId], references: [id])
+  courseId      String?
+  uploader      User               @relation(fields: [uploadedById], references: [id])
+  uploadedById  String
+  downloadCount Int                @default(0)
+  bookmarks     ResourceBookmark[]
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  @@index([courseId])
+  @@index([type])
+}
+
+model ResourceBookmark {
+  id         String   @id @default(cuid())
+  resourceId String
+  resource   Resource @relation(fields: [resourceId], references: [id])
+  userId     String
+  createdAt  DateTime @default(now())
+
+  @@unique([resourceId, userId])
+}
+
+model Announcement {
+  id          String    @id @default(cuid())
+  title       String
+  body        String
+  author      User      @relation(fields: [authorId], references: [id])
+  authorId    String
+  isPinned    Boolean   @default(false)
+  targetRole  UserRole?
+  scheduledAt DateTime?
+  expiresAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model ForumPost {
+  id         String       @id @default(cuid())
+  title      String
+  body       String
+  author     User         @relation(fields: [authorId], references: [id])
+  authorId   String
+  tags       String[]
+  likesCount Int          @default(0)
+  views      Int          @default(0)
+  isPinned   Boolean      @default(false)
+  replies    ForumReply[]
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  @@index([authorId])
+}
+
+model ForumReply {
+  id         String    @id @default(cuid())
+  body       String
+  author     User      @relation(fields: [authorId], references: [id])
+  authorId   String
+  post       ForumPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  postId     String
+  likesCount Int       @default(0)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+}
+
+model Notification {
+  id        String               @id @default(cuid())
+  user      User                 @relation(fields: [userId], references: [id])
+  userId    String
+  title     String
+  message   String
+  category  NotificationCategory @default(SYSTEM)
+  isRead    Boolean              @default(false)
+  link      String?
+  createdAt DateTime             @default(now())
+
+  @@index([userId, isRead])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  user      User?    @relation(fields: [userId], references: [id])
+  userId    String?
+  action    String
+  entity    String?
+  entityId  String?
+  metadata  Json?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+}

@@ -1,20 +1,57 @@
 export type UserRole = 'STUDENT' | 'LECTURER' | 'ADMIN';
 
-export type Level = '100' | '200' | '300' | '400' | '500';
+export type Level = 'L100' | 'L200' | 'L300' | 'L400' | 'L500';
 
 export type Semester = 'FIRST' | 'SECOND';
+
+export type ResourceType =
+  | 'LECTURE_NOTE'
+  | 'PAST_QUESTION'
+  | 'ASSIGNMENT'
+  | 'TEXTBOOK'
+  | 'OTHER';
+
+export type NotificationCategory =
+  | 'ANNOUNCEMENT'
+  | 'RESULT'
+  | 'RESOURCE'
+  | 'FORUM'
+  | 'SYSTEM';
+
+export interface Department {
+  id: string;
+  name: string;
+  code: string;
+  description?: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export interface User {
   id: string;
   fullname: string;
   email: string;
   matricNumber?: string;
+  staffId?: string;
   role: UserRole;
   level?: Level;
-  department?: string;
+  semester?: Semester;
   avatarUrl?: string;
   isActive: boolean;
+  isEmailVerified: boolean;
+  departmentId?: string;
   createdAt: string;
+  updatedAt: string;
+}
+
+export interface AcademicSession {
+  id: string;
+  name: string;
+  isCurrent: boolean;
+  startDate: string;
+  endDate: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Course {
@@ -24,19 +61,44 @@ export interface Course {
   creditUnits: number;
   level: Level;
   semester: Semester;
-  lecturerId?: string;
+  description?: string;
   departmentId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CourseAssignment {
+  id: string;
+  courseId: string;
+  lecturerId: string;
+  session: string;
+  createdAt: string;
+}
+
+export interface Enrollment {
+  id: string;
+  studentId: string;
+  courseId: string;
+  sessionId: string;
+  semester: Semester;
+  createdAt: string;
 }
 
 export interface Result {
   id: string;
   studentId: string;
   courseId: string;
-  score: number;
+  sessionId: string;
+  semester: Semester;
+  caScore: number;
+  examScore: number;
+  totalScore: number;
   grade: string;
   gradePoint: number;
-  semester: Semester;
-  session: string;
+  isPublished: boolean;
+  uploadedById?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Resource {
@@ -44,10 +106,21 @@ export interface Resource {
   title: string;
   description?: string;
   fileUrl: string;
+  filePublicId?: string;
   fileType: string;
+  fileSize?: number;
+  type: ResourceType;
   courseId?: string;
   uploadedById: string;
   downloadCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ResourceBookmark {
+  id: string;
+  resourceId: string;
+  userId: string;
   createdAt: string;
 }
 
@@ -57,8 +130,11 @@ export interface Announcement {
   body: string;
   authorId: string;
   isPinned: boolean;
+  targetRole?: UserRole;
   scheduledAt?: string;
+  expiresAt?: string;
   createdAt: string;
+  updatedAt: string;
 }
 
 export interface ForumPost {
@@ -68,8 +144,20 @@ export interface ForumPost {
   authorId: string;
   tags: string[];
   likesCount: number;
-  repliesCount: number;
+  views: number;
+  isPinned: boolean;
   createdAt: string;
+  updatedAt: string;
+}
+
+export interface ForumReply {
+  id: string;
+  body: string;
+  authorId: string;
+  postId: string;
+  likesCount: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Notification {
@@ -77,7 +165,21 @@ export interface Notification {
   userId: string;
   title: string;
   message: string;
+  category: NotificationCategory;
   isRead: boolean;
+  link?: string;
+  createdAt: string;
+}
+
+export interface AuditLog {
+  id: string;
+  userId?: string;
+  action: string;
+  entity?: string;
+  entityId?: string;
+  metadata?: Record<string, unknown>;
+  ipAddress?: string;
+  userAgent?: string;
   createdAt: string;
 }
 
