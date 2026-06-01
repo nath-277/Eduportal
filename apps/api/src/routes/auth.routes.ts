@@ -1,11 +1,12 @@
 import { Hono } from 'hono';
-import type { ApiResponse } from '@eduportal/shared';
 import { prisma } from '../lib/prisma.js';
 import { signToken } from '../lib/jwt.js';
 import { hashPassword, comparePassword } from '../lib/password.js';
 import { generateResetToken, hashResetToken } from '../lib/reset-token.js';
 import { sanitizeUser, type SanitizedUser } from '../lib/sanitize.js';
 import { authenticate } from '../middleware/auth.js';
+import { badRequest, conflict, created, forbidden, notFound, ok, okMessage, unauthorized } from '../lib/response.js';
+import { writeAudit } from '../lib/audit.js';
 import {
   registerSchema,
   loginSchema,
@@ -21,13 +22,6 @@ const RESET_EXPIRY_MS = 60 * 60 * 1000;
 
 const authRouter = new Hono();
 
-function jsonResponse<T>(status: number, body: ApiResponse<T>): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { 'content-type': 'application/json' },
-  });
-}
-
 authRouter.post('/register', async (c) => {
   let body: RegisterInput;
   try {
@@ -38,7 +32,7 @@ authRouter.post('/register', async (c) => {
 
   const existingEmail = await prisma.user.findUnique({ where: { email: body.email } });
   if (existingEmail) {
-    return jsonResponse(409, { success: false, message: 'Email already in use' });
+    return conflict('Email already in use');
   }
 
   if (body.matricNumber) {
@@ -46,7 +40,7 @@ authRouter.post('/register', async (c) => {
       where: { matricNumber: body.matricNumber },
     });
     if (existingMatric) {
-      return jsonResponse(409, { success: false, message: 'Matric number already in use' });
+      return conflict('Matric number already in use');
     }
   }
 
@@ -55,7 +49,7 @@ authRouter.post('/register', async (c) => {
       where: { staffId: body.staffId },
     });
     if (existingStaff) {
-      return jsonResponse(409, { success: false, message: 'Staff ID already in use' });
+      return conflict('Staff ID already in use');
     }
   }
 
@@ -63,7 +57,7 @@ authRouter.post('/register', async (c) => {
     where: { id: body.departmentId },
   });
   if (!department) {
-    return jsonResponse(400, { success: false, message: 'Invalid department' });
+    return badRequest('Invalid department');
   }
 
   const passwordHash = await hashPassword(body.password);
@@ -83,9 +77,9 @@ authRouter.post('/register', async (c) => {
 
   const token = signToken({ userId: user.id, role: user.role });
 
-  return jsonResponse<{ user: SanitizedUser; token: string }>(201, {
-    success: true,
-    data: { user: sanitizeUser(user), token },
+  return created<{ user: SanitizedUser; token: string }>({
+    user: sanitizeUser(user),
+    token,
   });
 });
 
@@ -105,35 +99,28 @@ authRouter.post('/login', async (c) => {
   });
 
   if (!user) {
-    return jsonResponse(401, { success: false, message: 'Invalid credentials' });
+    return unauthorized('Invalid credentials');
   }
 
   const passwordOk = await comparePassword(body.password, user.passwordHash);
   if (!passwordOk) {
-    return jsonResponse(401, { success: false, message: 'Invalid credentials' });
+    return unauthorized('Invalid credentials');
   }
 
   if (!user.isActive) {
-    return jsonResponse(403, { success: false, message: 'Account suspended' });
+    return forbidden('Account suspended');
   }
 
-  await prisma.auditLog.create({
-    data: {
-      userId: user.id,
-      action: 'LOGIN',
-      entity: 'User',
-      entityId: user.id,
-      ipAddress: c.req.header('x-forwarded-for') ?? null,
-      userAgent: c.req.header('user-agent') ?? null,
-    },
+  await writeAudit(c, {
+    userId: user.id,
+    action: 'LOGIN',
+    entity: 'User',
+    entityId: user.id,
   });
 
   const token = signToken({ userId: user.id, role: user.role });
 
-  return jsonResponse<{ user: SanitizedUser; token: string }>(200, {
-    success: true,
-    data: { user: sanitizeUser(user), token },
-  });
+  return ok<{ user: SanitizedUser; token: string }>({ user: sanitizeUser(user), token });
 });
 
 authRouter.post('/forgot-password', async (c) => {
@@ -144,14 +131,11 @@ authRouter.post('/forgot-password', async (c) => {
     return c.var.handleZodError(e);
   }
 
-  const generic: ApiResponse<null> = {
-    success: true,
-    message: 'Reset instructions sent',
-  };
+  const generic = okMessage('Reset instructions sent');
 
   const user = await prisma.user.findUnique({ where: { email: body.email } });
   if (!user) {
-    return jsonResponse(200, generic);
+    return generic;
   }
 
   const token = generateResetToken();
@@ -169,7 +153,7 @@ authRouter.post('/forgot-password', async (c) => {
   const resetLink = `${process.env.APP_URL ?? 'http://localhost:3000'}/reset-password?token=${token}`;
   console.log(`[forgot-password] user=${user.email} token=${token} link=${resetLink}`);
 
-  return jsonResponse(200, generic);
+  return generic;
 });
 
 authRouter.post('/reset-password', async (c) => {
@@ -187,7 +171,7 @@ authRouter.post('/reset-password', async (c) => {
   });
 
   if (!user || !user.passwordResetExpiry || user.passwordResetExpiry < new Date()) {
-    return jsonResponse(400, { success: false, message: 'Invalid or expired token' });
+    return badRequest('Invalid or expired token');
   }
 
   const newHash = await hashPassword(body.password);
@@ -200,7 +184,7 @@ authRouter.post('/reset-password', async (c) => {
     },
   });
 
-  return jsonResponse<null>(200, { success: true, message: 'Password reset successful' });
+  return okMessage('Password reset successful');
 });
 
 authRouter.get('/me', authenticate, async (c) => {
@@ -208,30 +192,23 @@ authRouter.get('/me', authenticate, async (c) => {
 
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) {
-    return jsonResponse(404, { success: false, message: 'User not found' });
+    return notFound('User not found');
   }
 
-  return jsonResponse<{ user: SanitizedUser }>(200, {
-    success: true,
-    data: { user: sanitizeUser(user) },
-  });
+  return ok<{ user: SanitizedUser }>({ user: sanitizeUser(user) });
 });
 
 authRouter.post('/logout', authenticate, async (c) => {
   const { userId } = c.get('user');
 
-  await prisma.auditLog.create({
-    data: {
-      userId,
-      action: 'LOGOUT',
-      entity: 'User',
-      entityId: userId,
-      ipAddress: c.req.header('x-forwarded-for') ?? null,
-      userAgent: c.req.header('user-agent') ?? null,
-    },
+  await writeAudit(c, {
+    userId,
+    action: 'LOGOUT',
+    entity: 'User',
+    entityId: userId,
   });
 
-  return jsonResponse<null>(200, { success: true, message: 'Logged out' });
+  return okMessage('Logged out');
 });
 
 export default authRouter;

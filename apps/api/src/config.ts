@@ -11,6 +11,9 @@ interface AppConfig {
     apiKey: string;
     apiSecret: string;
   };
+  cloudinaryCloudName: string;
+  cloudinaryApiKey: string;
+  cloudinaryApiSecret: string;
   allowedOrigins: string[];
 }
 
@@ -51,6 +54,9 @@ export const config: AppConfig = {
     apiKey: getEnv('CLOUDINARY_API_KEY', ''),
     apiSecret: getEnv('CLOUDINARY_API_SECRET', ''),
   },
+  cloudinaryCloudName: getEnv('CLOUDINARY_CLOUD_NAME', ''),
+  cloudinaryApiKey: getEnv('CLOUDINARY_API_KEY', ''),
+  cloudinaryApiSecret: getEnv('CLOUDINARY_API_SECRET', ''),
   allowedOrigins: parseOrigins(
     getEnv('ALLOWED_ORIGINS', 'http://localhost:3000,http://localhost:3001')
   ),

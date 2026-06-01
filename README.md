@@ -19,20 +19,46 @@ eduportal/
 │   └── api/                 # Hono backend on Node.js
 │       ├── prisma/          # Prisma schema, migrations, seed
 │       └── src/
-│           ├── index.ts     # Server entry point (Hono app, error handler)
+│           ├── index.ts     # Server entry point (Hono app, error handler, all routers wired)
 │           ├── config.ts    # Environment configuration
 │           ├── lib/         # Cross-cutting helpers
 │           │   ├── prisma.ts        # Prisma client singleton
 │           │   ├── jwt.ts           # JWT sign/verify
 │           │   ├── password.ts      # bcrypt hash/compare
 │           │   ├── reset-token.ts   # crypto-secure token + sha256
-│           │   └── sanitize.ts      # strip sensitive user fields
+│           │   ├── sanitize.ts      # strip sensitive user fields
+│           │   ├── response.ts      # ok/created/badRequest/forbidden/notFound/conflict/...
+│           │   ├── pagination.ts    # parsePagination + paginated()
+│           │   ├── session.ts       # getCurrentSession + requireCurrentSession()
+│           │   ├── cloudinary.ts    # uploadBase64 / deleteAsset / signedDownloadUrl
+│           │   ├── csv.ts           # parseCsv
+│           │   ├── grading.ts       # computeGraded + computeGpa
+│           │   └── audit.ts         # writeAudit(c, {...})
 │           ├── middleware/
 │           │   └── auth.ts          # authenticate + authorize(...roles)
 │           ├── validators/          # Zod request schemas
-│           │   └── auth.validator.ts
+│           │   ├── auth.validator.ts
+│           │   ├── user.validator.ts
+│           │   ├── course.validator.ts
+│           │   ├── enrollment.validator.ts
+│           │   ├── result.validator.ts
+│           │   ├── resource.validator.ts
+│           │   ├── announcement.validator.ts
+│           │   ├── forum.validator.ts
+│           │   ├── department.validator.ts
+│           │   └── analytics.validator.ts
 │           ├── routes/
-│           │   └── auth.routes.ts   # /register /login /me /logout /forgot-password /reset-password
+│           │   ├── auth.routes.ts        # /register /login /me /logout /forgot-password /reset-password
+│           │   ├── user.routes.ts        # admin user mgmt + self avatar upload
+│           │   ├── course.routes.ts      # courses + assignments + lecturer/mine
+│           │   ├── enrollment.routes.ts  # student self-service + lecturer roster
+│           │   ├── result.routes.ts      # upload (JSON/CSV) + publish + analytics
+│           │   ├── resource.routes.ts    # upload + download + bookmarks
+│           │   ├── announcement.routes.ts# CRUD + role-targeted fan-out
+│           │   ├── forum.routes.ts       # posts, replies, like
+│           │   ├── notification.routes.ts# /mine /read /read-all
+│           │   ├── analytics.routes.ts   # admin / department / audit-logs
+│           │   └── department.routes.ts  # departments + academic sessions
 │           └── types/
 │               └── hono.d.ts        # ContextVariableMap (user, handleZodError)
 ├── packages/
@@ -224,6 +250,98 @@ All responses follow the `ApiResponse<T>` envelope:
 | `GET`  | `/me` | Bearer | Returns the authenticated user's profile |
 | `POST` | `/logout` | Bearer | Logs the user out and writes an audit entry |
 
+### Users (`/api/users`)
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `GET`  | `/` | ADMIN | Paginated list with `role`, `level`, `departmentId`, `search` filters |
+| `GET`  | `/:id` | ADMIN or self | Profile + department + counts (enrollments/results/resources) |
+| `PATCH`| `/:id` | ADMIN | Update fullname, level, semester, role, departmentId, isActive, avatarUrl |
+| `DELETE`| `/:id` | ADMIN | Soft delete (set `isActive = false`) |
+| `PATCH`| `/:id/avatar` | self | Upload base64 image to Cloudinary, store URL |
+
+### Courses (`/api/courses`)
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `GET`  | `/` | — | Filter by `level`, `semester`, `departmentId`; includes assigned lecturers |
+| `POST` | `/` | ADMIN | Create a course (code must match `^[A-Z]{2,4}\d{3}$`) |
+| `PATCH`| `/:id` | ADMIN | Update course fields |
+| `DELETE`| `/:id` | ADMIN | Only if no results linked; cascades assignments + enrollments |
+| `POST` | `/:id/assign` | ADMIN | Create `CourseAssignment { lecturerId, session }` |
+| `GET`  | `/lecturer/mine` | LECTURER/ADMIN | Courses assigned to the caller in the current session |
+
+### Enrollments (`/api/enrollments`)
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `GET`  | `/mine` | STUDENT | Caller's enrollments grouped by semester (current session) |
+| `POST` | `/` | STUDENT | Bulk-enroll; max 24 credit units / semester; level + semester must match |
+| `DELETE`| `/:courseId` | STUDENT | Drop a course (forbidden if results already published) |
+| `GET`  | `/course/:courseId` | LECTURER/ADMIN | Students enrolled in a course (current session) |
+
+### Results (`/api/results`)
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `GET`  | `/mine` | STUDENT | Published results, GPA per semester, CGPA |
+| `GET`  | `/course/:courseId` | LECTURER/ADMIN | All students' results for a course |
+| `POST` | `/upload` | LECTURER/ADMIN | Bulk JSON upload with validation (enrollment, score range) |
+| `POST` | `/upload/csv` | LECTURER/ADMIN | CSV upload (header: `matricNumber,caScore,examScore`) |
+| `PATCH`| `/:id/publish` | LECTURER/ADMIN | Mark result published + create student notification |
+| `GET`  | `/analytics/student/:studentId` | self / LECTURER / ADMIN | Per-semester GPA trend + CGPA |
+
+Grading: 70+ A (5), 60+ B (4), 50+ C (3), 45+ D (2), 40+ E (1), <40 F (0). GPA = `Σ(gradePoint × creditUnits) / Σ(creditUnits)`.
+
+### Resources (`/api/resources`)
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `GET`  | `/` | — | Filter by `courseId`, `type`, `search`; paginated; includes uploader + course |
+| `POST` | `/` | LECTURER/ADMIN | Upload base64 file to Cloudinary; requires Cloudinary env vars |
+| `DELETE`| `/:id` | owner or ADMIN | Delete from Cloudinary + DB |
+| `POST` | `/:id/download` | Bearer | Increment counter, return signed download URL |
+| `POST` | `/:id/bookmark` | STUDENT | Toggle bookmark |
+| `GET`  | `/bookmarks/mine` | STUDENT | Caller's bookmarked resources |
+
+### Announcements (`/api/announcements`)
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `GET`  | `/` | Bearer | Filtered by role, scheduled, not expired; sorted pinned DESC then date |
+| `POST` | `/` | LECTURER/ADMIN | Create + fan out `Notification` to all targeted users |
+| `PATCH`| `/:id` | owner or ADMIN | Update fields |
+| `DELETE`| `/:id` | owner or ADMIN | Delete |
+
+### Forum (`/api/forum`)
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `GET`  | `/posts` | — | Filter by `tag`, `search`; includes author, reply count |
+| `POST` | `/posts` | Bearer | Create post (tags array) |
+| `GET`  | `/posts/:id` | — | Get post + all replies; increments views |
+| `POST` | `/posts/:id/replies` | Bearer | Reply; creates notification for post author |
+| `PATCH`| `/posts/:id/like` | Bearer | Increment like count |
+| `DELETE`| `/posts/:id` | owner / LECTURER / ADMIN | Delete post (cascades replies) |
+
+### Notifications (`/api/notifications`)
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `GET`  | `/mine` | Bearer | Caller's notifications (unread first) + unread count |
+| `PATCH`| `/:id/read` | Bearer | Mark one as read |
+| `PATCH`| `/read-all` | Bearer | Mark all of caller's as read |
+
+### Analytics (`/api/analytics`)
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `GET`  | `/admin` | ADMIN | Counts by role, resources, announcements, 20 most recent audit logs |
+| `GET`  | `/department` | ADMIN | Per-level student/course counts + average GPA from published results |
+| `GET`  | `/audit-logs` | ADMIN | Filter by `userId`, `action`, `startDate`, `endDate`; paginated |
+
+### Departments (`/api/departments`) and Sessions (`/api/sessions`)
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `GET`  | `/api/departments` | — | List all departments |
+| `POST` | `/api/departments` | ADMIN | Create |
+| `PATCH`| `/api/departments/:id` | ADMIN | Update |
+| `DELETE`| `/api/departments/:id` | ADMIN | Only if no users / courses linked |
+| `GET`  | `/api/sessions` | — | List academic sessions |
+| `POST` | `/api/sessions` | ADMIN | Create (name `YYYY/YYYY`) |
+| `PATCH`| `/api/sessions/:id/set-current` | ADMIN | Atomically unsets previous current + sets this one |
+
 #### Password rules
 Minimum 8 characters, must contain at least one uppercase letter and one number.
 
@@ -319,3 +437,11 @@ the single source of truth for cross-package types.
   middleware, password hashing (bcrypt, cost 12), secure reset-token
   storage (sha256, 1h expiry), audit logging, and CORS-configured
   Hono app
+- [x] **M3 — Full REST API**: 10 route modules — users, courses,
+  enrollments, results, resources, announcements, forum, notifications,
+  analytics, departments/sessions. Zod validation everywhere, RBAC,
+  24-unit credit cap, grade computation, CSV upload, Cloudinary file
+  storage, role-targeted announcement fan-out, paginated audit logs.
+  All 6 spec scenarios (course create, enrollment + credit overflow,
+  result upload JSON + CSV + publish + GPA, resource create, announcement
+  fan-out, forum post + reply) pass manual curl tests.
