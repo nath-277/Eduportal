@@ -377,7 +377,14 @@ curl -H "Authorization: Bearer $TOKEN" http://localhost:3001/api/auth/me
 ## Routes
 
 ### Web (Next.js App Router)
-- `/` — Landing page (Next.js default scaffold)
+- `/` — Marketing landing (hero, animated stats, features, how-it-works, CTA, footer)
+- `/login` — Split-screen login (gradient panel + form with identifier, password, remember-me)
+- `/register` — 3-step animated multi-step register (account type → personal → password)
+- `/forgot-password` — Email-only reset request
+- `/reset-password?token=…` — New password (uses `useSearchParams` under Suspense)
+- `/student/dashboard` — Placeholder student dashboard (real views in next milestone)
+- `/lecturer/dashboard` — Placeholder lecturer dashboard
+- `/admin/dashboard` — Placeholder admin dashboard
 
 ## Architecture Notes
 
@@ -445,3 +452,18 @@ the single source of truth for cross-package types.
   All 6 spec scenarios (course create, enrollment + credit overflow,
   result upload JSON + CSV + publish + GPA, resource create, announcement
   fan-out, forum post + reply) pass manual curl tests.
+- [x] **M4 — Frontend foundation**: API client (Axios + auth interceptor +
+  envelope unwrap), Zustand auth store with SSR-safe persist, TanStack Query
+  provider, per-role theme system, auth-guard hook, 5 shared UI primitives
+  (loading-spinner, page-header, stat-card, empty-state, data-table), and
+  layout components (bottom-nav-dock, desktop-sidebar, dashboard-shell).
+  tsc, eslint, and build all pass; landing page renders in dev.
+- [x] **M5 — Public pages**: full marketing landing (hero, animated stats,
+  6-feature grid, 3-step "how it works", CTA, footer), split-screen login,
+  3-step animated multi-step register (account type → personal → password
+  with strength meter), forgot-password, reset-password (with Suspense +
+  useSearchParams), auth route group layout, and placeholder dashboards
+  for student/lecturer/admin. All flows end-to-end tested with the running
+  API (login by email or matric number, register with L100–L500 level,
+  duplicate-email error, forgot-password → API log reset link, reset-password
+  with token).
