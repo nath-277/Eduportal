@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { z } from 'zod';
 import type { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { authenticate, authorize } from '../middleware/auth.js';
@@ -11,6 +12,7 @@ import {
   forbidden,
   notFound,
   ok,
+  okMessage,
   serverError,
 } from '../lib/response.js';
 import {
@@ -21,6 +23,7 @@ import {
   type UpdateUserInput,
   type AvatarInput,
 } from '../validators/user.validator.js';
+import { hashPassword, comparePassword } from '../lib/password.js';
 
 const userRouter = new Hono();
 
@@ -111,13 +114,29 @@ userRouter.get('/:id', authenticate, async (c) => {
   });
 });
 
-userRouter.patch('/:id', authenticate, authorize('ADMIN'), async (c) => {
+userRouter.patch('/:id', authenticate, async (c) => {
   const { id } = c.req.param();
+  const current = c.get('user');
+  const isSelf = current.userId === id;
+  const isAdmin = current.role === 'ADMIN';
+
+  if (!isAdmin && !isSelf) {
+    return forbidden('You can only update your own profile');
+  }
+
   let body: UpdateUserInput;
   try {
     body = updateUserSchema.parse(await c.req.json());
   } catch (e) {
     return c.var.handleZodError(e);
+  }
+
+  if (!isAdmin) {
+    const allowedKeys = ['fullname', 'avatarUrl'];
+    const attemptedFields = Object.keys(body).filter((k) => !allowedKeys.includes(k));
+    if (attemptedFields.length > 0) {
+      return forbidden(`You can only update: ${allowedKeys.join(', ')}`);
+    }
   }
 
   const existing = await prisma.user.findUnique({ where: { id } });
@@ -134,11 +153,11 @@ userRouter.patch('/:id', authenticate, authorize('ADMIN'), async (c) => {
   });
 
   await writeAudit(c, {
-    userId: c.get('user').userId,
+    userId: current.userId,
     action: 'USER_UPDATE',
     entity: 'User',
     entityId: id,
-    metadata: { fields: Object.keys(body) },
+    metadata: { fields: Object.keys(body), self: isSelf },
   });
 
   return ok<{ user: SanitizedUser }>({ user: sanitizeUser(user) });
@@ -211,6 +230,51 @@ userRouter.patch('/:id/avatar', authenticate, async (c) => {
     avatarUrl: uploaded.url,
     user: sanitizeUser(user),
   });
+});
+
+const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, 'Current password is required'),
+  newPassword: z
+    .string()
+    .min(8, 'New password must be at least 8 characters')
+    .regex(/[A-Z]/, 'Must contain an uppercase letter')
+    .regex(/[a-z]/, 'Must contain a lowercase letter')
+    .regex(/\d/, 'Must contain a number'),
+});
+
+userRouter.post('/me/change-password', authenticate, async (c) => {
+  const current = c.get('user');
+  let body: z.infer<typeof changePasswordSchema>;
+  try {
+    body = changePasswordSchema.parse(await c.req.json());
+  } catch (e) {
+    return c.var.handleZodError(e);
+  }
+
+  const user = await prisma.user.findUnique({ where: { id: current.userId } });
+  if (!user) return notFound('User not found');
+
+  const okPassword = await comparePassword(body.currentPassword, user.passwordHash);
+  if (!okPassword) return badRequest('Current password is incorrect');
+
+  if (body.currentPassword === body.newPassword) {
+    return badRequest('New password must be different from current password');
+  }
+
+  const passwordHash = await hashPassword(body.newPassword);
+  await prisma.user.update({
+    where: { id: current.userId },
+    data: { passwordHash },
+  });
+
+  await writeAudit(c, {
+    userId: current.userId,
+    action: 'PASSWORD_CHANGE',
+    entity: 'User',
+    entityId: current.userId,
+  });
+
+  return okMessage('Password changed successfully');
 });
 
 export default userRouter;

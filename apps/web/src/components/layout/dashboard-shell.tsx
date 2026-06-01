@@ -2,11 +2,7 @@
 
 import type { ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  Bell,
-  LayoutDashboard,
-  LogOut,
-} from 'lucide-react';
+import { Bell, LogOut } from 'lucide-react';
 import { DesktopSidebar, type SidebarItem } from './desktop-sidebar';
 import { BottomNavDock, type NavItem } from './bottom-nav-dock';
 import { Button } from '@/components/ui/button';
@@ -56,6 +52,10 @@ export function DashboardShell({
     },
   };
 
+  const expandedHasLogout = (expandedDockItems ?? []).some(
+    (i) => i.label.toLowerCase().includes('logout') || i.label.toLowerCase().includes('log out'),
+  );
+
   const finalExpanded: NavItem[] = [
     ...(expandedDockItems ?? []),
     ...(notificationCount > 0
@@ -67,16 +67,10 @@ export function DashboardShell({
           } satisfies NavItem,
         ]
       : []),
-    logoutItem,
+    ...(expandedHasLogout ? [] : [logoutItem]),
   ];
 
-  const homeItem: NavItem = {
-    icon: LayoutDashboard,
-    label: 'Home',
-    href: `/${role.toLowerCase()}/dashboard`,
-  };
-
-  const finalDock: NavItem[] = [homeItem, ...dockItems].slice(0, 4);
+  const finalDock: NavItem[] = dockItems.slice(0, 5);
 
   function handleLogout(): void {
     clearAuth();

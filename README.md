@@ -467,3 +467,49 @@ the single source of truth for cross-package types.
   API (login by email or matric number, register with L100–L500 level,
   duplicate-email error, forgot-password → API log reset link, reset-password
   with token).
+- [x] **M6 — Student portal**: full student experience behind a `(dashboard)`
+  route group + role-themable `StudentShell`. Includes:
+
+  - **Backend extensions**:
+    - `PATCH /api/users/:id` now allows self-update of `{fullname, avatarUrl}`
+      with audit log flagging `self: true`; sensitive fields still require ADMIN.
+    - New `POST /api/users/me/change-password` endpoint with zod validation
+      (≥8 chars, uppercase, number) and audit log entry.
+  - **Config + shell**:
+    - `src/config/student-nav.ts` — typed sidebar (7 items) + dock (5 primary
+      items with `Menu` icon as expand trigger, 6 expanded items including
+      `Logout` action) with type guards and converters.
+    - `src/components/layout/student-shell.tsx` — role-themable wrapper
+      around `DashboardShell` that handles auth guard + nav conversion +
+      logout action.
+  - **UI components**:
+    - `src/components/ui/charts.tsx` — Framer Motion animated `BarChart`,
+      gradient-area SVG `LineChart`, and compact `Sparkline` for GPA trend.
+    - Updated `bottom-nav-dock.tsx` and `dashboard-shell.tsx` to support
+      full 5-item primary dock (no auto-prepend) and avoid duplicating
+      `Logout` in the expanded sheet.
+  - **Pages**:
+    - `/student/dashboard` — greeting, GPA card w/ sparkline, quick-stats,
+      quick-actions, registered-courses horizontal scroll, announcements
+      with pin badge, recent resources grid, latest alerts, empty states.
+    - `/student/profile` — 96px avatar with hidden file input, level/
+      department/matric badges, inline `useForm` edit for fullname,
+      `Dialog`-based change-password flow, avatar upload (dataURL → base64).
+    - `/student/courses` — session+semester header, unit tracker badge,
+      enrolled list with drop, available courses as selectable cards with
+      over-limit graying, sticky registration summary sidebar with progress
+      bar, confirmation dialog, `window.print()` registration form.
+    - `/student/results` — session `Select` + semester tab toggle, summary
+      tiles (Semester GPA, CGPA, Total credits), results table with
+      grade-color badges, `BarChart` grade distribution, `LineChart` CGPA
+      trend from analytics, print result slip.
+    - Placeholders: `/student/{resources,forum,notifications,settings}`.
+  - **Integration tested with running API**: login → JWT → /me, /results/mine,
+    /enrollments/mine, /announcements, /resources, /notifications/mine,
+    /results/analytics/student/:id, course drop + re-enroll, fullname
+    self-update (success) + role self-update (403) + email self-update (403),
+    password change with wrong current (400), weak new (400), success (200),
+    and restore. Lecturer side: result upload + publish (creates
+    `RESULT` notification) verified end-to-end.
+  - **Gates**: tsc 0, eslint 0 errors (12 unused-var warnings remaining),
+    `pnpm --filter web build` clean — 18 static routes.

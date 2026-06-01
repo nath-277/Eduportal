@@ -26,15 +26,20 @@ function isItemActive(pathname: string, href?: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
+function isExpandTrigger(item: NavItem): boolean {
+  return item.icon === Menu;
+}
+
 export function BottomNavDock({ primaryItems, expandedItems = [] }: BottomNavDockProps) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
 
-  const visible = primaryItems.slice(0, 4);
-  const menuItem: NavItem = { icon: Menu, label: 'Menu' };
-
-  function triggerItem(item: NavItem): void {
+  const triggerItem = (item: NavItem) => {
+    if (isExpandTrigger(item)) {
+      setOpen(true);
+      return;
+    }
     if (item.onClick) {
       item.onClick();
       return;
@@ -42,7 +47,7 @@ export function BottomNavDock({ primaryItems, expandedItems = [] }: BottomNavDoc
     if (item.href) {
       router.push(item.href);
     }
-  }
+  };
 
   return (
     <>
@@ -54,9 +59,10 @@ export function BottomNavDock({ primaryItems, expandedItems = [] }: BottomNavDoc
         aria-label="Primary"
       >
         <ul className="mx-auto grid max-w-md grid-cols-5 px-2 py-2">
-          {visible.map((item) => {
+          {primaryItems.map((item) => {
             const Icon = item.icon;
-            const active = isItemActive(pathname ?? '', item.href);
+            const expand = isExpandTrigger(item);
+            const active = expand ? open : isItemActive(pathname ?? '', item.href);
             const inner = (
               <span
                 className={cn(
@@ -72,7 +78,7 @@ export function BottomNavDock({ primaryItems, expandedItems = [] }: BottomNavDoc
             );
             return (
               <li key={item.label} className="flex items-center justify-center">
-                {item.href && !item.onClick ? (
+                {item.href && !expand ? (
                   <Link href={item.href} className="block w-full" aria-current={active ? 'page' : undefined}>
                     {inner}
                   </Link>
@@ -82,6 +88,9 @@ export function BottomNavDock({ primaryItems, expandedItems = [] }: BottomNavDoc
                     onClick={() => triggerItem(item)}
                     className="block w-full"
                     aria-current={active ? 'page' : undefined}
+                    aria-expanded={expand ? open : undefined}
+                    aria-haspopup={expand ? 'dialog' : undefined}
+                    aria-label={expand ? 'Open more menu' : item.label}
                   >
                     {inner}
                   </button>
@@ -89,24 +98,6 @@ export function BottomNavDock({ primaryItems, expandedItems = [] }: BottomNavDoc
               </li>
             );
           })}
-          <li className="flex items-center justify-center">
-            <button
-              type="button"
-              onClick={() => setOpen(true)}
-              className={cn(
-                'flex w-full flex-col items-center justify-center gap-0.5 rounded-lg px-2 py-2 text-xs font-medium transition-colors',
-                open
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-              )}
-              aria-expanded={open}
-              aria-haspopup="dialog"
-              aria-label={menuItem.label}
-            >
-              <Menu className="h-5 w-5" />
-              <span className="text-[10px] leading-none">{menuItem.label}</span>
-            </button>
-          </li>
         </ul>
       </nav>
 
@@ -146,60 +137,64 @@ export function BottomNavDock({ primaryItems, expandedItems = [] }: BottomNavDoc
               <div className="flex justify-center pb-2 pt-3">
                 <div className="h-1.5 w-12 rounded-full bg-muted-foreground/30" />
               </div>
-              <div className="flex items-center justify-between px-5 pb-2">
-                <h2 className="text-base font-semibold">More</h2>
+
+              <div className="flex items-center justify-between border-b px-5 py-3">
+                <h2 className="text-sm font-semibold">More</h2>
                 <button
                   type="button"
-                  aria-label="Close"
-                  className="rounded-full p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
                   onClick={() => setOpen(false)}
+                  className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                  aria-label="Close"
                 >
-                  <X className="h-5 w-5" />
+                  <X className="h-4 w-4" />
                 </button>
               </div>
-              <div className="grid grid-cols-2 gap-2 px-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-2">
+
+              <ul className="grid grid-cols-2 gap-2 p-4">
                 {expandedItems.map((item) => {
                   const Icon = item.icon;
                   const active = isItemActive(pathname ?? '', item.href);
                   const inner = (
                     <span
                       className={cn(
-                        'flex flex-col items-center justify-center gap-2 rounded-xl border border-border p-4 text-sm font-medium transition-colors',
+                        'flex flex-col items-center gap-1.5 rounded-xl p-3 text-xs font-medium transition',
                         active
-                          ? 'border-primary bg-primary text-primary-foreground'
-                          : 'bg-card text-foreground hover:bg-muted'
+                          ? 'bg-primary/10 text-primary'
+                          : 'text-foreground/80 hover:bg-muted'
                       )}
                     >
-                      <Icon className="h-6 w-6" />
-                      <span className="text-xs">{item.label}</span>
+                      <Icon className="h-5 w-5" />
+                      <span>{item.label}</span>
                     </span>
                   );
                   return (
-                    <div key={item.label}>
-                      {item.href && !item.onClick ? (
-                        <Link
-                          href={item.href}
-                          onClick={() => setOpen(false)}
-                          className="block"
-                        >
-                          {inner}
-                        </Link>
-                      ) : (
+                    <li key={item.label}>
+                      {item.onClick ? (
                         <button
                           type="button"
                           onClick={() => {
-                            triggerItem(item);
                             setOpen(false);
+                            item.onClick?.();
                           }}
                           className="block w-full"
                         >
                           {inner}
                         </button>
-                      )}
-                    </div>
+                      ) : item.href ? (
+                        <Link
+                          href={item.href}
+                          onClick={() => setOpen(false)}
+                          className="block w-full"
+                        >
+                          {inner}
+                        </Link>
+                      ) : null}
+                    </li>
                   );
                 })}
-              </div>
+              </ul>
+
+              <div className="h-[env(safe-area-inset-bottom)]" />
             </motion.div>
           </motion.div>
         ) : null}
