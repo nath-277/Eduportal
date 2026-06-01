@@ -1,0 +1,22 @@
+{
+  "name": "eduportal",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm -r --parallel --filter=./apps/* dev",
+    "dev:web": "pnpm --filter web dev",
+    "dev:api": "pnpm --filter @eduportal/api dev",
+    "build": "pnpm -r --filter=./apps/* build",
+    "start": "pnpm -r --filter=./apps/* start",
+    "lint": "pnpm -r --filter=./apps/* lint",
+    "type-check": "pnpm -r --filter=./apps/* exec tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@10.33.4"
+}
