@@ -513,3 +513,62 @@ the single source of truth for cross-package types.
     `RESULT` notification) verified end-to-end.
   - **Gates**: tsc 0, eslint 0 errors (12 unused-var warnings remaining),
     `pnpm --filter web build` clean — 18 static routes.
+- [x] **M6b — Student engagement pages**: full resource library, discussion
+  forum, and notifications pages. Includes:
+
+  - **Resource Library** (`/student/resources`):
+    - Search bar (debounced 300ms) searching title/description.
+    - Filter chips: All, Lecture Notes, Past Questions, Assignments,
+      Textbooks, Bookmarked (uses `?saved=true` query param).
+    - Course filter dropdown (all courses fetched from API).
+    - Responsive grid (1/2/3 cols) with Framer Motion staggered animations.
+    - Card: file-type icon (PDF red, DOCX blue, etc.), title, course code
+      badge, uploader name, date, download count, file size, bookmark
+      toggle (Bookmark ↔ BookmarkCheck), download button.
+    - `POST /api/resources/:id/download` returns signed URL → opens in new tab.
+    - `POST /api/resources/:id/bookmark` toggles; bookmark set cached via
+      `setQueryData` for instant UI.
+    - Empty state distinguishes "no bookmarks" from "no matches".
+  - **Discussion Forum** (`/student/forum` and `/student/forum/[postId]`):
+    - List view: animated card stack, search, category chips
+      (All/Questions/Resources/General/Announcements).
+    - Floating action button (bottom-right, 56px, primary) opens a
+      `Sheet` (bottom-side, max-w-lg centered on desktop) with title,
+      body (min 20 chars), tag chips (Enter/comma to add) + tags field,
+      validation, optimistic close on success.
+    - Cards: author avatar + name + Lecturer/OP badges + Pin badge, title
+      (linked to detail), 2-line body preview, tag chips, like + reply
+      counts. `PATCH /api/forum/posts/:id/like` increments likes.
+    - Post detail: full body, tag chips, like button, threaded replies
+      (OP badge, Lecturer badge), reply compose (RHF + Zod-style
+      validation), back-to-forum link. Empty replies state.
+    - Search: `?search=…` and `?tag=…` filter on the list endpoint.
+  - **Notifications** (`/student/notifications`):
+    - Header: total count, "Mark all read" button (visible when unread > 0).
+    - Tabs: All | Unread | Announcements | Results | Resources with badges.
+    - Date-grouped sections: Today, Yesterday, This Week, Earlier.
+    - Each row: category icon (ANNOUNCEMENT/RESULT/RESOURCE/FORUM/SYSTEM
+      with distinct tone), title, message, time-ago. Unread items have
+      a primary left border + tinted background + dot.
+    - Optimistic mark-read on click (per-item button + auto-mark on link
+      click). Mark-all uses optimistic cache update with rollback.
+    - `useQuery` refetchInterval 60s for live count.
+  - **Dock + shell badge**:
+    - `StudentShell` polls `/api/notifications/mine` every 60s and
+      passes `notificationCount` to `DashboardShell`.
+    - `DashboardShell` now attaches the unread badge to the bottom dock
+      "Alerts" item AND shows a bell badge in the desktop header.
+    - `BottomNavDock` `NavItem` extended with optional `badge: number`,
+      rendered as a small pill on the icon (both in primary dock and
+      expanded sheet).
+  - **Shared**:
+    - New `ui/textarea.tsx` (shadcn-style, `field-sizing-content` for
+      auto-resize, focus ring, invalid styles).
+    - `ui/page-header.tsx` `subtitle` widened from `string` to `ReactNode`.
+  - **Integration tested**: 4 resources, 3 forum posts, 5 notifications
+    seeded; full flows verified — filter by type, search, bookmark
+    toggle (200 → 200 with bookmarked bool), download returns signed
+    URL, forum post create + reply (creates FORUM notification) + like
+    (PATCH), notifications mark-one + mark-all + 404 on others' ids.
+  - **Gates**: tsc 0, eslint 0 errors (9 unused-var warnings), build
+    clean — 19 routes (added `/student/forum/[postId]` as dynamic).

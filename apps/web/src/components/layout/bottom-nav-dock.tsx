@@ -13,6 +13,7 @@ export interface NavItem {
   label: string;
   href?: string;
   onClick?: () => void;
+  badge?: number;
 }
 
 interface BottomNavDockProps {
@@ -72,7 +73,19 @@ export function BottomNavDock({ primaryItems, expandedItems = [] }: BottomNavDoc
                     : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                 )}
               >
-                <Icon className="h-5 w-5" />
+                <span className="relative">
+                  <Icon className="h-5 w-5" />
+                  {item.badge && item.badge > 0 ? (
+                    <span
+                      className={cn(
+                        'absolute -right-1.5 -top-1.5 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[9px] font-semibold text-primary-foreground ring-2 ring-background',
+                        active && 'bg-primary-foreground text-primary ring-primary',
+                      )}
+                    >
+                      {item.badge > 9 ? '9+' : item.badge}
+                    </span>
+                  ) : null}
+                </span>
                 <span className="text-[10px] leading-none">{item.label}</span>
               </span>
             );
@@ -157,13 +170,20 @@ export function BottomNavDock({ primaryItems, expandedItems = [] }: BottomNavDoc
                   const inner = (
                     <span
                       className={cn(
-                        'flex flex-col items-center gap-1.5 rounded-xl p-3 text-xs font-medium transition',
+                        'relative flex flex-col items-center gap-1.5 rounded-xl p-3 text-xs font-medium transition',
                         active
                           ? 'bg-primary/10 text-primary'
                           : 'text-foreground/80 hover:bg-muted'
                       )}
                     >
-                      <Icon className="h-5 w-5" />
+                      <span className="relative">
+                        <Icon className="h-5 w-5" />
+                        {item.badge && item.badge > 0 ? (
+                          <span className="absolute -right-1.5 -top-1.5 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[9px] font-semibold text-primary-foreground">
+                            {item.badge > 9 ? '9+' : item.badge}
+                          </span>
+                        ) : null}
+                      </span>
                       <span>{item.label}</span>
                     </span>
                   );

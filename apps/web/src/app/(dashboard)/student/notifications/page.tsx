@@ -1,21 +1,38 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
-import { Bell, CheckCircle2 } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { motion } from 'framer-motion';
+import {
+  Bell,
+  BellOff,
+  Check,
+  CheckCheck,
+  FileText,
+  Megaphone,
+  MessageCircle,
+  Settings,
+} from 'lucide-react';
 
 import { StudentShell } from '@/components/layout/student-shell';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card, CardContent } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { EmptyState } from '@/components/ui/empty-state';
 import { api } from '@/lib/api';
+import { cn } from '@/lib/utils';
+import type { NotificationCategory } from '@eduportal/shared';
 
 interface Notification {
   id: string;
   title: string;
   message: string;
-  category: string;
+  category: NotificationCategory;
   isRead: boolean;
   link: string | null;
   createdAt: string;
@@ -26,80 +43,307 @@ interface NotificationsResponse {
   notifications: Notification[];
 }
 
-const CATEGORY_TONE: Record<string, string> = {
-  ANNOUNCEMENT: 'bg-primary/10 text-primary',
-  RESULT: 'bg-emerald-500/10 text-emerald-600',
-  FORUM: 'bg-indigo-500/10 text-indigo-600',
-  ENROLLMENT: 'bg-amber-500/10 text-amber-600',
+const CATEGORY_META: Record<NotificationCategory, { icon: typeof Bell; tone: string; label: string }> = {
+  ANNOUNCEMENT: { icon: Megaphone, tone: 'bg-primary/10 text-primary', label: 'Announcement' },
+  RESULT: { icon: FileText, tone: 'bg-emerald-500/10 text-emerald-600', label: 'Result' },
+  RESOURCE: { icon: FileText, tone: 'bg-blue-500/10 text-blue-600', label: 'Resource' },
+  FORUM: { icon: MessageCircle, tone: 'bg-indigo-500/10 text-indigo-600', label: 'Forum' },
+  SYSTEM: { icon: Settings, tone: 'bg-muted text-muted-foreground', label: 'System' },
 };
 
+function formatTime(d: string): string {
+  const ts = new Date(d).getTime();
+  const diff = (Date.now() - ts) / 1000;
+  if (diff < 60) return 'just now';
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  if (diff < 604800) return `${Math.floor(diff / 86400)}d ago`;
+  return new Date(d).toLocaleDateString();
+}
+
+function groupKey(d: string): string {
+  const now = new Date();
+  const date = new Date(d);
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  const weekAgo = new Date(today);
+  weekAgo.setDate(today.getDate() - 6);
+
+  if (date >= today) return 'Today';
+  if (date >= yesterday) return 'Yesterday';
+  if (date >= weekAgo) return 'This Week';
+  return 'Earlier';
+}
+
+const GROUP_ORDER: string[] = ['Today', 'Yesterday', 'This Week', 'Earlier'];
+
+function groupNotifications(notifs: Notification[]): Array<{ label: string; items: Notification[] }> {
+  const groups = new Map<string, Notification[]>();
+  for (const n of notifs) {
+    const key = groupKey(n.createdAt);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(n);
+  }
+  return GROUP_ORDER
+    .filter((k) => groups.has(k))
+    .map((k) => ({ label: k, items: groups.get(k)! }));
+}
+
+function NotificationRow({
+  n,
+  onClick,
+  isMarking,
+}: {
+  n: Notification;
+  onClick: () => void;
+  isMarking: boolean;
+}) {
+  const meta = CATEGORY_META[n.category] ?? CATEGORY_META.SYSTEM;
+  const Icon = meta.icon;
+  const content = (
+    <div
+      className={cn(
+        'flex items-start gap-3 p-3 transition-colors',
+        n.isRead ? '' : 'bg-primary/5 border-l-4 border-primary',
+      )}
+    >
+      <div
+        className={cn(
+          'mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-lg',
+          meta.tone,
+        )}
+      >
+        <Icon className="h-4 w-4" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <p className={cn('text-sm', n.isRead ? 'text-foreground' : 'font-medium')}>{n.title}</p>
+          {!n.isRead ? (
+            <span
+              className="inline-flex h-2 w-2 shrink-0 rounded-full bg-primary"
+              aria-label="Unread"
+            />
+          ) : null}
+        </div>
+        <p className="mt-0.5 text-sm text-muted-foreground">{n.message}</p>
+        <p className="mt-1 text-xs text-muted-foreground">{formatTime(n.createdAt)}</p>
+      </div>
+      {!n.isRead ? (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onClick();
+          }}
+          disabled={isMarking}
+          aria-label="Mark as read"
+          className="grid h-7 w-7 shrink-0 place-items-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:opacity-50"
+        >
+          <Check className="h-3.5 w-3.5" />
+        </button>
+      ) : null}
+    </div>
+  );
+
+  if (n.link) {
+    return (
+      <Link href={n.link} className="block" onClick={onClick}>
+        {content}
+      </Link>
+    );
+  }
+  return (
+    <button type="button" onClick={onClick} className="block w-full text-left" disabled={isMarking}>
+      {content}
+    </button>
+  );
+}
+
 export default function StudentNotificationsPage() {
-  const q = useQuery({
+  const router = useRouter();
+  const qc = useQueryClient();
+  const [tab, setTab] = useState<'all' | 'unread' | 'announcements' | 'results' | 'resources'>('all');
+
+  const query = useQuery({
     queryKey: ['notifications', 'mine'],
-    queryFn: async () => api.get<NotificationsResponse>('/notifications/mine?limit=50'),
+    queryFn: async () => api.get<NotificationsResponse>('/notifications/mine'),
+    refetchInterval: 60_000,
   });
 
-  const notifications = q.data?.notifications ?? [];
-  const unread = q.data?.unreadCount ?? 0;
+  const markOne = useMutation({
+    mutationFn: async (id: string) => {
+      return api.post<{ notification: Notification }>(`/notifications/${id}/read`, {});
+    },
+    onMutate: async (id) => {
+      await qc.cancelQueries({ queryKey: ['notifications', 'mine'] });
+      const prev = qc.getQueryData<NotificationsResponse>(['notifications', 'mine']);
+      if (prev) {
+        qc.setQueryData<NotificationsResponse>(['notifications', 'mine'], {
+          ...prev,
+          unreadCount: Math.max(0, prev.unreadCount - 1),
+          notifications: prev.notifications.map((n) => (n.id === id ? { ...n, isRead: true } : n)),
+        });
+      }
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(['notifications', 'mine'], ctx.prev);
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ['notifications', 'mine'] });
+    },
+  });
+
+  const markAll = useMutation({
+    mutationFn: async () => {
+      return api.post<{ updated: number }>('/notifications/read-all', {});
+    },
+    onMutate: async () => {
+      await qc.cancelQueries({ queryKey: ['notifications', 'mine'] });
+      const prev = qc.getQueryData<NotificationsResponse>(['notifications', 'mine']);
+      if (prev) {
+        qc.setQueryData<NotificationsResponse>(['notifications', 'mine'], {
+          unreadCount: 0,
+          notifications: prev.notifications.map((n) => ({ ...n, isRead: true })),
+        });
+      }
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(['notifications', 'mine'], ctx.prev);
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ['notifications', 'mine'] });
+    },
+  });
+
+  const all = query.data?.notifications ?? [];
+  const unread = query.data?.unreadCount ?? 0;
+
+  const filtered = useMemo(() => {
+    switch (tab) {
+      case 'unread':
+        return all.filter((n) => !n.isRead);
+      case 'announcements':
+        return all.filter((n) => n.category === 'ANNOUNCEMENT');
+      case 'results':
+        return all.filter((n) => n.category === 'RESULT');
+      case 'resources':
+        return all.filter((n) => n.category === 'RESOURCE');
+      case 'all':
+      default:
+        return all;
+    }
+  }, [all, tab]);
+
+  const grouped = useMemo(() => groupNotifications(filtered), [filtered]);
+
+  const headerSubtitle = query.isLoading
+    ? 'Loading…'
+    : unread > 0
+      ? `${unread} unread notification${unread > 1 ? 's' : ''}.`
+      : 'All caught up.';
 
   return (
     <StudentShell>
       <PageHeader
         title="Notifications"
-        subtitle={
-          unread > 0
-            ? `${unread} unread notification${unread > 1 ? 's' : ''}.`
-            : 'All caught up.'
+        subtitle={headerSubtitle}
+        actions={
+          unread > 0 ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => markAll.mutate()}
+              disabled={markAll.isPending}
+              className="gap-1.5"
+            >
+              <CheckCheck className="h-4 w-4" />
+              Mark all read
+            </Button>
+          ) : undefined
         }
       />
 
-      <Card className="mt-6">
-        <CardContent className="p-3">
-          {q.isLoading ? (
+      <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)} className="mt-6">
+        <TabsList className="w-full overflow-x-auto sm:w-fit">
+          <TabsTrigger value="all" className="gap-1.5">
+            All
+            {all.length > 0 ? (
+              <Badge variant="secondary" className="h-4 px-1.5 text-[10px]">
+                {all.length}
+              </Badge>
+            ) : null}
+          </TabsTrigger>
+          <TabsTrigger value="unread" className="gap-1.5">
+            Unread
+            {unread > 0 ? (
+              <Badge className="h-4 px-1.5 text-[10px]">{unread}</Badge>
+            ) : null}
+          </TabsTrigger>
+          <TabsTrigger value="announcements">Announcements</TabsTrigger>
+          <TabsTrigger value="results">Results</TabsTrigger>
+          <TabsTrigger value="resources">Resources</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value={tab} className="mt-4">
+          {query.isLoading ? (
             <div className="space-y-2">
-              <Skeleton className="h-16 w-full" />
-              <Skeleton className="h-16 w-full" />
-              <Skeleton className="h-16 w-full" />
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Skeleton key={i} className="h-20 w-full" />
+              ))}
             </div>
-          ) : notifications.length === 0 ? (
+          ) : grouped.length === 0 ? (
             <EmptyState
-              icon={Bell}
-              title="No notifications yet"
-              description="New announcements, results, and forum activity will show up here."
+              icon={tab === 'unread' ? BellOff : Bell}
+              title={tab === 'unread' ? 'No unread notifications' : 'Nothing here yet'}
+              description={
+                tab === 'unread'
+                  ? 'You have read every notification. New ones will appear here.'
+                  : tab === 'all'
+                    ? 'New announcements, results, and forum activity will show up here.'
+                    : 'Nothing in this category right now.'
+              }
             />
           ) : (
-            <ul className="divide-y">
-              {notifications.map((n) => (
-                <li key={n.id} className="flex items-start gap-3 p-3">
-                  <div
-                    className={`mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-lg ${
-                      CATEGORY_TONE[n.category] ?? 'bg-muted text-muted-foreground'
-                    }`}
-                  >
-                    <Bell className="h-4 w-4" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-medium">{n.title}</p>
-                      {n.isRead ? (
-                        <CheckCircle2 className="h-3.5 w-3.5 text-muted-foreground" />
-                      ) : (
-                        <Badge variant="default" className="h-4 px-1.5 text-[10px]">
-                          new
-                        </Badge>
-                      )}
-                    </div>
-                    <p className="mt-0.5 text-sm text-muted-foreground">{n.message}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {new Date(n.createdAt).toLocaleString()}
-                    </p>
-                  </div>
-                </li>
+            <div className="space-y-6">
+              {grouped.map((group) => (
+                <motion.div
+                  key={group.label}
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="space-y-2"
+                >
+                  <h2 className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    {group.label}
+                  </h2>
+                  <Card>
+                    <CardContent className="divide-y p-0">
+                      {group.items.map((n) => (
+                        <NotificationRow
+                          key={n.id}
+                          n={n}
+                          isMarking={markOne.isPending}
+                          onClick={() => {
+                            if (!n.isRead) {
+                              markOne.mutate(n.id);
+                            }
+                            if (n.link) {
+                              router.push(n.link);
+                            }
+                          }}
+                        />
+                      ))}
+                    </CardContent>
+                  </Card>
+                </motion.div>
               ))}
-            </ul>
+            </div>
           )}
-        </CardContent>
-      </Card>
+        </TabsContent>
+      </Tabs>
     </StudentShell>
   );
 }

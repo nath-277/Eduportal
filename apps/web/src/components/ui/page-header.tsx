@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 
 interface PageHeaderProps {
   title: string;
-  subtitle?: string;
+  subtitle?: ReactNode;
   actions?: ReactNode;
   className?: string;
 }

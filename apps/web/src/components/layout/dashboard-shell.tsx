@@ -70,7 +70,12 @@ export function DashboardShell({
     ...(expandedHasLogout ? [] : [logoutItem]),
   ];
 
-  const finalDock: NavItem[] = dockItems.slice(0, 5);
+  const finalDock: NavItem[] = dockItems.slice(0, 5).map((item) => {
+    if (item.href && item.href.endsWith('/notifications') && notificationCount > 0) {
+      return { ...item, badge: notificationCount };
+    }
+    return item;
+  });
 
   function handleLogout(): void {
     clearAuth();
