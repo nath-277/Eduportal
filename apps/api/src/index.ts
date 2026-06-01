@@ -2,8 +2,10 @@ import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
-import { config } from './config.js';
+import { ZodError } from 'zod';
 import type { ApiResponse } from '@eduportal/shared';
+import { config } from './config.js';
+import authRouter from './routes/auth.routes.js';
 
 const app = new Hono();
 
@@ -16,6 +18,35 @@ app.use(
   })
 );
 
+app.use('*', async (c, next) => {
+  c.set('handleZodError', (error: unknown): Response => {
+    if (error instanceof ZodError) {
+      const fieldErrors: Record<string, string[]> = {};
+      for (const issue of error.issues) {
+        const key = issue.path.length > 0 ? issue.path.join('.') : '_';
+        if (!fieldErrors[key]) {
+          fieldErrors[key] = [];
+        }
+        fieldErrors[key].push(issue.message);
+      }
+      const body: ApiResponse<null> = {
+        success: false,
+        message: 'Validation failed',
+        errors: fieldErrors,
+      };
+      return new Response(JSON.stringify(body), {
+        status: 400,
+        headers: { 'content-type': 'application/json' },
+      });
+    }
+    return new Response(
+      JSON.stringify({ success: false, message: 'Bad request' } satisfies ApiResponse<null>),
+      { status: 400, headers: { 'content-type': 'application/json' } }
+    );
+  });
+  await next();
+});
+
 app.get('/api/health', (c) => {
   const response: ApiResponse<{ status: string; timestamp: string; uptime: number }> = {
     success: true,
@@ -27,6 +58,8 @@ app.get('/api/health', (c) => {
   };
   return c.json(response);
 });
+
+app.route('/api/auth', authRouter);
 
 app.notFound((c) => {
   const response: ApiResponse<null> = {
@@ -45,7 +78,7 @@ app.onError((err, c) => {
   return c.json(response, 500);
 });
 
-const start = () => {
+const start = (): void => {
   try {
     serve(
       {

@@ -19,10 +19,22 @@ eduportal/
 │   └── api/                 # Hono backend on Node.js
 │       ├── prisma/          # Prisma schema, migrations, seed
 │       └── src/
-│           ├── index.ts     # Server entry point
+│           ├── index.ts     # Server entry point (Hono app, error handler)
 │           ├── config.ts    # Environment configuration
-│           └── lib/
-│               └── prisma.ts # Prisma client singleton
+│           ├── lib/         # Cross-cutting helpers
+│           │   ├── prisma.ts        # Prisma client singleton
+│           │   ├── jwt.ts           # JWT sign/verify
+│           │   ├── password.ts      # bcrypt hash/compare
+│           │   ├── reset-token.ts   # crypto-secure token + sha256
+│           │   └── sanitize.ts      # strip sensitive user fields
+│           ├── middleware/
+│           │   └── auth.ts          # authenticate + authorize(...roles)
+│           ├── validators/          # Zod request schemas
+│           │   └── auth.validator.ts
+│           ├── routes/
+│           │   └── auth.routes.ts   # /register /login /me /logout /forgot-password /reset-password
+│           └── types/
+│               └── hono.d.ts        # ContextVariableMap (user, handleZodError)
 ├── packages/
 │   └── shared/              # Shared TypeScript types
 │       └── src/types/       # Domain models
@@ -194,8 +206,55 @@ cp apps/web/.env.local.example apps/web/.env.local
 
 ## API Endpoints
 
+All responses follow the `ApiResponse<T>` envelope:
+```ts
+{ success: boolean; data?: T; message?: string; errors?: Record<string, string[]> }
+```
+
 ### Health
 - `GET /api/health` — Liveness check returning `{ status, timestamp, uptime }`
+
+### Auth (`/api/auth`)
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `POST` | `/register` | — | Create a new student or lecturer account |
+| `POST` | `/login` | — | Email-or-matric + password → returns `{ user, token }` |
+| `POST` | `/forgot-password` | — | Email → generic 200 (no user enumeration); logs reset link to server console |
+| `POST` | `/reset-password` | — | Token (from email) + new password |
+| `GET`  | `/me` | Bearer | Returns the authenticated user's profile |
+| `POST` | `/logout` | Bearer | Logs the user out and writes an audit entry |
+
+#### Password rules
+Minimum 8 characters, must contain at least one uppercase letter and one number.
+
+#### Auth middleware
+- `authenticate` — extracts `Authorization: Bearer <jwt>`, validates it, sets `c.get('user') = { userId, role }` on the Hono context.
+- `authorize('ADMIN' | 'LECTURER' | 'STUDENT', ...)` — guards routes by role; returns 401 if unauthenticated, 403 if the role is not allowed.
+
+#### Example: register a student
+```bash
+curl -X POST http://localhost:3001/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "fullname": "Jane Doe",
+    "email": "jane@example.com",
+    "password": "Test@1234",
+    "matricNumber": "CSC/2026/001",
+    "role": "STUDENT",
+    "level": "L100",
+    "departmentId": "<departmentId>"
+  }'
+```
+
+#### Example: authenticated request
+```bash
+TOKEN=$(curl -s -X POST http://localhost:3001/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"identifier":"admin@eduportal.com","password":"Admin@1234"}' \
+  | python3 -c "import json,sys;print(json.loads(sys.stdin.read())['data']['token'])")
+
+curl -H "Authorization: Bearer $TOKEN" http://localhost:3001/api/auth/me
+```
 
 ## Routes
 
@@ -255,3 +314,8 @@ the single source of truth for cross-package types.
   initial migration applied, seed script populating department,
   session, 3 users, and 6 courses, Prisma client singleton with
   dev/prod-aware logging
+- [x] **M2 — Auth backend**: 6 endpoints (register, login, /me, logout,
+  forgot-password, reset-password) with Zod validation, JWT auth, RBAC
+  middleware, password hashing (bcrypt, cost 12), secure reset-token
+  storage (sha256, 1h expiry), audit logging, and CORS-configured
+  Hono app
