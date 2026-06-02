@@ -129,6 +129,106 @@ export function LineChart({ data, height = 200, className }: LineChartProps) {
   );
 }
 
+interface PieChartProps {
+  data: Array<{ label: string; value: number; color: string }>;
+  size?: number;
+  thickness?: number;
+  className?: string;
+  unit?: string;
+  centerLabel?: string;
+  centerValue?: string | number;
+}
+
+export function PieChart({
+  data,
+  size = 180,
+  thickness = 28,
+  className,
+  unit = '',
+  centerLabel,
+  centerValue,
+}: PieChartProps) {
+  const total = data.reduce((s, d) => s + d.value, 0);
+  if (total === 0) {
+    return (
+      <div
+        className={cn('flex items-center justify-center text-xs text-muted-foreground', className)}
+        style={{ height: size }}
+      >
+        No data
+      </div>
+    );
+  }
+
+  const cx = 50;
+  const cy = 50;
+  const r = 45;
+  const circumference = 2 * Math.PI * r;
+
+  const slices = data.map((d, i) => {
+    const pct = total > 0 ? d.value / total : 0;
+    const length = pct * circumference;
+    const offset = data.slice(0, i).reduce((sum, prev) => sum + (prev.value / total) * circumference, 0);
+    return { d, length, offset, i };
+  });
+
+  return (
+    <div className={cn('flex flex-col items-center gap-4 sm:flex-row sm:items-center sm:justify-center', className)}>
+      <div className="relative" style={{ width: size, height: size }}>
+        <svg
+          viewBox="0 0 100 100"
+          className="h-full w-full -rotate-90"
+          aria-label={centerLabel ?? 'Distribution'}
+        >
+          {slices.map(({ d, length, offset, i }) => (
+            <motion.circle
+              key={`${d.label}-${i}`}
+              cx={cx}
+              cy={cy}
+              r={r}
+              fill="none"
+              stroke={d.color}
+              strokeWidth={thickness / 2.4}
+              strokeDasharray={`${length} ${circumference - length}`}
+              strokeDashoffset={-offset}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: i * 0.05, duration: 0.4 }}
+            />
+          ))}
+        </svg>
+        {centerLabel ? (
+          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+            <span className="text-2xl font-semibold tabular-nums">
+              {centerValue ?? total}
+              {unit}
+            </span>
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              {centerLabel}
+            </span>
+          </div>
+        ) : null}
+      </div>
+      <ul className="space-y-1.5 text-sm">
+        {data.map((d) => (
+          <li key={d.label} className="flex items-center gap-2">
+            <span
+              className="h-2.5 w-2.5 rounded-sm"
+              style={{ backgroundColor: d.color }}
+              aria-hidden
+            />
+            <span className="text-foreground/80">{d.label}</span>
+            <span className="ml-auto font-mono text-xs text-muted-foreground">
+              {d.value}
+              {unit} · {Math.round((d.value / total) * 100)}%
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 interface SparklineProps {
   data: number[];
   height?: number;

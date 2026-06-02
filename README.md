@@ -680,3 +680,155 @@ the single source of truth for cross-package types.
     `react-hooks/incompatible-library` patterns from RHF `watch()` +
     1 useMemo dep array), `pnpm --filter web build` clean — 23 routes
     (added 6 lecturer pages, all under `(dashboard)` route group).
+- [x] **M8 — Admin portal**: complete administrative experience
+  with role-specific navigation, shell, and seven first-class
+  pages, on a purple/indigo theme (`--primary: 271 91% 65%` purple,
+  `--accent: 263 70% 50%` indigo).
+  - **Shell + nav**:
+    - Moved existing admin dashboard from
+      `apps/web/src/app/admin/dashboard/page.tsx` →
+      `apps/web/src/app/(dashboard)/admin/dashboard/page.tsx` via
+      `git mv`; old `/app/admin/` directory deleted.
+    - New `apps/web/src/config/admin-nav.ts` exports
+      `adminSidebarItems` (9 entries: Dashboard, Users, Departments,
+      Courses, Results, Announcements, Forum, Audit logs, Settings)
+      and `adminDockPrimary` (5) + `adminDockExpanded` (6).
+      `toSidebarItems` + `toDockItems` converters enforce type
+      safety between `(NavLink | NavAction)` and
+      `(DockPrimaryItem | DockExpandedItem)`.
+    - New `components/layout/admin-shell.tsx` mirrors
+      `StudentShell`/`LecturerShell`: auth + role guard,
+      Purple/Indigo CSS-var theme via `useRoleTheme`, polls
+      `/api/notifications/mine` every 60s.
+  - **Charts component** (`components/ui/charts.tsx`):
+    - Added custom SVG-based `PieChart` (no Recharts dependency) —
+      donut with `stroke-dasharray`, slice offsets computed in
+      a non-mutating `slice` derivation, Framer-Motion fade-in
+      stagger, optional animated center label/value, and a
+      side legend with percentages. Used by analytics + logs.
+  - **Admin Dashboard** (`/admin/dashboard`): 6 stat cards
+    (Students, Lecturers, Courses, Resources, Active sessions,
+    Uptime) + 2-column charts (Users-by-role `PieChart` with
+    center "Total" label, Students-per-level `BarChart` with
+    `LEVEL_COLORS` L100–L500) + recent audit logs table
+    (10 rows, color-coded rows: CREATE emerald, UPDATE blue,
+    DELETE/SUSPEND rose, LOGIN blue, PUBLISH emerald) +
+    GPA-by-level `LineChart` + top 5 resources list +
+    department snapshot table.
+  - **User Management** (`/admin/users`): stat strip
+    (total/students/lecturers/admins) + filter bar (debounced
+    300ms search, role/level/department selects, 20/page) +
+    `DataTable` with 7 columns (User with avatar + email,
+    Matric/Staff, Role badge, Level, Department, Status,
+    Actions) + 3 dialogs:
+    - **Edit**: fullname/role/level/dept/isActive via
+      `PATCH /api/users/:id`.
+    - **Add**: full register form (any role) via
+      `POST /api/auth/register`.
+    - **View**: display profile (no edit).
+    - **Toggle**: `DELETE /api/users/:id` is a soft-delete
+      (sets `isActive=false`) per the API; UI surfaces as a
+      "Suspend/Reactivate" action.
+  - **Departments & Sessions** (`/admin/departments`): `Tabs`
+    with two panes.
+    - **Departments tab**: inline create form (name + code with
+      pattern `/^[A-Z]{2,5}$/`), table with per-dept user counts
+      (parallelized `GET /api/users?departmentId&limit=1` to
+      leverage the paginated total), delete-with-confirm.
+    - **Sessions tab**: current-session banner with `Star`
+      icon, create form (name pattern `/^\d{4}\/\d{4}$/`,
+      start/end dates, `isCurrent` checkbox), table with a
+      "Set current" action per row calling
+      `PATCH /api/sessions/:id/set-current`.
+  - **Course Management** (`/admin/courses`): filter bar
+    (level, semester, department) + course table
+    (code, title, level badge, semester badge, credits,
+    lecturer list, department) + 2 dialogs:
+    - **Add Course**: code pattern `/^[A-Za-z]{2,4}\d{3}$/`,
+      credits 1–6, level/semester/dept selects via
+      `POST /api/courses`.
+    - **Assign Lecturer**: lecturer select from
+      `GET /api/users?role=LECTURER`, session input prefilled
+      with current via `POST /api/courses/:id/assign` (note:
+      API field is `session`, not `sessionId`).
+  - **Analytics** (`/admin/analytics`): department-wide
+    distribution + course-level performance.
+    - **Department overview**: 3 charts — students per level
+      (BarChart), courses per level (BarChart), average GPA per
+      level (LineChart, empty state when no published results).
+    - **Result analytics**: course selector (`/api/courses`) +
+      4 stat cards (total results, published count, pass rate
+      % grade ≥ C, average total) + grade breakdown `PieChart`
+      with center "Total" label + score-distribution
+      `BarChart` (same 6 buckets: A–F). Colors come from a
+      `GRADE_COLORS` map.
+  - **Audit Logs** (`/admin/logs`): immutable record of admin
+    actions + system events.
+    - 4 stat cards (today, login events, admin actions,
+      current-filter result).
+    - Filter strip: debounced 300ms user-ID search, action
+      type select (28 enum options), start/end date pickers.
+    - Per-row color stripe (rose DELETE/SUSPEND, amber UPDATE,
+      blue LOGIN, emerald CREATE/PUBLISH) and per-action
+      verb-colored badge (`ACTION_TONE` map).
+    - Clickable chevron to expand a row and reveal the full
+      `metadata` JSON + user-agent (when present).
+    - **Export CSV**: client-side `Blob` + `URL.createObjectURL`
+      download of the current filtered view (no `json2csv`
+      dependency); toast confirms row count.
+  - **Settings** (`/admin/settings`): 4 cards.
+    - **Portal settings**: department name + display name.
+    - **Security**: max-login-attempts (3–10) + session-expiry
+      select (1h/8h/24h/7d). Currently surface-only (no
+      global config endpoint yet); user feedback confirms
+      "saved" intent.
+    - **Admin profile**: fullname/email/phone/bio with
+      `PATCH /api/users/:id`; shows latest `/auth/me` data
+      via a keyed `defaultValue` to satisfy the no-effect
+      cascade lint rule. Avatar uses initials in
+      purple-tinted `AvatarFallback`.
+    - **Change password**: current/new/confirm inputs; 8-char
+      minimum; match check; calls
+      `POST /api/auth/change-password`.
+  - **Lint clean-up**:
+    - Refactored `PieChart` to compute slice offsets via a
+      `slice` derivation (`reduce` on prior entries) instead
+      of an `acc += length` mutation. Resolves
+      `react-hooks/immutability` error.
+    - Replaced the cascading `useEffect`-then-setState pattern
+      in settings with a `defaultValue` + `key` strategy tied
+      to the latest `/auth/me` user id. Resolves
+      `react-hooks/set-state-in-effect` error.
+  - **Integration tested**:
+    - Login as admin@eduportal.com → token.
+    - All 7 admin pages return 200:
+      `/admin/dashboard`, `/admin/users`, `/admin/departments`,
+      `/admin/courses`, `/admin/analytics`, `/admin/logs`,
+      `/admin/settings`.
+    - All 7 admin API endpoints return 200:
+      `/api/analytics/admin`, `/api/analytics/department`,
+      `/api/analytics/audit-logs`, `/api/users`, `/api/courses`,
+      `/api/departments`, `/api/sessions`.
+    - `POST /api/departments` (Mathematics / MTH) → 201.
+    - `POST /api/sessions` (2026/2027) → 201.
+    - `PATCH /api/sessions/:id/set-current` → 200 (session
+      flipped to current).
+    - `POST /api/auth/register` (Test Admin User, MTH/2025/001)
+      → 201, returned user with correct `matricNumber`.
+    - `DELETE /api/users/:id` (soft suspend) → 200, sets
+      `isActive=false`.
+    - `POST /api/courses` (MTH101) → 201, returns course with
+      `creditUnits` (not `credits` — field name discovered
+      via 400 error response).
+    - `POST /api/courses/:id/assign` with `{lecturerId,
+      session}` (note: `session`, not `sessionId`) → 201
+      returns the assignment row.
+    - Cleanup: hard-deleted test data via one-off Prisma
+      script (`apps/api/scripts/cleanup-mth.ts`).
+  - **Gates**: tsc 0, eslint 0 errors (19 warnings — 11
+    pre-existing `react-hooks/incompatible-library`, 3 RHF
+    `watch()` warnings, 3 unused imports from earlier
+    milestones, 1 exhaustive-deps, 1 useMemo evaluation
+    warning), `pnpm --filter web build` clean — 30 routes
+    total (added 7 admin pages, all under `(dashboard)`
+    route group).
