@@ -7,6 +7,7 @@ import { DashboardShell } from './dashboard-shell';
 import { useAuthGuard } from '@/hooks/use-auth-guard';
 import { useAuthStore } from '@/stores/auth.store';
 import { FullPageSpinner } from '@/components/ui/loading-spinner';
+import { ErrorBoundary } from '@/components/error-boundary';
 import { api } from '@/lib/api';
 import {
   adminSidebarItems,
@@ -44,15 +45,17 @@ export function AdminShell({ children }: { children: ReactNode }) {
   };
 
   return (
-    <DashboardShell
-      role="ADMIN"
-      user={user}
-      sidebarItems={toSidebarItems(adminSidebarItems)}
-      dockItems={toDockItems(adminDockPrimary, { onLogout: handleLogout })}
-      expandedDockItems={toDockItems(adminDockExpanded, { onLogout: handleLogout })}
-      notificationCount={notificationsQuery.data?.unreadCount ?? 0}
-    >
-      {children}
-    </DashboardShell>
+    <ErrorBoundary label="admin dashboard">
+      <DashboardShell
+        role="ADMIN"
+        user={user}
+        sidebarItems={toSidebarItems(adminSidebarItems)}
+        dockItems={toDockItems(adminDockPrimary, { onLogout: handleLogout })}
+        expandedDockItems={toDockItems(adminDockExpanded, { onLogout: handleLogout })}
+        notificationCount={notificationsQuery.data?.unreadCount ?? 0}
+      >
+        {children}
+      </DashboardShell>
+    </ErrorBoundary>
   );
 }

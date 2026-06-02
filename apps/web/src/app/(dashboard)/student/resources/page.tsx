@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'sonner';
 import {
   Bookmark,
   BookmarkCheck,
@@ -177,6 +178,7 @@ function ResourceLibraryView() {
       return { id, bookmarked: data.bookmarked };
     },
     onSuccess: (result) => {
+      toast.success(result.bookmarked ? 'Saved to bookmarks' : 'Removed from bookmarks');
       qc.invalidateQueries({ queryKey: ['resources'] });
       qc.setQueryData<Set<string> | undefined>(['resources', 'bookmark-ids'], (prev) => {
         const next = new Set(prev ?? []);
@@ -184,6 +186,9 @@ function ResourceLibraryView() {
         else next.delete(result.id);
         return next;
       });
+    },
+    onError: (err: unknown) => {
+      toast.error(err instanceof Error ? err.message : 'Could not update bookmark');
     },
   });
 
@@ -194,6 +199,9 @@ function ResourceLibraryView() {
     },
     onSuccess: (url) => {
       window.open(url, '_blank', 'noopener,noreferrer');
+    },
+    onError: (err: unknown) => {
+      toast.error(err instanceof Error ? err.message : 'Download failed');
     },
   });
 

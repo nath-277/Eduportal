@@ -23,6 +23,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ChartSkeleton } from '@/components/ui/skeletons';
 import { BarChart } from '@/components/ui/charts';
 import { EmptyState } from '@/components/ui/empty-state';
 import { useAuthStore } from '@/stores/auth.store';
@@ -254,7 +255,7 @@ export default function LecturerDashboardPage() {
             </CardHeader>
             <CardContent className="p-4">
               {coursesQuery.isLoading ? (
-                <Skeleton className="h-40 w-full" />
+                <ChartSkeleton height={160} />
               ) : courses.length === 0 ? (
                 <p className="py-8 text-center text-xs text-muted-foreground">
                   No course data yet. Results will appear here once uploaded.

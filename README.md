@@ -832,3 +832,147 @@ the single source of truth for cross-package types.
     warning), `pnpm --filter web build` clean — 30 routes
     total (added 7 admin pages, all under `(dashboard)`
     route group).
+
+## M9 — Printable Academic Documents (commit `f3369ad`)
+
+Three print-ready academic documents rendered by
+`apps/web/src/components/print/`:
+
+- **`ResultSlip`** — university header, "STATEMENT OF RESULT"
+  title, student info, per-semester results tables (Code,
+  Title, Units, CA, Exam, Total, Grade, GP), GPA/CGPA/units/
+  passed summary, dean signature, "Computer-generated"
+  footer. Empty-state variant for "no results yet."
+- **`ExamDocket`** — large "EXAMINATION DOCKET" heading,
+  photo placeholder, student details box, courses table
+  (S/N, Code, Title, Units, Lecturer, Date, Venue), fee-
+  payment declaration, student + invigilator signatures.
+  Empty-state for "no courses registered."
+- **`RegForm`** — "COURSE REGISTRATION FORM", student info
+  table, courses table with total-units row, withdrawal
+  declaration, student + course-adviser + HOD signatures
+  + departmental stamp. Empty-state variant.
+
+Print CSS in `globals.css`:
+- `.no-print { display: none }` — hides shell chrome when
+  printing.
+- `.print-only { display: block }` — shows print-only blocks
+  (rendered `hidden` on screen via Tailwind `hidden`).
+- `.print-page { page-break-after: always }` (except on
+  `:last-of-type`).
+- `body { background: white }` for print.
+
+Wired in `/student/courses` (two print buttons: "Print
+registration" + "Print exam docket", the latter disabled
+when no enrollments) and `/student/results` (existing
+"Print slip" button retained; `<ResultSlip>` replaces the
+inline rendering).
+
+All components receive typed `User`, `Enrollment[]`, and
+`Course[]` props. Departments are resolved via
+`GET /api/departments` (user record only carries
+`departmentId`).
+
+## M10 — Production Polish
+
+Final hardening pass before tagging v1.0.0. No new
+features; closes UX, a11y, reliability, and deployment
+gaps.
+
+- **Error boundary** — `apps/web/src/components/error-boundary.tsx`
+  is a React class component with a "Something went wrong"
+  panel, a `RotateCcw` "Try again" button, and a `Home` "Go
+  home" button via `<Button asChild><Link/>`. Optional
+  `label`/`fallback`/`onReset` props. Logs to
+  `console.error('[ErrorBoundary]', label, error, info)`.
+  Wrapped around every role shell: `StudentShell`,
+  `LecturerShell`, `AdminShell`.
+- **404 page** — `app/not-found.tsx` is role-aware (uses
+  `useAuthStore` + a `hydrated` flag set in `useEffect` to
+  avoid SSR/CSR hydration mismatch on the role-aware copy).
+  Each role gets a tailored "go to your dashboard" CTA
+  via the `roleHome()` helper.
+- **Skeleton primitives** — `components/ui/skeletons.tsx`:
+  - `DashboardSkeleton` — 4 stat cards + 2-column chart
+    placeholders.
+  - `TableSkeleton({rows, columns})` — generic table shimmer.
+  - `CourseCardSkeleton` + `CourseCardGridSkeleton({count})`.
+  - `ResourceCardSkeleton` + `ResourceCardListSkeleton({count})`.
+  - `ChartSkeleton({height})` — bar-chart placeholder.
+  Applied in `lecturer/dashboard` and `admin/dashboard` for
+  the two chart loading states.
+- **Route protection proxy** — `apps/web/src/proxy.ts`
+  runs on every non-static route. It:
+  1. Decodes the `eduportal-token` cookie's JWT payload
+     (signature not verified in edge runtime — server
+     re-validates on every API call).
+  2. Redirects logged-in users on public paths
+     (`/`, `/login`, `/register`, `/forgot-password`,
+     `/reset-password`) to their role dashboard.
+  3. Redirects unauthenticated users on protected paths
+     to `/login?returnTo=<original>`.
+  4. Redirects authenticated users on the wrong role's
+     prefix to their own dashboard
+     (e.g. student hitting `/admin/*` → `/student/dashboard`).
+  Matcher: `/((?!_next/static|_next/image|favicon.ico|.*\\..*).*)`.
+- **Auth store cookie sync** — `stores/auth.store.ts`
+  writes the `eduportal-token` cookie on `setAuth`/`clearAuth`
+  via `document.cookie` (Max-Age 7d, SameSite=Lax, Path=/)
+  and re-syncs in `onRehydrateStorage` after Zustand
+  rehydration. The cookie is intentionally not `httpOnly`
+  so middleware can read it; this is a known tradeoff
+  vs XSS — acceptable since tokens are also in
+  localStorage and the server still re-verifies on every
+  API call.
+- **Toasts on every mutation** — every `useMutation` now
+  fires `toast.success` / `toast.error` (with the API
+  error message via `err instanceof Error ? err.message :
+  <generic fallback>`) on success and error. Audit pass
+  added toasts to: `student/forum` (post create, like),
+  `student/forum/[postId]` (reply, like), `student/resources`
+  (bookmark, download), `student/notifications`
+  (mark-one, mark-all).
+- **EmptyState on every data section** — every data list
+  uses the `EmptyState` component with role-specific copy,
+  appropriate icon, and a primary action CTA (e.g.
+  "Register now" on the dashboard's empty course list).
+  Audit pass converted remaining inline placeholder
+  paragraphs on `student/dashboard`, `student/courses`
+  (both per-semester and catalog), `student/forum`,
+  `student/forum/[postId]`, `student/resources`, and
+  `student/notifications`.
+- **Mobile responsiveness** — all 30+ pages were audited
+  at 375px (iPhone SE) viewport: no horizontal overflow,
+  all tap targets ≥ 44px, all dialogs use `max-w-[calc(100vw-2rem)]`,
+  bottom nav dock for mobile, responsive grid breakpoints
+  on every multi-column section.
+- **Accessibility** — every form input has a `<Label htmlFor>`,
+  every icon-only button has `aria-label`, every `Sheet`/
+  `Dialog` has a `SheetTitle`/`DialogTitle`, every table
+  has `<TableHeader>`/`<TableBody>`, focus rings preserved
+  on all interactive elements.
+- **Deployment** —
+  - `apps/api/Dockerfile`: multi-stage build (Node 20-
+    alpine, corepack, pnpm@10.33.4). Stages: `base`,
+    `deps` (frozen lockfile), `build` (prisma generate +
+    tsc), `prod-deps` (production-only install), `runner`
+    (non-root `app` user, `NODE_ENV=production`, exposes
+    3001, `CMD ["node", "dist/index.js"]`).
+  - `.dockerignore` at repo root excludes `node_modules`,
+    `dist`, `.next`, `.env*`, `.git`, IDE files, `*.log`.
+  - `docker-compose.yml` for local dev: `postgres:16-alpine`
+    (with healthcheck + named volume `eduportal_pgdata`)
+    and `api` (depends on healthy `db`, with healthcheck
+    hitting `/api/health`).
+  - Frontend is intended for Vercel/Netlify — `NEXT_PUBLIC_API_URL`
+    is read at build time and exposed to the client.
+- **Final gates**:
+  - `pnpm --filter api exec tsc --noEmit` → 0 errors.
+  - `pnpm --filter web exec tsc --noEmit` → 0 errors.
+  - `pnpm --filter shared exec tsc --noEmit` → 0 errors.
+  - `pnpm --filter web lint` → 0 errors (warnings allowed
+    only for documented `react-hooks/incompatible-library`
+    RHF patterns).
+  - `pnpm --filter web build` → 30+ routes, no compile errors.
+  - Curl smoke tests for all 28+ HTTP routes.
+  - `git tag v1.0.0` after commit lands.

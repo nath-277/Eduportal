@@ -26,6 +26,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Sparkline } from '@/components/ui/charts';
+import { EmptyState } from '@/components/ui/empty-state';
 import { useAuthStore } from '@/stores/auth.store';
 import { api } from '@/lib/api';
 
@@ -281,9 +282,20 @@ export default function StudentDashboardPage() {
                   <Skeleton className="h-12 w-full" />
                 </div>
               ) : enrolledCourses.length === 0 ? (
-                <p className="rounded-lg border border-dashed bg-muted/30 p-6 text-center text-sm text-muted-foreground">
-                  You have not registered for any courses yet. Pick from the catalog to get started.
-                </p>
+                <EmptyState
+                  icon={BookOpen}
+                  title="No courses yet"
+                  description="Start registration to see your courses here."
+                  className="m-0 border-0 bg-transparent p-3"
+                  action={
+                    <Button asChild size="sm" variant="outline" className="gap-1.5">
+                      <Link href="/student/courses">
+                        <Plus className="h-3.5 w-3.5" />
+                        Register now
+                      </Link>
+                    </Button>
+                  }
+                />
               ) : (
                 <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
                   {enrolledCourses.map((e) => (
@@ -323,9 +335,12 @@ export default function StudentDashboardPage() {
                   <Skeleton className="h-14 w-full" />
                 </div>
               ) : announcements.length === 0 ? (
-                <p className="rounded-lg border border-dashed bg-muted/30 p-6 text-center text-sm text-muted-foreground">
-                  No announcements yet.
-                </p>
+                <EmptyState
+                  icon={Megaphone}
+                  title="No announcements yet"
+                  description="Departmental updates will appear here."
+                  className="m-0 border-0 bg-transparent p-3"
+                />
               ) : (
                 announcements.map((a) => (
                   <div key={a.id} className="rounded-lg border bg-card p-3">
@@ -400,9 +415,14 @@ export default function StudentDashboardPage() {
                   <Skeleton className="h-20 w-full" />
                 </div>
               ) : resources.length === 0 ? (
-                <p className="col-span-2 rounded-lg border border-dashed bg-muted/30 p-6 text-center text-sm text-muted-foreground">
-                  No resources uploaded yet.
-                </p>
+                <div className="col-span-2">
+                  <EmptyState
+                    icon={FileText}
+                    title="No resources yet"
+                    description="Course materials will appear here once lecturers upload them."
+                    className="m-0 border-0 bg-transparent p-4"
+                  />
+                </div>
               ) : (
                 resources.map((r) => (
                   <a
@@ -444,9 +464,12 @@ export default function StudentDashboardPage() {
                   <Skeleton className="h-10 w-full" />
                 </div>
               ) : notifications.length === 0 ? (
-                <p className="rounded-lg border border-dashed bg-muted/30 p-6 text-center text-sm text-muted-foreground">
-                  All caught up.
-                </p>
+                <EmptyState
+                  icon={Bell}
+                  title="You're all caught up!"
+                  description="New alerts will show up here."
+                  className="m-0 border-0 bg-transparent p-3"
+                />
               ) : (
                 notifications.map((n) => (
                   <div

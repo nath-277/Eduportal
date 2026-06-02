@@ -24,6 +24,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
 import { RegForm, ExamDocket } from '@/components/print';
+import { EmptyState } from '@/components/ui/empty-state';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth.store';
 import { cn } from '@/lib/utils';
@@ -246,9 +247,12 @@ export default function StudentCoursesPage() {
                   <Skeleton className="h-16 w-full" />
                 </div>
               ) : currentEnrollments.length === 0 ? (
-                <p className="rounded-lg border border-dashed bg-muted/30 p-8 text-center text-sm text-muted-foreground">
-                  You have not enrolled in any {semester === 'FIRST' ? 'first' : 'second'}-semester courses yet.
-                </p>
+                <EmptyState
+                  icon={BookOpen}
+                  title={`No ${semester === 'FIRST' ? 'first' : 'second'}-semester courses`}
+                  description="Pick a course from the catalog to register."
+                  className="m-0 border-0 bg-transparent p-4"
+                />
               ) : (
                 <ul className="space-y-2">
                   {currentEnrollments.map((e) => (
@@ -299,9 +303,12 @@ export default function StudentCoursesPage() {
                   <Skeleton className="h-32 w-full" />
                 </div>
               ) : availableCourses.length === 0 ? (
-                <p className="rounded-lg border border-dashed bg-muted/30 p-8 text-center text-sm text-muted-foreground">
-                  No additional courses available for this semester.
-                </p>
+                <EmptyState
+                  icon={GraduationCap}
+                  title="No more courses available"
+                  description="You have registered for all available courses this semester."
+                  className="m-0 border-0 bg-transparent p-4"
+                />
               ) : (
                 <div className="grid gap-3 sm:grid-cols-2">
                   {availableCourses.map((c) => {

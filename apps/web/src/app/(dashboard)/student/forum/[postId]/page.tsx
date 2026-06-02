@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { useForm } from 'react-hook-form';
+import { toast } from 'sonner';
 import {
   ArrowLeft,
   Heart,
@@ -139,6 +140,9 @@ function PostDetailView({ postId }: { postId: string }) {
       setLikes(data.likesCount);
       qc.invalidateQueries({ queryKey: ['forum', 'post', postId] });
     },
+    onError: (err: unknown) => {
+      toast.error(err instanceof Error ? err.message : 'Could not update like');
+    },
   });
 
   const { register, handleSubmit, reset, watch, formState: { errors } } = useForm<ReplyForm>({
@@ -152,8 +156,12 @@ function PostDetailView({ postId }: { postId: string }) {
       return api.post<ForumReply>(`/forum/posts/${postId}/replies`, { body });
     },
     onSuccess: () => {
+      toast.success('Reply posted');
       reset();
       qc.invalidateQueries({ queryKey: ['forum', 'post', postId] });
+    },
+    onError: (err: unknown) => {
+      toast.error(err instanceof Error ? err.message : 'Could not post reply');
     },
   });
 

@@ -23,6 +23,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import { StatCard } from '@/components/ui/stat-card';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ChartSkeleton } from '@/components/ui/skeletons';
 import { Badge } from '@/components/ui/badge';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -237,7 +238,7 @@ export default function AdminDashboardPage() {
           </CardHeader>
           <CardContent>
             {adminQuery.isLoading ? (
-              <Skeleton className="h-44 w-full" />
+              <ChartSkeleton height={180} />
             ) : (
               <PieChart
                 data={userPie}
@@ -254,7 +255,7 @@ export default function AdminDashboardPage() {
           </CardHeader>
           <CardContent>
             {deptQuery.isLoading ? (
-              <Skeleton className="h-44 w-full" />
+              <ChartSkeleton height={180} />
             ) : (
               <BarChart data={levelBars} height={180} unit="" />
             )}

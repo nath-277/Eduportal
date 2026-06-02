@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
+import { toast } from 'sonner';
 import {
   Bell,
   BellOff,
@@ -190,6 +191,7 @@ export default function StudentNotificationsPage() {
     },
     onError: (_e, _v, ctx) => {
       if (ctx?.prev) qc.setQueryData(['notifications', 'mine'], ctx.prev);
+      toast.error('Could not mark as read');
     },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: ['notifications', 'mine'] });
@@ -213,6 +215,10 @@ export default function StudentNotificationsPage() {
     },
     onError: (_e, _v, ctx) => {
       if (ctx?.prev) qc.setQueryData(['notifications', 'mine'], ctx.prev);
+      toast.error('Could not mark all as read');
+    },
+    onSuccess: (data) => {
+      toast.success(`${data.updated} marked as read`);
     },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: ['notifications', 'mine'] });

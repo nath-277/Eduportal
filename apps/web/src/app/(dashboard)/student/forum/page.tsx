@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { useForm } from 'react-hook-form';
+import { toast } from 'sonner';
 import {
   Heart,
   Loader2,
@@ -122,11 +123,15 @@ function CreatePostSheet({ onCreated }: { onCreated: () => void }) {
       return api.post<ForumPost>('/forum/posts', input);
     },
     onSuccess: () => {
+      toast.success('Post published');
       onCreated();
       setOpen(false);
       reset();
       setTagChips([]);
       setTagInput('');
+    },
+    onError: (err: unknown) => {
+      toast.error(err instanceof Error ? err.message : 'Could not publish post');
     },
   });
 
@@ -307,6 +312,9 @@ export default function StudentForumPage() {
           };
         },
       );
+    },
+    onError: (err: unknown) => {
+      toast.error(err instanceof Error ? err.message : 'Could not update like');
     },
   });
 

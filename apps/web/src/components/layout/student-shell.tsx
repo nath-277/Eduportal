@@ -7,6 +7,7 @@ import { DashboardShell } from './dashboard-shell';
 import { useAuthGuard } from '@/hooks/use-auth-guard';
 import { useAuthStore } from '@/stores/auth.store';
 import { FullPageSpinner } from '@/components/ui/loading-spinner';
+import { ErrorBoundary } from '@/components/error-boundary';
 import { api } from '@/lib/api';
 import {
   studentSidebarItems,
@@ -44,15 +45,17 @@ export function StudentShell({ children }: { children: ReactNode }) {
   };
 
   return (
-    <DashboardShell
-      role="STUDENT"
-      user={user}
-      sidebarItems={toSidebarItems(studentSidebarItems)}
-      dockItems={toDockItems(studentDockPrimary, { onLogout: handleLogout })}
-      expandedDockItems={toDockItems(studentDockExpanded, { onLogout: handleLogout })}
-      notificationCount={notificationsQuery.data?.unreadCount ?? 0}
-    >
-      {children}
-    </DashboardShell>
+    <ErrorBoundary label="student dashboard">
+      <DashboardShell
+        role="STUDENT"
+        user={user}
+        sidebarItems={toSidebarItems(studentSidebarItems)}
+        dockItems={toDockItems(studentDockPrimary, { onLogout: handleLogout })}
+        expandedDockItems={toDockItems(studentDockExpanded, { onLogout: handleLogout })}
+        notificationCount={notificationsQuery.data?.unreadCount ?? 0}
+      >
+        {children}
+      </DashboardShell>
+    </ErrorBoundary>
   );
 }
