@@ -31,7 +31,7 @@ function clearTokenAndRedirect(): void {
   }
 }
 
-const baseURL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
+const baseURL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api';
 
 const axiosInstance: AxiosInstance = axios.create({
   baseURL,
