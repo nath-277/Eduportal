@@ -19,6 +19,7 @@ interface DashboardShellProps {
   role: UserRole;
   user: User;
   notificationCount?: number;
+  showDock?: boolean;
 }
 
 function initials(fullname: string): string {
@@ -38,6 +39,7 @@ export function DashboardShell({
   role,
   user,
   notificationCount = 0,
+  showDock = true,
 }: DashboardShellProps) {
   useRoleTheme();
   const router = useRouter();
@@ -130,7 +132,11 @@ export function DashboardShell({
         <main className="flex-1 px-4 pb-24 pt-6 md:px-6 md:pb-8">{children}</main>
       </div>
 
-      <BottomNavDock primaryItems={finalDock} expandedItems={finalExpanded} />
+      <BottomNavDock
+        primaryItems={finalDock}
+        expandedItems={finalExpanded}
+        hiddenOnDesktop={!showDock}
+      />
     </div>
   );
 }

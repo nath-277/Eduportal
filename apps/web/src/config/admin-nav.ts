@@ -1,14 +1,11 @@
 import {
-  Activity,
+  BarChart3,
   Bell,
   BookOpen,
   Building2,
-  Database,
   LayoutDashboard,
   LogOut,
   Menu,
-  MessageSquare,
-  Megaphone,
   Settings,
   ShieldAlert,
   Users,
@@ -37,9 +34,7 @@ export const adminSidebarItems: SidebarItem[] = [
   { icon: Users, label: 'Users', href: '/admin/users' },
   { icon: Building2, label: 'Departments', href: '/admin/departments' },
   { icon: BookOpen, label: 'Courses', href: '/admin/courses' },
-  { icon: Activity, label: 'Results', href: '/admin/analytics' },
-  { icon: Megaphone, label: 'Announcements', href: '/admin/announcements' },
-  { icon: MessageSquare, label: 'Forum', href: '/admin/forum' },
+  { icon: BarChart3, label: 'Analytics', href: '/admin/analytics' },
   { icon: ShieldAlert, label: 'Audit Logs', href: '/admin/logs' },
   { icon: Settings, label: 'Settings', href: '/admin/settings' },
 ];
@@ -55,9 +50,8 @@ export const adminDockPrimary: NavItem[] = [
 export const adminDockExpanded: NavItem[] = [
   { icon: Building2, label: 'Departments', href: '/admin/departments' },
   { icon: BookOpen, label: 'Courses', href: '/admin/courses' },
-  { icon: Activity, label: 'Analytics', href: '/admin/analytics' },
+  { icon: BarChart3, label: 'Analytics', href: '/admin/analytics' },
   { icon: Settings, label: 'Settings', href: '/admin/settings' },
-  { icon: Database, label: 'Backups', href: '/admin/backups' },
   { icon: LogOut, label: 'Logout', onClick: 'logout' },
 ];
 

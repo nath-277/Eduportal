@@ -53,6 +53,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
         dockItems={toDockItems(adminDockPrimary, { onLogout: handleLogout })}
         expandedDockItems={toDockItems(adminDockExpanded, { onLogout: handleLogout })}
         notificationCount={notificationsQuery.data?.unreadCount ?? 0}
+        showDock={false}
       >
         {children}
       </DashboardShell>
