@@ -17,10 +17,11 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { BarChart, LineChart } from '@/components/ui/charts';
 import { EmptyState } from '@/components/ui/empty-state';
+import { ResultSlip } from '@/components/print';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth.store';
 import { cn } from '@/lib/utils';
-import type { Semester } from '@eduportal/shared';
+import type { Course, Result, Semester } from '@eduportal/shared';
 
 interface ResultRow {
   id: string;
@@ -81,6 +82,13 @@ export default function StudentResultsPage() {
     queryKey: ['results', 'mine'],
     queryFn: async () => api.get<ResultsResponse>('/results/mine'),
   });
+
+  const departmentsQuery = useQuery({
+    queryKey: ['departments', 'all'],
+    queryFn: async () => api.get<Array<{ id: string; name: string; code: string }>>('/departments'),
+  });
+
+  const departmentName = departmentsQuery.data?.find((d) => d.id === user?.departmentId)?.name;
 
   const userId = meUserId(user?.id);
 
@@ -152,6 +160,41 @@ export default function StudentResultsPage() {
   const handlePrint = () => {
     if (typeof window !== 'undefined') window.print();
   };
+
+  const printResults: Result[] = useMemo(
+    () =>
+      rows.map((r) => ({
+        id: r.id,
+        studentId: user?.id ?? '',
+        courseId: r.course.id,
+        sessionId: r.session.id,
+        semester: r.semester,
+        caScore: r.caScore,
+        examScore: r.examScore,
+        totalScore: r.totalScore,
+        grade: r.grade,
+        gradePoint: r.gradePoint,
+        isPublished: true,
+        createdAt: '',
+        updatedAt: '',
+      })),
+    [rows, user?.id],
+  );
+
+  const printCourses: Array<Pick<Course, 'id' | 'code' | 'title' | 'creditUnits'>> = useMemo(() => {
+    const seen = new Map<string, Pick<Course, 'id' | 'code' | 'title' | 'creditUnits'>>();
+    for (const r of rows) {
+      if (!seen.has(r.course.id)) {
+        seen.set(r.course.id, {
+          id: r.course.id,
+          code: r.course.code,
+          title: r.course.title,
+          creditUnits: r.course.creditUnits,
+        });
+      }
+    }
+    return Array.from(seen.values());
+  }, [rows]);
 
   return (
     <StudentShell>
@@ -301,13 +344,23 @@ export default function StudentResultsPage() {
         </div>
       ) : null}
 
-      <PrintableResultSlip
-        user={user}
-        results={rows}
-        semesterGpa={semesterGpa}
-        cgpa={analyticsQuery.data?.cgpa ?? resultsQuery.data?.cgpa ?? 0}
-        totalUnits={totalCreditUnits}
-      />
+      {user ? (
+        <ResultSlip
+          student={user}
+          results={printResults}
+          session={
+            filtered.length === 1
+              ? filtered[0].sessionName
+              : filtered.length > 1
+                ? 'All sessions'
+                : sessionsQuery.data?.find((s) => s.isCurrent)?.name ?? ''
+          }
+          gpa={semesterGpa}
+          cgpa={analyticsQuery.data?.cgpa ?? resultsQuery.data?.cgpa ?? 0}
+          courses={printCourses}
+          departmentName={departmentName}
+        />
+      ) : null}
     </StudentShell>
   );
 }
@@ -386,97 +439,4 @@ function Select({
 
 function meUserId(id: string | undefined): string | undefined {
   return id;
-}
-
-function PrintableResultSlip({
-  user,
-  results,
-  semesterGpa,
-  cgpa,
-  totalUnits,
-}: {
-  user: { fullname?: string; matricNumber?: string; level?: string } | null;
-  results: ResultRow[];
-  semesterGpa: number;
-  cgpa: number;
-  totalUnits: number;
-}) {
-  if (results.length === 0) return null;
-  return (
-    <div className="hidden print:block print:bg-white print:p-8 print:text-black">
-      <div className="border-2 border-black p-8">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold">EduPortal — Result Slip</h1>
-          <p className="mt-1 text-sm">Official academic transcript</p>
-        </div>
-        <div className="mt-6 grid grid-cols-2 gap-4 text-sm">
-          <div>
-            <p className="font-semibold">Student</p>
-            <p>{user?.fullname}</p>
-          </div>
-          <div>
-            <p className="font-semibold">Matric number</p>
-            <p>{user?.matricNumber}</p>
-          </div>
-          <div>
-            <p className="font-semibold">Level</p>
-            <p>{user?.level?.replace('L', 'Level ')}</p>
-          </div>
-          <div>
-            <p className="font-semibold">CGPA</p>
-            <p className="text-lg font-semibold">{cgpa.toFixed(2)}</p>
-          </div>
-        </div>
-        <table className="mt-6 w-full border-collapse text-sm">
-          <thead>
-            <tr className="border-b-2 border-black">
-              <th className="py-2 text-left">Code</th>
-              <th className="py-2 text-left">Title</th>
-              <th className="py-2 text-right">Total</th>
-              <th className="py-2 text-center">Grade</th>
-              <th className="py-2 text-right">Units</th>
-            </tr>
-          </thead>
-          <tbody>
-            {results.map((r) => (
-              <tr key={r.id} className="border-b border-black/30">
-                <td className="py-2 font-medium">{r.course.code}</td>
-                <td className="py-2">{r.course.title}</td>
-                <td className="py-2 text-right">{r.totalScore.toFixed(1)}</td>
-                <td className="py-2 text-center font-semibold">{r.grade}</td>
-                <td className="py-2 text-right">{r.course.creditUnits}</td>
-              </tr>
-            ))}
-            <tr>
-              <td colSpan={4} className="py-2 text-right font-semibold">
-                Total credit units
-              </td>
-              <td className="py-2 text-right font-semibold">{totalUnits}</td>
-            </tr>
-          </tbody>
-        </table>
-        <div className="mt-6 grid grid-cols-2 gap-8 text-sm">
-          <div>
-            <p className="font-semibold">Semester GPA</p>
-            <p className="text-lg font-semibold">{semesterGpa.toFixed(2)}</p>
-          </div>
-          <div>
-            <p className="font-semibold">CGPA</p>
-            <p className="text-lg font-semibold">{cgpa.toFixed(2)}</p>
-          </div>
-        </div>
-        <div className="mt-12 grid grid-cols-2 gap-8 text-sm">
-          <div>
-            <div className="border-t border-black pt-1">Course advisor</div>
-          </div>
-          <div>
-            <div className="border-t border-black pt-1">Date</div>
-          </div>
-        </div>
-        <p className="mt-8 text-center text-xs text-black/60">
-          Generated by EduPortal · {new Date().toLocaleString()}
-        </p>
-      </div>
-    </div>
-  );
 }

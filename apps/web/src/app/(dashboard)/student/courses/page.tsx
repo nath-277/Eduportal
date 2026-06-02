@@ -23,6 +23,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
+import { RegForm, ExamDocket } from '@/components/print';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth.store';
 import { cn } from '@/lib/utils';
@@ -75,6 +76,13 @@ export default function StudentCoursesPage() {
       return data;
     },
   });
+
+  const departmentsQuery = useQuery({
+    queryKey: ['departments', 'all'],
+    queryFn: async () => api.get<Array<{ id: string; name: string; code: string }>>('/departments'),
+  });
+
+  const departmentName = departmentsQuery.data?.find((d) => d.id === user?.departmentId)?.name;
 
   const currentEnrollments = useMemo(() => {
     if (!enrollmentsQuery.data) return [];
@@ -167,6 +175,10 @@ export default function StudentCoursesPage() {
     }
   };
 
+  const docketCourses: Course[] = currentEnrollments
+    .map((e) => e.course)
+    .filter((c): c is Course => Boolean(c));
+
   return (
     <StudentShell>
       <div className="print:hidden">
@@ -211,7 +223,11 @@ export default function StudentCoursesPage() {
             <UnitTracker current={currentUnits} pending={pendingUnits} />
             <Button variant="outline" size="sm" onClick={handlePrint}>
               <Printer className="h-4 w-4" />
-              Print form
+              Print registration
+            </Button>
+            <Button variant="outline" size="sm" onClick={handlePrint} disabled={currentEnrollments.length === 0}>
+              <Printer className="h-4 w-4" />
+              Print exam docket
             </Button>
           </div>
         </CardContent>
@@ -483,15 +499,25 @@ export default function StudentCoursesPage() {
         ) : null}
       </AnimatePresence>
 
-      <PrintableRegistration
-        userName={user?.fullname ?? ''}
-        matric={user?.matricNumber ?? ''}
-        level={user?.level ?? ''}
-        department={user?.departmentId ?? ''}
-        session={enrollmentsQuery.data?.session.name ?? ''}
-        semester={semester}
-        enrollments={currentEnrollments}
-      />
+      {user ? (
+        <>
+          <RegForm
+            student={user}
+            enrollments={currentEnrollments as unknown as import('@eduportal/shared').Enrollment[]}
+            courses={docketCourses as unknown as import('@eduportal/shared').Course[]}
+            session={enrollmentsQuery.data?.session.name ?? ''}
+            semester={semester}
+            departmentName={departmentName}
+          />
+          <ExamDocket
+            student={user}
+            courses={docketCourses as unknown as import('@eduportal/shared').Course[]}
+            session={enrollmentsQuery.data?.session.name ?? ''}
+            semester={semester}
+            departmentName={departmentName}
+          />
+        </>
+      ) : null}
     </StudentShell>
   );
 }
@@ -508,90 +534,5 @@ function UnitTracker({ current, pending }: { current: number; pending: number })
       )}{' '}
       / {MAX_UNITS} units
     </Badge>
-  );
-}
-
-function PrintableRegistration({
-  userName,
-  matric,
-  level,
-  department,
-  session,
-  semester,
-  enrollments,
-}: {
-  userName: string;
-  matric: string;
-  level: string;
-  department: string;
-  session: string;
-  semester: Semester;
-  enrollments: Enrollment[];
-}) {
-  const total = enrollments.reduce((acc, e) => acc + e.course.creditUnits, 0);
-  return (
-    <div className="hidden print:block print:bg-white print:p-8 print:text-black">
-      <div className="border-2 border-black p-8">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold">EduPortal — Course Registration Form</h1>
-          <p className="mt-1 text-sm">{session} Academic Session · {semester} Semester</p>
-        </div>
-        <div className="mt-6 grid grid-cols-2 gap-4 text-sm">
-          <div>
-            <p className="font-semibold">Student name</p>
-            <p>{userName}</p>
-          </div>
-          <div>
-            <p className="font-semibold">Matric number</p>
-            <p>{matric}</p>
-          </div>
-          <div>
-            <p className="font-semibold">Level</p>
-            <p>{level}</p>
-          </div>
-          <div>
-            <p className="font-semibold">Department</p>
-            <p>{department}</p>
-          </div>
-        </div>
-        <table className="mt-6 w-full border-collapse text-sm">
-          <thead>
-            <tr className="border-b-2 border-black">
-              <th className="py-2 text-left">#</th>
-              <th className="py-2 text-left">Course code</th>
-              <th className="py-2 text-left">Course title</th>
-              <th className="py-2 text-right">Units</th>
-            </tr>
-          </thead>
-          <tbody>
-            {enrollments.map((e, i) => (
-              <tr key={e.id} className="border-b border-black/30">
-                <td className="py-2">{i + 1}</td>
-                <td className="py-2 font-medium">{e.course.code}</td>
-                <td className="py-2">{e.course.title}</td>
-                <td className="py-2 text-right">{e.course.creditUnits}</td>
-              </tr>
-            ))}
-            <tr>
-              <td colSpan={3} className="py-2 text-right font-semibold">
-                Total credit units
-              </td>
-              <td className="py-2 text-right font-semibold">{total}</td>
-            </tr>
-          </tbody>
-        </table>
-        <div className="mt-12 grid grid-cols-2 gap-8 text-sm">
-          <div>
-            <div className="border-t border-black pt-1">Student signature</div>
-          </div>
-          <div>
-            <div className="border-t border-black pt-1">Course advisor</div>
-          </div>
-        </div>
-        <p className="mt-8 text-center text-xs text-black/60">
-          Generated by EduPortal · {new Date().toLocaleString()}
-        </p>
-      </div>
-    </div>
   );
 }
