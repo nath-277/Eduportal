@@ -572,3 +572,111 @@ the single source of truth for cross-package types.
     (PATCH), notifications mark-one + mark-all + 404 on others' ids.
   - **Gates**: tsc 0, eslint 0 errors (9 unused-var warnings), build
     clean — 19 routes (added `/student/forum/[postId]` as dynamic).
+- [x] **M7 — Lecturer portal**: full lecturer experience with role-specific
+  navigation, shell, and six first-class pages, on a green/teal theme
+  (`--primary: 160 84% 39%` emerald, `--accent: 173 80% 40%` teal):
+
+  - **Shell + nav**:
+    - New `apps/web/src/config/lecturer-nav.ts` exports
+      `lecturerSidebarItems` (8 entries: Dashboard, My courses, Results,
+      Resources, Announcements, Discussions, Analytics, Profile) and
+      `lecturerDockPrimary` (5 entries) + `lecturerDockExpanded` (6).
+      Type-guarded unions (`NavLink | NavAction`) keep action items
+      (Logout) out of the page-routing sidebar.
+    - New `components/layout/lecturer-shell.tsx` mirrors `StudentShell`:
+      auth + role guard, Emerald/Teal CSS-var theme via `useRoleTheme`,
+      polls `/api/notifications/mine` every 60s, passes
+      `notificationCount` to `DashboardShell` for the dock bell badge.
+  - **Lecturer Dashboard** (`/lecturer/dashboard`): 3-column desktop,
+    stacked mobile.
+    - Left: 4 stat cards (assigned courses, total students enrolled
+      across them, uploaded resources, pending uploads) + a list of
+      assigned courses with per-course enrollment counts via
+      `Promise.all` parallelized `enrollments/course/:id` lookups.
+    - Center: 6-bar `BarChart` of recent-upload trend + a "Recent
+      uploads" mini-list.
+    - Right: 3 pinned/recent announcements + a 5-row notifications
+      panel.
+  - **My Courses** (`/lecturer/courses`): 1/2-col responsive grid of
+    course cards (code, title, level, semester, credit units,
+    enrolled count) with three actions per card:
+    - "View students" → bottom `Sheet` (max-w-lg centered on desktop)
+      listing enrolled students with avatar, matric, level badge.
+    - "Results" → `/lecturer/results/upload?courseId=…&semester=…`.
+    - "Resource" → `/lecturer/resources/upload?courseId=…`.
+  - **Upload Results wizard** (`/lecturer/results/upload`): 4-step
+    `StepBar` (Context → Method → Enter scores → Preview & submit).
+    - **Step 1 — Context**: course select (assigned courses only),
+      current session display, semester radio (FIRST/SECOND).
+    - **Step 2 — Method**: 3 cards (Manual entry, CSV upload,
+      Spreadsheet import — UI only for spreadsheet).
+    - **Step 3a — Manual entry**: pre-populated from
+      `enrollments/course/:id` students; per-row CA (0-40) + Exam
+      (0-60) inputs; live `total` and `grade` with `GRADE_TONE` color
+      (A emerald, B teal, C blue, D amber, E orange, F red);
+      remove-row, validation error borders. Submit calls
+      `POST /api/results/upload`; success state shows
+      `inserted/updated/failed` summary.
+    - **Step 3b — CSV upload**: drag-and-drop dropzone, template
+      download link, validation errors list, calls
+      `POST /api/results/upload/csv`.
+    - **Step 4 — Preview**: read-only summary before submit.
+    - All 4 steps wrapped in `useSearchParams`-safe `<Suspense>` for
+      Next 16 prerender.
+  - **Upload Resources** (`/lecturer/resources/upload`): form with
+    title, description, type (`LECTURE_NOTE|PAST_QUESTION|…`),
+    optional course, and a drag-and-drop dropzone accepting
+    PDF/DOCX up to 10MB. File is read via `FileReader` with
+    `onprogress`-based progress bar; submit base64-encodes and
+    POSTs to `/api/resources` (requires Cloudinary). My-uploads
+    table below with delete (`DELETE /api/resources/:id`).
+    **Cloudinary note**: with `CLOUDINARY_*` env unset the API
+    returns 400; form/validation flows are testable end-to-end
+    without it.
+  - **Announcements** (`/lecturer/announcements`): collapsible
+    composer form with title, body, audience radio (Everyone /
+    Students / Lecturers / Admins), pin toggle, schedule toggle
+    (publish-at + expires-at datetime pickers). Below: full list
+    (own + departmental) with per-row expand/collapse for long
+    bodies, pin/unpin (`PATCH /api/announcements/:id`),
+    delete-with-confirm (`DELETE /api/announcements/:id`).
+    Pinned + audience + scheduled badges; `timeAgo` timestamps;
+    avatar fallback initials.
+  - **Course Analytics** (`/lecturer/analytics`): course selector
+    (assigned only) + 4 stat cards (students scored, average CA,
+    average exam, average total) + 2 charts:
+    - **Grade distribution**: 6-bar `BarChart` (A-F) with legend.
+    - **Total score spread**: `LineChart` (lowest-to-highest
+      sorted).
+    - Sortable, animated table with matric, name, CA, exam, total,
+      grade badge, and Published/Draft status. Empty state with
+      CTA linking to upload wizard.
+  - **Shared fixes**:
+    - `useSearchParams` now wrapped in `<Suspense>` everywhere
+      (Next 16 requirement).
+    - `lecturer-nav.ts` deduplicated the `BarChart3` icon for the
+      Analytics sidebar item (`LineChart` icon, not `BarChart3`,
+      to avoid colliding with another entry).
+    - `app/(dashboard)` route group now owns the entire
+      authenticated experience (student + lecturer + admin).
+  - **Integration tested**:
+    - Login as lecturer → 3 courses returned by
+      `/api/courses/lecturer/mine`.
+    - Enrollments seeded for 4 students × 6 courses (Prisma upsert)
+      to support the result-upload flow.
+    - `POST /api/results/upload` with 4 manual entries: returned
+      `inserted: 4, updated: 0, failed: 0`. Bad-matric path
+      returned `failed: 1, errors: [{ reason: 'Student not found' }]`.
+    - `POST /api/results/upload/csv`: 4 rows parsed and inserted.
+    - `POST /api/announcements` with `targetRole: STUDENT`:
+      returned 201, `notified: 4`. Validation (too-short title) and
+      authz (student trying to create → 403) all correct.
+    - `PATCH /api/results/:id/publish`: returned 200, and the
+      student's `/api/notifications/mine` now contains a fresh
+      `RESULT` notification. `DELETE /api/announcements/:id` round-trips
+      cleanly. Resource upload correctly 400s on missing Cloudinary
+      config (UI surfaces the message).
+  - **Gates**: tsc 0, eslint 0 errors (11 warnings, all pre-existing
+    `react-hooks/incompatible-library` patterns from RHF `watch()` +
+    1 useMemo dep array), `pnpm --filter web build` clean — 23 routes
+    (added 6 lecturer pages, all under `(dashboard)` route group).
