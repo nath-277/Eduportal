@@ -3,6 +3,7 @@ import {
   Bell,
   BookOpen,
   Building2,
+  CalendarRange,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -33,6 +34,7 @@ export const adminSidebarItems: SidebarItem[] = [
   { icon: LayoutDashboard, label: 'Dashboard', href: '/admin/dashboard' },
   { icon: Users, label: 'Users', href: '/admin/users' },
   { icon: Building2, label: 'Departments', href: '/admin/departments' },
+  { icon: CalendarRange, label: 'Sessions', href: '/admin/sessions' },
   { icon: BookOpen, label: 'Courses', href: '/admin/courses' },
   { icon: BarChart3, label: 'Analytics', href: '/admin/analytics' },
   { icon: ShieldAlert, label: 'Audit Logs', href: '/admin/logs' },
@@ -49,6 +51,7 @@ export const adminDockPrimary: NavItem[] = [
 
 export const adminDockExpanded: NavItem[] = [
   { icon: Building2, label: 'Departments', href: '/admin/departments' },
+  { icon: CalendarRange, label: 'Sessions', href: '/admin/sessions' },
   { icon: BookOpen, label: 'Courses', href: '/admin/courses' },
   { icon: BarChart3, label: 'Analytics', href: '/admin/analytics' },
   { icon: Settings, label: 'Settings', href: '/admin/settings' },

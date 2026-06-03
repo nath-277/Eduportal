@@ -42,6 +42,7 @@ interface DataTableProps<T> {
   };
   rowKey: (row: T) => string;
   className?: string;
+  rowClassName?: (row: T) => string;
 }
 
 export function DataTable<T>({
@@ -53,6 +54,7 @@ export function DataTable<T>({
   emptyState,
   rowKey,
   className,
+  rowClassName,
 }: DataTableProps<T>) {
   if (isLoading) {
     return (
@@ -86,7 +88,7 @@ export function DataTable<T>({
         </TableHeader>
         <TableBody>
           {data.map((row) => (
-            <TableRow key={rowKey(row)}>
+            <TableRow key={rowKey(row)} className={rowClassName?.(row)}>
               {columns.map((col) => (
                 <TableCell key={col.key} className={col.className}>
                   {col.cell(row)}

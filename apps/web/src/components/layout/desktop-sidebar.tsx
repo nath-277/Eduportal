@@ -8,7 +8,6 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth.store';
 import type { User, UserRole } from '@eduportal/shared';
@@ -68,7 +67,7 @@ export function DesktopSidebar({ items, role, user }: DesktopSidebarProps) {
         </div>
       </div>
 
-      <ScrollArea className="flex-1 px-2 py-3">
+      <div className="flex-1 overflow-y-auto px-2 py-3">
         <nav className="flex flex-col gap-0.5" aria-label="Sidebar">
           {items.map((item) => {
             const Icon = item.icon;
@@ -98,7 +97,7 @@ export function DesktopSidebar({ items, role, user }: DesktopSidebarProps) {
             );
           })}
         </nav>
-      </ScrollArea>
+      </div>
 
       <Separator />
       <div className="space-y-3 p-3">

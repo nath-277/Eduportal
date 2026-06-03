@@ -2,17 +2,15 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ChevronDown, ChevronRight, Download, Search } from 'lucide-react';
+import { ChevronDown, ChevronRight, Download, Search, X } from 'lucide-react';
 
 import { AdminShell } from '@/components/layout/admin-shell';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { StatCard } from '@/components/ui/stat-card';
-import { EmptyState } from '@/components/ui/empty-state';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { DataTable, type Column, type PaginationState } from '@/components/ui/data-table';
@@ -79,7 +77,18 @@ function initials(n: string): string {
     .join('');
 }
 
-function rowTone(action: string): string {
+function timeAgo(d: string): string {
+  const ms = Date.now() - new Date(d).getTime();
+  const min = Math.floor(ms / 60_000);
+  if (min < 1) return 'just now';
+  if (min < 60) return `${min}m ago`;
+  const h = Math.floor(min / 60);
+  if (h < 24) return `${h}h ago`;
+  const d2 = Math.floor(h / 24);
+  return `${d2}d ago`;
+}
+
+function rowToneClass(action: string): string {
   if (action.includes('DELETE') || action.includes('DEACTIVATE')) return 'border-l-2 border-l-rose-500/50';
   if (action.includes('UPDATE') || action.includes('SET_CURRENT')) return 'border-l-2 border-l-amber-500/50';
   if (action.includes('LOGIN') || action.includes('LOGOUT')) return 'border-l-2 border-l-blue-500/50';
@@ -150,6 +159,15 @@ export default function AdminLogsPage() {
     },
   });
 
+  const toggleExpanded = (id: string): void => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
   const columns: Column<AuditLog>[] = useMemo(
     () => [
       {
@@ -212,22 +230,16 @@ export default function AdminLogsPage() {
         ),
       },
       {
-        key: 'expand',
+        key: 'details',
         header: '',
-        className: 'text-right',
+        className: 'w-10 text-right',
         cell: (l) =>
           l.metadata ? (
             <button
               type="button"
-              aria-label={expanded.has(l.id) ? 'Collapse' : 'Expand'}
-              onClick={() => {
-                setExpanded((s) => {
-                  const n = new Set(s);
-                  if (n.has(l.id)) n.delete(l.id);
-                  else n.add(l.id);
-                  return n;
-                });
-              }}
+              aria-label={expanded.has(l.id) ? 'Collapse details' : 'Expand details'}
+              aria-expanded={expanded.has(l.id)}
+              onClick={() => toggleExpanded(l.id)}
               className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground"
             >
               {expanded.has(l.id) ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
@@ -269,6 +281,8 @@ export default function AdminLogsPage() {
     URL.revokeObjectURL(url);
     toast.success(`Exported ${rows.length} log${rows.length === 1 ? '' : 's'}`);
   }
+
+  const rows = logsQuery.data?.data ?? [];
 
   return (
     <AdminShell>
@@ -327,59 +341,66 @@ export default function AdminLogsPage() {
           </div>
         </CardHeader>
         <CardContent className="p-0">
-          {logsQuery.isLoading ? (
-            <div className="space-y-2 p-4">
-              {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
-            </div>
-          ) : !logsQuery.data || logsQuery.data.data.length === 0 ? (
-            <EmptyState
-              icon={Search}
-              title="No logs match"
-              description="Try clearing the filters."
-              className="m-6"
-            />
-          ) : (
-            <>
-              <div className="divide-y">
-                {logsQuery.data.data.map((l) => {
-                  const isOpen = expanded.has(l.id);
-                  return (
-                    <div key={l.id} className={cn('hover:bg-muted/20', rowTone(l.action))}>
-                      <DataTable
-                        columns={columns}
-                        data={[l]}
-                        rowKey={(r) => r.id}
-                      />
-                      {isOpen && l.metadata ? (
-                        <div className="border-t bg-muted/20 px-3 py-2 text-xs">
-                          <p className="mb-1 font-medium">Metadata</p>
-                          <pre className="overflow-x-auto rounded bg-background/40 p-2 text-[10px]">
-                            {JSON.stringify(l.metadata, null, 2)}
-                          </pre>
-                          {l.userAgent ? (
-                            <p className="mt-2 text-[10px] text-muted-foreground">UA: {l.userAgent}</p>
-                          ) : null}
-                        </div>
-                      ) : null}
-                    </div>
-                  );
-                })}
-              </div>
-              {logsQuery.data.totalPages > 1 ? (
-                <PaginationFooter
-                  state={{
+          <DataTable
+            columns={columns}
+            data={rows}
+            isLoading={logsQuery.isLoading}
+            rowKey={(r) => r.id}
+            rowClassName={(r) => cn('hover:bg-muted/30', rowToneClass(r.action))}
+            pagination={
+              logsQuery.data
+                ? {
                     page: logsQuery.data.page,
                     limit: logsQuery.data.limit,
                     total: logsQuery.data.total,
                     totalPages: logsQuery.data.totalPages,
-                  }}
-                  onPageChange={setPage}
-                />
-              ) : null}
-            </>
-          )}
+                  }
+                : undefined
+            }
+            onPageChange={setPage}
+            emptyState={{ title: 'No logs match', description: 'Try clearing the filters.' }}
+          />
         </CardContent>
       </Card>
+
+      {rows.some((r) => expanded.has(r.id) && r.metadata) ? (
+        <Card className="mt-3">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
+            <CardTitle className="text-base">Expanded details</CardTitle>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setExpanded(new Set())}
+              className="gap-1.5"
+            >
+              <X className="h-3.5 w-3.5" />
+              Collapse all
+            </Button>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {rows
+              .filter((r) => expanded.has(r.id) && r.metadata)
+              .map((l) => (
+                <div key={l.id} className="rounded-lg border bg-muted/20 p-3">
+                  <div className="mb-2 flex flex-wrap items-center gap-2 text-xs">
+                    <span className="font-mono font-semibold">{l.action}</span>
+                    <span className="text-muted-foreground">·</span>
+                    <span className="text-muted-foreground">
+                      {l.user?.fullname ?? 'System'} ·{' '}
+                      {new Date(l.createdAt).toLocaleString()}
+                    </span>
+                  </div>
+                  <pre className="overflow-x-auto rounded bg-background/40 p-2 text-[10px]">
+                    {JSON.stringify(l.metadata, null, 2)}
+                  </pre>
+                  {l.userAgent ? (
+                    <p className="mt-2 text-[10px] text-muted-foreground">UA: {l.userAgent}</p>
+                  ) : null}
+                </div>
+              ))}
+          </CardContent>
+        </Card>
+      ) : null}
 
       <div className="mt-3 flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground">
         <span className="font-semibold">Row colors:</span>
@@ -392,34 +413,5 @@ export default function AdminLogsPage() {
         ))}
       </div>
     </AdminShell>
-  );
-}
-
-function timeAgo(d: string): string {
-  const ms = Date.now() - new Date(d).getTime();
-  const min = Math.floor(ms / 60_000);
-  if (min < 1) return 'just now';
-  if (min < 60) return `${min}m ago`;
-  const h = Math.floor(min / 60);
-  if (h < 24) return `${h}h ago`;
-  const d2 = Math.floor(h / 24);
-  return `${d2}d ago`;
-}
-
-function PaginationFooter({ state, onPageChange }: { state: PaginationState; onPageChange: (p: number) => void }) {
-  return (
-    <div className="flex flex-col items-center justify-between gap-3 border-t px-4 py-3 sm:flex-row">
-      <p className="text-sm text-muted-foreground">
-        Page {state.page} of {state.totalPages} · {state.total} total
-      </p>
-      <div className="flex items-center gap-2">
-        <Button variant="outline" size="sm" disabled={state.page <= 1} onClick={() => onPageChange(state.page - 1)}>
-          Previous
-        </Button>
-        <Button variant="outline" size="sm" disabled={state.page >= state.totalPages} onClick={() => onPageChange(state.page + 1)}>
-          Next
-        </Button>
-      </div>
-    </div>
   );
 }
