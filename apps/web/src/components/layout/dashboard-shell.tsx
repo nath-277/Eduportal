@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Bell, LogOut } from 'lucide-react';
 import { DesktopSidebar, type SidebarItem } from './desktop-sidebar';
 import { BottomNavDock, type NavItem } from './bottom-nav-dock';
+import { NotificationMenu } from './notification-menu';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuthStore } from '@/stores/auth.store';
@@ -99,20 +100,7 @@ export function DashboardShell({
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label="Notifications"
-              onClick={() => router.push(`/${role.toLowerCase()}/notifications`)}
-              className="relative"
-            >
-              <Bell className="h-5 w-5" />
-              {notificationCount > 0 ? (
-                <span className="absolute right-1.5 top-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-medium text-primary-foreground">
-                  {notificationCount > 9 ? '9+' : notificationCount}
-                </span>
-              ) : null}
-            </Button>
+            <NotificationMenu role={role} initialUnreadCount={notificationCount} />
             <Avatar className="h-9 w-9">
               {user.avatarUrl ? <AvatarImage src={user.avatarUrl} alt={user.fullname} /> : null}
               <AvatarFallback>{initials(user.fullname)}</AvatarFallback>

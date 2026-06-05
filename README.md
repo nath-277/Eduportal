@@ -976,3 +976,94 @@ gaps.
   - `pnpm --filter web build` → 30+ routes, no compile errors.
   - Curl smoke tests for all 28+ HTTP routes.
   - `git tag v1.0.0` after commit lands.
+
+## v1.0.1 — Admin UX & Notification Menu
+
+Post-release polish. Two tracks: (a) the admin shell gets
+new information architecture and a fixed audit-log layout,
+(b) the bell button in every dashboard shell becomes a
+proper dropdown panel.
+
+### Admin UX fixes
+
+- **Courses page** — `/admin/courses` is no longer a flat
+  table. Levels L100–L500 each get a collapsible group
+  card; inside, First/Second-semester sub-tables show
+  courses with per-group stats (count, total units, and a
+  "N first · M second" badge). Empty levels are hidden.
+  Department filter is a top-page summary stat (still
+  useful when a lecturer is department-scoped). Three
+  summary cards at the top.
+- **Sessions page** — new `/admin/sessions/page.tsx`
+  (current-session banner, inline create form, sortable
+  table w/ Set Current action). Added to the admin
+  sidebar (CalendarRange icon) and the mobile dock. The
+  old Sessions tab inside `/admin/departments` is
+  preserved for back-compat.
+- **Sidebar scrollable** — the `ScrollArea` wrapper in
+  `desktop-sidebar.tsx` was preventing the rail from
+  scrolling on tall role lists. Replaced with a plain
+  `<div className="flex-1 overflow-y-auto">`.
+- **Audit log tabular** — `/admin/logs` no longer renders
+  a `DataTable` per row. A single `DataTable` holds the
+  full result set; expansion is now a row column. Expanded
+  metadata renders in a separate "Expanded details" card
+  below the table with a "Collapse all" action. `DataTable`
+  gained a `rowClassName?: (row) => string` prop for
+  per-action border tone.
+
+### Notification menu
+
+The bell button in the dashboard header (top right of
+`DashboardShell`) used to `router.push(/{role}/notifications)`.
+It now opens a Radix `Popover` panel with the most recent
+six notifications, mark-as-read, mark-all, and a "View all"
+link to the role's full notifications page.
+
+- **Component** — `apps/web/src/components/layout/notification-menu.tsx`:
+  - Trigger is a `Button size="icon"` with a `Bell` icon
+    and a Framer-Motion-animated badge (only renders when
+    `unreadCount > 0`, caps at `9+`).
+  - `PopoverContent` is a `w-[min(380px,calc(100vw-2rem))]`
+    card with three zones: header (title + "Mark all" +
+    close), scrollable body (max `min(480px, 70vh)`),
+    footer ("Showing N of M" + "View all" link).
+  - Body states: skeleton list (4 rows), empty state
+    ("You're all caught up!"), or actual list grouped by
+    category icon (Megaphone / FileText / MessageCircle /
+    Settings) with a `bg-primary/[0.04]` row tint for
+    unread items.
+  - Clicking an unread notification calls
+    `PATCH /api/notifications/:id/read` (optimistic
+    decrement) and navigates to `notification.link` if set.
+  - "Mark all" calls `POST /api/notifications/read-all`
+    and shows the updated count in the toast.
+- **Popover primitive** — `apps/web/src/components/ui/popover.tsx`
+  (shadcn-flavored wrapper around `@radix-ui/react-popover`).
+- **Data flow** — the menu's `useQuery` shares the same
+  `/api/notifications/mine` endpoint as the badge query
+  in each role shell, but with a separate query key
+  (`['notifications','menu',<role>]`). The menu query
+  refetches on open (when local data is empty) and
+  refetches on a 30s interval. The badge query in the
+  shell keeps its 60s poll. Both invalidate each other
+  on mark-one / mark-all mutations.
+- **A11y** — `aria-label` on the bell describes unread
+  state ("Notifications, 3 unread"). `aria-label` on the
+  close button. `Popover` traps focus and restores it on
+  close via Radix.
+- **Mobile** — width capped at `calc(100vw - 2rem)`,
+  `align="end"`, body height capped at `min(480px, 70vh)`
+  so it doesn't overflow on small screens.
+
+### Final gates
+
+- `pnpm --filter web exec tsc --noEmit` → 0 errors.
+- `pnpm --filter web lint` → 0 errors
+  (22 pre-existing warnings, none in new files).
+- `pnpm --filter web build` → 30 routes, no compile
+  errors.
+- Curl smoke tests: `/student/dashboard` 200,
+  `/lecturer/dashboard` 200, `/admin/dashboard` 200
+  with valid auth cookies; `GET /api/notifications/mine`
+  200 returning the seeded test notification.
