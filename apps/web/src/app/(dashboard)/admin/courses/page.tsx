@@ -5,14 +5,10 @@ import { useForm } from 'react-hook-form';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   BookPlus,
-  ChevronDown,
-  ChevronRight,
-  Edit3,
   Filter,
   Layers,
   Loader2,
   Plus,
-  Trash2,
   UserPlus,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -34,13 +30,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import type { Level, Semester } from '@eduportal/shared';
@@ -88,15 +78,6 @@ interface CourseForm {
   departmentId: string;
 }
 
-interface EditCourseForm {
-  code: string;
-  title: string;
-  creditUnits: number;
-  level: Level;
-  semester: Semester;
-  departmentId: string;
-}
-
 interface AssignForm {
   lecturerId: string;
   session: string;
@@ -108,8 +89,9 @@ const SEMESTERS: Semester[] = ['FIRST', 'SECOND'];
 export default function AdminCoursesPage() {
   const [deptFilter, setDeptFilter] = useState<string>('ALL');
   const [adding, setAdding] = useState(false);
-  const [editing, setEditing] = useState<Course | null>(null);
   const [assigning, setAssigning] = useState<Course | null>(null);
+
+  const qc = useQueryClient();
 
   const coursesQuery = useQuery({
     queryKey: ['courses', 'admin', { deptFilter }],
@@ -154,7 +136,7 @@ export default function AdminCoursesPage() {
     <AdminShell>
       <PageHeader
         title="Course management"
-        subtitle="Create, edit, and assign lecturers to courses."
+        subtitle="Create courses and assign lecturers to the active session."
         actions={
           <Button onClick={() => setAdding(true)} className="gap-1.5">
             <BookPlus className="h-4 w-4" />
@@ -222,7 +204,6 @@ export default function AdminCoursesPage() {
                 first={first}
                 second={second}
                 onAssign={(c) => setAssigning(c)}
-                onEdit={(c) => setEditing(c)}
               />
             );
           })
@@ -233,14 +214,6 @@ export default function AdminCoursesPage() {
         <AddCourseDialog
           departments={deptsQuery.data ?? []}
           onClose={() => setAdding(false)}
-        />
-      ) : null}
-
-      {editing ? (
-        <EditCourseDialog
-          course={editing}
-          departments={deptsQuery.data ?? []}
-          onClose={() => setEditing(null)}
         />
       ) : null}
 
@@ -284,17 +257,14 @@ function LevelGroup({
   first,
   second,
   onAssign,
-  onEdit,
 }: {
   level: Level;
   first: Course[];
   second: Course[];
   onAssign: (c: Course) => void;
-  onEdit: (c: Course) => void;
 }) {
   const [open, setOpen] = useState(true);
   const totalUnits = [...first, ...second].reduce((acc, c) => acc + c.creditUnits, 0);
-  const Chevron = open ? ChevronDown : ChevronRight;
 
   return (
     <Card>
@@ -304,9 +274,7 @@ function LevelGroup({
           onClick={() => setOpen((o) => !o)}
           className="flex flex-1 items-center gap-3 text-left"
           aria-expanded={open}
-          aria-label={`Toggle ${level} courses`}
         >
-          <Chevron className="h-4 w-4 text-muted-foreground transition-transform" />
           <div className="grid h-9 w-9 place-items-center rounded-lg bg-primary/10 font-mono text-xs font-semibold text-primary">
             {level}
           </div>
@@ -329,14 +297,12 @@ function LevelGroup({
             tone="bg-blue-500/10 text-blue-700"
             courses={first}
             onAssign={onAssign}
-            onEdit={onEdit}
           />
           <SemesterTable
             label="Second semester"
             tone="bg-violet-500/10 text-violet-700"
             courses={second}
             onAssign={onAssign}
-            onEdit={onEdit}
           />
         </CardContent>
       ) : null}
@@ -349,119 +315,72 @@ function SemesterTable({
   tone,
   courses,
   onAssign,
-  onEdit,
 }: {
   label: string;
   tone: string;
   courses: Course[];
   onAssign: (c: Course) => void;
-  onEdit: (c: Course) => void;
 }) {
-  const [open, setOpen] = useState(true);
-  const Chevron = open ? ChevronDown : ChevronRight;
-
   if (courses.length === 0) {
     return (
-      <div className="rounded-lg border">
-        <button
-          type="button"
-          onClick={() => setOpen((o) => !o)}
-          aria-expanded={open}
-          className="flex w-full items-center justify-between border-b bg-muted/30 px-3 py-2 text-left"
-        >
-          <span className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider">
-            <Chevron className="h-3.5 w-3.5 text-muted-foreground" />
-            {label}
-          </span>
-          <Badge variant="secondary" className={cn('text-[10px]', tone)}>
-            0 courses
-          </Badge>
-        </button>
-        {open ? (
-          <div className="p-4 text-center text-xs text-muted-foreground">
-            No {label.toLowerCase()} courses in this level.
-          </div>
-        ) : null}
+      <div className="rounded-lg border border-dashed bg-muted/20 p-4 text-center text-xs text-muted-foreground">
+        No {label.toLowerCase()} courses
       </div>
     );
   }
   return (
     <div className="rounded-lg border">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        aria-expanded={open}
-        aria-label={`Toggle ${label}`}
-        className="flex w-full items-center justify-between border-b bg-muted/30 px-3 py-2 text-left"
-      >
-        <span className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider">
-          <Chevron className="h-3.5 w-3.5 text-muted-foreground" />
-          {label}
-        </span>
+      <div className="flex items-center justify-between border-b bg-muted/30 px-3 py-2">
+        <span className="text-xs font-semibold uppercase tracking-wider">{label}</span>
         <Badge variant="secondary" className={cn('text-[10px]', tone)}>
           {courses.length} course{courses.length === 1 ? '' : 's'}
         </Badge>
-      </button>
-      {open ? (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/10 text-left text-[10px] uppercase tracking-wider text-muted-foreground">
-              <tr>
-                <th className="px-3 py-1.5 font-medium">Code</th>
-                <th className="px-3 py-1.5 font-medium">Title</th>
-                <th className="px-3 py-1.5 text-right font-medium">Credits</th>
-                <th className="px-3 py-1.5 font-medium">Lecturer</th>
-                <th className="px-3 py-1.5 font-medium">Dept</th>
-                <th className="px-3 py-1.5 text-right font-medium">Actions</th>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-muted/10 text-left text-[10px] uppercase tracking-wider text-muted-foreground">
+            <tr>
+              <th className="px-3 py-1.5 font-medium">Code</th>
+              <th className="px-3 py-1.5 font-medium">Title</th>
+              <th className="px-3 py-1.5 text-right font-medium">Credits</th>
+              <th className="px-3 py-1.5 font-medium">Lecturer</th>
+              <th className="px-3 py-1.5 font-medium">Dept</th>
+              <th className="px-3 py-1.5 text-right font-medium">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y">
+            {courses.map((c) => (
+              <tr key={c.id} className="hover:bg-muted/20">
+                <td className="px-3 py-1.5 font-mono text-xs font-semibold">{c.code}</td>
+                <td className="px-3 py-1.5 font-medium">{c.title}</td>
+                <td className="px-3 py-1.5 text-right tabular-nums">{c.creditUnits}</td>
+                <td className="px-3 py-1.5">
+                  {c.lecturers && c.lecturers.length > 0 ? (
+                    <span className="text-xs">
+                      {c.lecturers.slice(0, 2).map((l) => l.fullname).join(', ')}
+                      {c.lecturers.length > 2 ? ` +${c.lecturers.length - 2}` : ''}
+                    </span>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">Unassigned</span>
+                  )}
+                </td>
+                <td className="px-3 py-1.5 text-xs">{c.department?.code ?? '—'}</td>
+                <td className="px-3 py-1.5 text-right">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onAssign(c)}
+                    className="h-7 gap-1 px-2 text-xs"
+                  >
+                    <UserPlus className="h-3 w-3" />
+                    Assign
+                  </Button>
+                </td>
               </tr>
-            </thead>
-            <tbody className="divide-y">
-              {courses.map((c) => (
-                <tr key={c.id} className="hover:bg-muted/20">
-                  <td className="px-3 py-1.5 font-mono text-xs font-semibold">{c.code}</td>
-                  <td className="px-3 py-1.5 font-medium">{c.title}</td>
-                  <td className="px-3 py-1.5 text-right tabular-nums">{c.creditUnits}</td>
-                  <td className="px-3 py-1.5">
-                    {c.lecturers && c.lecturers.length > 0 ? (
-                      <span className="text-xs">
-                        {c.lecturers.slice(0, 2).map((l) => l.fullname).join(', ')}
-                        {c.lecturers.length > 2 ? ` +${c.lecturers.length - 2}` : ''}
-                      </span>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">Unassigned</span>
-                    )}
-                  </td>
-                  <td className="px-3 py-1.5 text-xs">{c.department?.code ?? '—'}</td>
-                  <td className="px-3 py-1.5 text-right">
-                    <div className="flex justify-end gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => onAssign(c)}
-                        className="h-7 gap-1 px-2 text-xs"
-                        aria-label={`Assign lecturer to ${c.code}`}
-                      >
-                        <UserPlus className="h-3 w-3" />
-                        Assign
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => onEdit(c)}
-                        className="h-7 gap-1 px-2 text-xs"
-                        aria-label={`Edit ${c.code}`}
-                      >
-                        <Edit3 className="h-3 w-3" />
-                        Edit
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : null}
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -560,155 +479,6 @@ function AddCourseDialog({ departments, onClose }: { departments: Department[]; 
               {createMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
               Create
             </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function EditCourseDialog({
-  course,
-  departments,
-  onClose,
-}: {
-  course: Course;
-  departments: Department[];
-  onClose: () => void;
-}) {
-  const qc = useQueryClient();
-  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<EditCourseForm>({
-    defaultValues: {
-      code: course.code,
-      title: course.title,
-      creditUnits: course.creditUnits,
-      level: course.level,
-      semester: course.semester,
-      departmentId: course.departmentId,
-    },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: async (input: EditCourseForm) =>
-      api.patch<{ course: Course }>(`/courses/${course.id}`, {
-        code: input.code.toUpperCase(),
-        title: input.title,
-        creditUnits: Number(input.creditUnits),
-        level: input.level,
-        semester: input.semester,
-        departmentId: input.departmentId,
-      }),
-    onSuccess: () => {
-      toast.success(`${course.code} updated`);
-      qc.invalidateQueries({ queryKey: ['courses'] });
-      onClose();
-    },
-    onError: (err: unknown) => toast.error(err instanceof Error ? err.message : 'Update failed'),
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: async () => api.delete<{ message: string }>(`/courses/${course.id}`),
-    onSuccess: () => {
-      toast.success(`${course.code} deleted`);
-      qc.invalidateQueries({ queryKey: ['courses'] });
-      onClose();
-    },
-    onError: (err: unknown) => toast.error(err instanceof Error ? err.message : 'Delete failed'),
-  });
-
-  return (
-    <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Edit course</DialogTitle>
-          <DialogDescription>
-            <span className="font-mono text-xs">{course.code}</span> — {course.title}
-          </DialogDescription>
-        </DialogHeader>
-        <form onSubmit={handleSubmit((v) => updateMutation.mutate(v))} className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="edit-code">Code</Label>
-              <Input
-                id="edit-code"
-                {...register('code', { required: 'Required', pattern: { value: /^[A-Za-z]{2,4}\d{3}$/, message: 'CSC101 format' } })}
-              />
-              {errors.code ? <p className="text-xs text-destructive">{errors.code.message}</p> : null}
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="edit-credit">Credits</Label>
-              <Input
-                id="edit-credit"
-                type="number"
-                min={1}
-                max={6}
-                {...register('creditUnits', { required: 'Required', min: { value: 1, message: 'Min 1' }, max: { value: 6, message: 'Max 6' } })}
-              />
-              {errors.creditUnits ? <p className="text-xs text-destructive">{errors.creditUnits.message}</p> : null}
-            </div>
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="edit-title">Title</Label>
-            <Input
-              id="edit-title"
-              {...register('title', { required: 'Required', minLength: { value: 3, message: 'At least 3 chars' } })}
-            />
-            {errors.title ? <p className="text-xs text-destructive">{errors.title.message}</p> : null}
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label>Level</Label>
-              <Select value={watch('level')} onValueChange={(v) => setValue('level', v as Level)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {LEVELS.map((l) => <SelectItem key={l} value={l}>{l}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Semester</Label>
-              <Select value={watch('semester')} onValueChange={(v) => setValue('semester', v as Semester)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="FIRST">First</SelectItem>
-                  <SelectItem value="SECOND">Second</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <div className="space-y-1.5">
-            <Label>Department</Label>
-            <Select value={watch('departmentId')} onValueChange={(v) => setValue('departmentId', v)}>
-              <SelectTrigger><SelectValue placeholder="Select department" /></SelectTrigger>
-              <SelectContent>
-                {departments.map((d) => (
-                  <SelectItem key={d.id} value={d.id}>{d.code} — {d.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <DialogFooter className="!justify-between">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => {
-                if (confirm(`Delete course ${course.code}? Enrollments and assignments will also be removed. Results block deletion.`)) {
-                  deleteMutation.mutate();
-                }
-              }}
-              disabled={deleteMutation.isPending}
-              className="gap-1.5 text-destructive hover:bg-destructive/10 hover:text-destructive"
-            >
-              {deleteMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-              Delete
-            </Button>
-            <div className="flex gap-2">
-              <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
-              <Button type="submit" disabled={updateMutation.isPending} className="gap-1.5">
-                {updateMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Edit3 className="h-4 w-4" />}
-                Save changes
-              </Button>
-            </div>
           </DialogFooter>
         </form>
       </DialogContent>
