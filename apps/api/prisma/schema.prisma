@@ -42,6 +42,12 @@ enum NotificationCategory {
   SYSTEM
 }
 
+enum ResultStatus {
+  SUBMITTED
+  APPROVED
+  PUBLISHED
+}
+
 model Department {
   id          String    @id @default(cuid())
   name        String    @unique
@@ -81,6 +87,8 @@ model User {
   auditLogs           AuditLog[]
   assignedCourses     CourseAssignment[]
   uploadedResults     Result[]            @relation("ResultUploader")
+  approvedResults     Result[]            @relation("ResultApprover")
+  publishedResults    Result[]            @relation("ResultPublisher")
   createdAt           DateTime            @default(now())
   updatedAt           DateTime            @updatedAt
 
@@ -164,6 +172,13 @@ model Result {
   grade        String
   gradePoint   Float
   isPublished  Boolean         @default(false)
+  status       ResultStatus    @default(SUBMITTED)
+  approvedBy   User?           @relation("ResultApprover", fields: [approvedById], references: [id])
+  approvedById String?
+  approvedAt   DateTime?
+  publishedBy  User?           @relation("ResultPublisher", fields: [publishedById], references: [id])
+  publishedById String?
+  publishedAt  DateTime?
   uploadedBy   User?           @relation("ResultUploader", fields: [uploadedById], references: [id])
   uploadedById String?
   createdAt    DateTime        @default(now())
@@ -172,6 +187,7 @@ model Result {
   @@unique([studentId, courseId, sessionId])
   @@index([studentId])
   @@index([courseId])
+  @@index([status])
 }
 
 model Resource {

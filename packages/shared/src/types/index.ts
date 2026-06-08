@@ -18,6 +18,8 @@ export type NotificationCategory =
   | 'FORUM'
   | 'SYSTEM';
 
+export type ResultStatus = 'SUBMITTED' | 'APPROVED' | 'PUBLISHED';
+
 export interface Department {
   id: string;
   name: string;
@@ -96,6 +98,11 @@ export interface Result {
   grade: string;
   gradePoint: number;
   isPublished: boolean;
+  status: ResultStatus;
+  approvedById?: string;
+  approvedAt?: string;
+  publishedById?: string;
+  publishedAt?: string;
   uploadedById?: string;
   createdAt: string;
   updatedAt: string;

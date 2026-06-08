@@ -15,6 +15,7 @@ import {
   FileText,
   Loader2,
   Pencil,
+  Shield,
   Upload as UploadIcon,
   X,
 } from 'lucide-react';
@@ -706,6 +707,19 @@ function PreviewStep({
               })}
             </tbody>
           </table>
+        </div>
+        <div className="rounded-lg border bg-primary/5 p-4 text-sm">
+          <div className="flex items-start gap-2">
+            <Shield className="h-4 w-4 shrink-0 mt-0.5 text-primary" />
+            <div>
+              <p className="font-medium text-primary">After submission</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Your scores will be saved as <strong>Submitted</strong>. The admin will
+                review and <strong>Approve</strong> them, then <strong>Push to students</strong>
+                to make them visible. You can edit scores until they are approved.
+              </p>
+            </div>
+          </div>
         </div>
       </CardContent>
     </Card>

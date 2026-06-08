@@ -10,10 +10,12 @@ import {
   uploadResultsSchema,
   csvUploadSchema,
   myResultsQuerySchema,
+  bulkResultActionSchema,
   type UploadResultsInput,
   type CsvUploadInput,
   type MyResultsQuery,
   type UploadResultEntry,
+  type BulkResultActionInput,
 } from '../validators/result.validator.js';
 
 const resultRouter = new Hono();
@@ -23,6 +25,18 @@ interface UploadSummary {
   updated: number;
   failed: number;
   errors: Array<{ matricNumber: string; reason: string }>;
+}
+
+async function notifyStudentPublished(studentId: string, _resultId: string): Promise<void> {
+  await prisma.notification.create({
+    data: {
+      userId: studentId,
+      category: 'RESULT',
+      title: 'New result published',
+      message: 'A new result has been published for one of your courses.',
+      link: `/student/results`,
+    },
+  });
 }
 
 resultRouter.get('/mine', authenticate, authorize('STUDENT'), async (c) => {
@@ -37,7 +51,7 @@ resultRouter.get('/mine', authenticate, authorize('STUDENT'), async (c) => {
     return c.var.handleZodError(e);
   }
 
-  const where: Record<string, unknown> = { studentId: userId, isPublished: true };
+  const where: Record<string, unknown> = { studentId: userId, status: 'PUBLISHED' };
   if (query.sessionId) where.sessionId = query.sessionId;
   if (query.semester) where.semester = query.semester;
 
@@ -120,6 +134,69 @@ resultRouter.get(
   }
 );
 
+resultRouter.get(
+  '/pending',
+  authenticate,
+  authorize('ADMIN'),
+  async (c) => {
+    const sessionResult = await requireCurrentSession();
+    if (!sessionResult.ok) return sessionResult.response;
+
+    const sessionId = c.req.query('sessionId') ?? sessionResult.session.id;
+
+    const results = await prisma.result.findMany({
+      where: { sessionId, status: { in: ['SUBMITTED', 'APPROVED'] } },
+      include: {
+        student: { select: { id: true, fullname: true, matricNumber: true } },
+        course: { include: { department: true } },
+        session: true,
+      },
+      orderBy: [{ course: { code: 'asc' } }, { student: { matricNumber: 'asc' } }],
+    });
+
+    const byCourse = new Map<
+      string,
+      {
+        course: (typeof results)[number]['course'];
+        semester: 'FIRST' | 'SECOND';
+        session: (typeof results)[number]['session'];
+        submitted: number;
+        approved: number;
+        results: typeof results;
+      }
+    >();
+
+    for (const r of results) {
+      const key = `${r.courseId}:${r.semester}`;
+      const existing = byCourse.get(key);
+      if (existing) {
+        existing.results.push(r);
+        if (r.status === 'SUBMITTED') existing.submitted += 1;
+        else if (r.status === 'APPROVED') existing.approved += 1;
+      } else {
+        byCourse.set(key, {
+          course: r.course,
+          semester: r.semester,
+          session: r.session,
+          submitted: r.status === 'SUBMITTED' ? 1 : 0,
+          approved: r.status === 'APPROVED' ? 1 : 0,
+          results: [r],
+        });
+      }
+    }
+
+    return ok({
+      session: sessionResult.session,
+      groups: Array.from(byCourse.values()),
+      counts: {
+        submitted: results.filter((r) => r.status === 'SUBMITTED').length,
+        approved: results.filter((r) => r.status === 'APPROVED').length,
+        total: results.length,
+      },
+    });
+  }
+);
+
 async function processResultUploads(
   userId: string,
   input: UploadResultsInput,
@@ -168,11 +245,11 @@ async function processResultUploads(
     });
 
     if (existing) {
-      if (existing.isPublished) {
+      if (existing.status === 'APPROVED' || existing.status === 'PUBLISHED') {
         summary.failed += 1;
         summary.errors.push({
           matricNumber: entry.matricNumber,
-          reason: 'Result already published; cannot update',
+          reason: `Result already ${existing.status.toLowerCase()}; cannot update`,
         });
         continue;
       }
@@ -185,6 +262,7 @@ async function processResultUploads(
           grade,
           gradePoint,
           uploadedById: userId,
+          status: 'SUBMITTED',
         },
       });
       summary.updated += 1;
@@ -201,6 +279,7 @@ async function processResultUploads(
           grade,
           gradePoint,
           uploadedById: userId,
+          status: 'SUBMITTED',
         },
       });
       summary.inserted += 1;
@@ -300,38 +379,171 @@ resultRouter.post(
 );
 
 resultRouter.patch(
-  '/:id/publish',
+  '/:id/approve',
   authenticate,
-  authorize('LECTURER', 'ADMIN'),
+  authorize('ADMIN'),
   async (c) => {
     const { id } = c.req.param();
     const result = await prisma.result.findUnique({ where: { id } });
     if (!result) return notFound('Result not found');
-    if (result.isPublished) return badRequest('Result is already published');
+    if (result.status !== 'SUBMITTED') {
+      return badRequest(`Result is not awaiting approval (status: ${result.status})`);
+    }
 
     const updated = await prisma.result.update({
       where: { id },
-      data: { isPublished: true },
-    });
-
-    await prisma.notification.create({
       data: {
-        userId: result.studentId,
-        category: 'RESULT',
-        title: 'New result published',
-        message: 'A new result has been published for one of your courses.',
-        link: `/results/${result.id}`,
+        status: 'APPROVED',
+        approvedById: c.get('user').userId,
+        approvedAt: new Date(),
       },
     });
 
     await writeAudit(c, {
       userId: c.get('user').userId,
-      action: 'RESULT_PUBLISH',
+      action: 'RESULT_APPROVE',
       entity: 'Result',
       entityId: id,
     });
 
     return ok({ result: updated });
+  }
+);
+
+resultRouter.patch(
+  '/:id/push',
+  authenticate,
+  authorize('ADMIN'),
+  async (c) => {
+    const { id } = c.req.param();
+    const result = await prisma.result.findUnique({ where: { id } });
+    if (!result) return notFound('Result not found');
+    if (result.status !== 'APPROVED') {
+      return badRequest(`Result must be approved before pushing (status: ${result.status})`);
+    }
+
+    const updated = await prisma.result.update({
+      where: { id },
+      data: {
+        status: 'PUBLISHED',
+        isPublished: true,
+        publishedById: c.get('user').userId,
+        publishedAt: new Date(),
+      },
+    });
+
+    await notifyStudentPublished(result.studentId, result.id);
+
+    await writeAudit(c, {
+      userId: c.get('user').userId,
+      action: 'RESULT_PUSH',
+      entity: 'Result',
+      entityId: id,
+    });
+
+    return ok({ result: updated });
+  }
+);
+
+resultRouter.post(
+  '/bulk-approve',
+  authenticate,
+  authorize('ADMIN'),
+  async (c) => {
+    let body: BulkResultActionInput;
+    try {
+      body = bulkResultActionSchema.parse(await c.req.json());
+    } catch (e) {
+      return c.var.handleZodError(e);
+    }
+
+    const sessionResult = await requireCurrentSession();
+    if (!sessionResult.ok) return sessionResult.response;
+
+    const result = await prisma.result.updateMany({
+      where: {
+        courseId: body.courseId,
+        sessionId: sessionResult.session.id,
+        semester: body.semester,
+        status: 'SUBMITTED',
+      },
+      data: {
+        status: 'APPROVED',
+        approvedById: c.get('user').userId,
+        approvedAt: new Date(),
+      },
+    });
+
+    await writeAudit(c, {
+      userId: c.get('user').userId,
+      action: 'RESULT_BULK_APPROVE',
+      entity: 'Course',
+      entityId: body.courseId,
+      metadata: { semester: body.semester, updated: result.count },
+    });
+
+    return ok({ updated: result.count });
+  }
+);
+
+resultRouter.post(
+  '/bulk-push',
+  authenticate,
+  authorize('ADMIN'),
+  async (c) => {
+    let body: BulkResultActionInput;
+    try {
+      body = bulkResultActionSchema.parse(await c.req.json());
+    } catch (e) {
+      return c.var.handleZodError(e);
+    }
+
+    const sessionResult = await requireCurrentSession();
+    if (!sessionResult.ok) return sessionResult.response;
+
+    const approved = await prisma.result.findMany({
+      where: {
+        courseId: body.courseId,
+        sessionId: sessionResult.session.id,
+        semester: body.semester,
+        status: 'APPROVED',
+      },
+      select: { id: true, studentId: true },
+    });
+
+    if (approved.length === 0) {
+      return badRequest('No approved results to push for this course/semester');
+    }
+
+    const result = await prisma.result.updateMany({
+      where: { id: { in: approved.map((r) => r.id) } },
+      data: {
+        status: 'PUBLISHED',
+        isPublished: true,
+        publishedById: c.get('user').userId,
+        publishedAt: new Date(),
+      },
+    });
+
+    await prisma.notification.createMany({
+      data: approved.map((r) => ({
+        userId: r.studentId,
+        category: 'RESULT' as const,
+        title: 'New result published',
+        message: 'A new result has been published for one of your courses.',
+        link: '/student/results',
+      })),
+    });
+
+    await writeAudit(c, {
+      userId: c.get('user').userId,
+      action: 'RESULT_BULK_PUSH',
+      entity: 'Course',
+      entityId: body.courseId,
+      metadata: { semester: body.semester, updated: result.count },
+    });
+
+    return ok({ updated: result.count, notified: approved.length });
   }
 );
 
@@ -353,7 +565,7 @@ resultRouter.get(
     if (!student) return notFound('Student not found');
 
     const results = await prisma.result.findMany({
-      where: { studentId, isPublished: true },
+      where: { studentId, status: 'PUBLISHED' },
       include: { course: true, session: true },
       orderBy: { createdAt: 'asc' },
     });

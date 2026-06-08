@@ -33,3 +33,10 @@ export const myResultsQuerySchema = z.object({
 });
 
 export type MyResultsQuery = z.infer<typeof myResultsQuerySchema>;
+
+export const bulkResultActionSchema = z.object({
+  courseId: z.string().min(1),
+  semester: z.enum(['FIRST', 'SECOND']),
+});
+
+export type BulkResultActionInput = z.infer<typeof bulkResultActionSchema>;

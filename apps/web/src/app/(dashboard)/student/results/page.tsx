@@ -21,7 +21,7 @@ import { ResultSlip } from '@/components/print';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth.store';
 import { cn } from '@/lib/utils';
-import type { Course, Result, Semester } from '@eduportal/shared';
+import type { Course, Result, ResultStatus, Semester } from '@eduportal/shared';
 
 interface ResultRow {
   id: string;
@@ -30,6 +30,7 @@ interface ResultRow {
   totalScore: number;
   grade: string;
   gradePoint: number;
+  status: ResultStatus;
   course: {
     id: string;
     code: string;
@@ -175,6 +176,7 @@ export default function StudentResultsPage() {
         grade: r.grade,
         gradePoint: r.gradePoint,
         isPublished: true,
+        status: 'PUBLISHED' as const,
         createdAt: '',
         updatedAt: '',
       })),
