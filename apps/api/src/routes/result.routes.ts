@@ -445,6 +445,106 @@ resultRouter.patch(
   }
 );
 
+resultRouter.patch(
+  '/:id/reject',
+  authenticate,
+  authorize('ADMIN'),
+  async (c) => {
+    const { id } = c.req.param();
+    const result = await prisma.result.findUnique({ where: { id } });
+    if (!result) return notFound('Result not found');
+    if (result.status !== 'APPROVED') {
+      return badRequest(`Only approved results can be rejected (status: ${result.status})`);
+    }
+
+    const updated = await prisma.result.update({
+      where: { id },
+      data: {
+        status: 'SUBMITTED',
+        approvedById: null,
+        approvedAt: null,
+      },
+    });
+
+    await writeAudit(c, {
+      userId: c.get('user').userId,
+      action: 'RESULT_REJECT',
+      entity: 'Result',
+      entityId: id,
+    });
+
+    return ok({ result: updated });
+  }
+);
+
+resultRouter.patch(
+  '/:id/unpublish',
+  authenticate,
+  authorize('ADMIN'),
+  async (c) => {
+    const { id } = c.req.param();
+    const result = await prisma.result.findUnique({ where: { id } });
+    if (!result) return notFound('Result not found');
+    if (result.status !== 'PUBLISHED') {
+      return badRequest(`Only published results can be unpublished (status: ${result.status})`);
+    }
+
+    const updated = await prisma.result.update({
+      where: { id },
+      data: {
+        status: 'APPROVED',
+        isPublished: false,
+        publishedById: null,
+        publishedAt: null,
+      },
+    });
+
+    await writeAudit(c, {
+      userId: c.get('user').userId,
+      action: 'RESULT_UNPUBLISH',
+      entity: 'Result',
+      entityId: id,
+    });
+
+    return ok({ result: updated });
+  }
+);
+
+resultRouter.patch(
+  '/:id/withdraw',
+  authenticate,
+  authorize('ADMIN'),
+  async (c) => {
+    const { id } = c.req.param();
+    const result = await prisma.result.findUnique({ where: { id } });
+    if (!result) return notFound('Result not found');
+    if (result.status === 'SUBMITTED') {
+      return badRequest('Result is already in submitted state');
+    }
+
+    const updated = await prisma.result.update({
+      where: { id },
+      data: {
+        status: 'SUBMITTED',
+        isPublished: false,
+        approvedById: null,
+        approvedAt: null,
+        publishedById: null,
+        publishedAt: null,
+      },
+    });
+
+    await writeAudit(c, {
+      userId: c.get('user').userId,
+      action: 'RESULT_WITHDRAW',
+      entity: 'Result',
+      entityId: id,
+    });
+
+    return ok({ result: updated });
+  }
+);
+
 resultRouter.post(
   '/bulk-approve',
   authenticate,
