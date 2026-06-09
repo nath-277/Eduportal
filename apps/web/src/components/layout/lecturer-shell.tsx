@@ -53,6 +53,7 @@ export function LecturerShell({ children }: { children: ReactNode }) {
         dockItems={toDockItems(lecturerDockPrimary, { onLogout: handleLogout })}
         expandedDockItems={toDockItems(lecturerDockExpanded, { onLogout: handleLogout })}
         notificationCount={notificationsQuery.data?.unreadCount ?? 0}
+        showDock={false}
       >
         {children}
       </DashboardShell>

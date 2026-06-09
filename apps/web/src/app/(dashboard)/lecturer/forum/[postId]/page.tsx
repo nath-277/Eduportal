@@ -1,0 +1,354 @@
+'use client';
+
+import { use, useEffect, useState } from 'react';
+
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { motion } from 'framer-motion';
+import { useForm } from 'react-hook-form';
+import { toast } from 'sonner';
+import {
+  ArrowLeft,
+  Heart,
+  Loader2,
+  MessageCircle,
+  Pin,
+  Send,
+  Tag as TagIcon,
+  User as UserIcon,
+} from 'lucide-react';
+
+import { LecturerShell } from '@/components/layout/lecturer-shell';
+import { PageHeader } from '@/components/ui/page-header';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { EmptyState } from '@/components/ui/empty-state';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Textarea } from '@/components/ui/textarea';
+import { api } from '@/lib/api';
+import { useAuthStore } from '@/stores/auth.store';
+import type { UserRole } from '@eduportal/shared';
+
+interface Author {
+  id: string;
+  fullname: string;
+  avatarUrl: string | null;
+  role: UserRole;
+}
+
+interface ForumReply {
+  id: string;
+  body: string;
+  likesCount: number;
+  createdAt: string;
+  author: Author;
+}
+
+interface ForumPostDetail {
+  id: string;
+  title: string;
+  body: string;
+  tags: string[];
+  likesCount: number;
+  views: number;
+  isPinned: boolean;
+  createdAt: string;
+  author: Author;
+  replies: ForumReply[];
+}
+
+interface ReplyForm {
+  body: string;
+}
+
+function initials(name: string): string {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p) => p[0]?.toUpperCase() ?? '')
+    .join('');
+}
+
+function formatTimeAgo(d: string): string {
+  const ts = new Date(d).getTime();
+  const diff = (Date.now() - ts) / 1000;
+  if (diff < 60) return 'just now';
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  if (diff < 604800) return `${Math.floor(diff / 86400)}d ago`;
+  return new Date(d).toLocaleDateString();
+}
+
+function Reply({ reply, isOp }: { reply: ForumReply; isOp: boolean }) {
+  return (
+    <div className="flex gap-3">
+      <Avatar className="h-8 w-8 shrink-0">
+        {reply.author.avatarUrl ? (
+          <AvatarImage src={reply.author.avatarUrl} alt={reply.author.fullname} />
+        ) : null}
+        <AvatarFallback>{initials(reply.author.fullname)}</AvatarFallback>
+      </Avatar>
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-sm font-medium">{reply.author.fullname}</span>
+          {isOp ? (
+            <Badge variant="secondary" className="text-[10px]">
+              <UserIcon className="mr-0.5 h-2.5 w-2.5" />
+              Original poster
+            </Badge>
+          ) : null}
+          {reply.author.role === 'LECTURER' ? (
+            <Badge className="bg-emerald-500/10 text-emerald-700 text-[10px] hover:bg-emerald-500/10">
+              Lecturer
+            </Badge>
+          ) : null}
+          <span className="text-xs text-muted-foreground">· {formatTimeAgo(reply.createdAt)}</span>
+        </div>
+        <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed">{reply.body}</p>
+      </div>
+    </div>
+  );
+}
+
+function PostDetailView({ postId }: { postId: string }) {
+  const router = useRouter();
+  const user = useAuthStore((s) => s.user);
+  const qc = useQueryClient();
+
+  const postQuery = useQuery({
+    queryKey: ['forum', 'post', postId],
+    queryFn: async () => api.get<ForumPostDetail>(`/forum/posts/${postId}`),
+    enabled: !!postId,
+  });
+
+  const [likes, setLikes] = useState(0);
+
+  useEffect(() => {
+    if (postQuery.data) setLikes(postQuery.data.likesCount);
+  }, [postQuery.data?.id, postQuery.data?.likesCount]);
+
+  const likeMutation = useMutation({
+    mutationFn: async () => {
+      return api.patch<{ likesCount: number }>(`/forum/posts/${postId}/like`, {});
+    },
+    onSuccess: (data) => {
+      setLikes(data.likesCount);
+      qc.invalidateQueries({ queryKey: ['forum', 'post', postId] });
+    },
+    onError: (err: unknown) => {
+      toast.error(err instanceof Error ? err.message : 'Could not update like');
+    },
+  });
+
+  const { register, handleSubmit, reset, watch, formState: { errors } } = useForm<ReplyForm>({
+    defaultValues: { body: '' },
+  });
+
+  const replyBody = watch('body') ?? '';
+
+  const replyMutation = useMutation({
+    mutationFn: async (body: string) => {
+      return api.post<ForumReply>(`/forum/posts/${postId}/replies`, { body });
+    },
+    onSuccess: () => {
+      toast.success('Reply posted');
+      reset();
+      qc.invalidateQueries({ queryKey: ['forum', 'post', postId] });
+    },
+    onError: (err: unknown) => {
+      toast.error(err instanceof Error ? err.message : 'Could not post reply');
+    },
+  });
+
+  const post = postQuery.data;
+
+  if (postQuery.isLoading) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-8 w-3/4" />
+        <Skeleton className="h-32 w-full" />
+        <Skeleton className="h-24 w-full" />
+        <Skeleton className="h-24 w-full" />
+      </div>
+    );
+  }
+
+  if (postQuery.error || !post) {
+    return (
+      <EmptyState
+        icon={MessageCircle}
+        title="Post not found"
+        description="This post may have been removed or the link is incorrect."
+        action={
+          <Button onClick={() => router.push('/lecturer/forum')} variant="outline">
+            <ArrowLeft className="h-4 w-4" />
+            Back to forum
+          </Button>
+        }
+      />
+    );
+  }
+
+  const isLecturer = post.author.role === 'LECTURER';
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+      <div>
+        <Button variant="ghost" size="sm" asChild className="-ml-2">
+          <Link href="/lecturer/forum">
+            <ArrowLeft className="h-4 w-4" />
+            Back to forum
+          </Link>
+        </Button>
+      </div>
+
+      <PageHeader
+        title={post.title}
+        subtitle={
+          <span>
+            {post.replies.length} {post.replies.length === 1 ? 'reply' : 'replies'} · {post.views} views
+          </span>
+        }
+      />
+
+      {/* Post body */}
+      <Card>
+        <CardContent className="p-5">
+          <div className="flex items-start gap-3">
+            <Avatar className="h-10 w-10 shrink-0">
+              {post.author.avatarUrl ? (
+                <AvatarImage src={post.author.avatarUrl} alt={post.author.fullname} />
+              ) : null}
+              <AvatarFallback>{initials(post.author.fullname)}</AvatarFallback>
+            </Avatar>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm font-medium">{post.author.fullname}</span>
+                {isLecturer ? (
+                  <Badge className="bg-emerald-500/10 text-emerald-700 text-[10px] hover:bg-emerald-500/10">
+                    Lecturer
+                  </Badge>
+                ) : null}
+                {post.isPinned ? (
+                  <Badge variant="secondary" className="gap-1 text-[10px]">
+                    <Pin className="h-3 w-3" />
+                    Pinned
+                  </Badge>
+                ) : null}
+                <span className="text-xs text-muted-foreground">· {formatTimeAgo(post.createdAt)}</span>
+              </div>
+              <div className="mt-3 whitespace-pre-wrap text-sm leading-relaxed">{post.body}</div>
+
+              {post.tags.length > 0 ? (
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {post.tags.map((tag) => (
+                    <Badge key={tag} variant="outline" className="text-[10px]">
+                      <TagIcon className="mr-0.5 h-2.5 w-2.5" />
+                      {tag}
+                    </Badge>
+                  ))}
+                </div>
+              ) : null}
+
+              <div className="mt-4 flex items-center gap-3 text-xs text-muted-foreground">
+                <button
+                  type="button"
+                  onClick={() => likeMutation.mutate()}
+                  disabled={likeMutation.isPending}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1 transition hover:border-rose-500 hover:text-rose-500"
+                  aria-label="Like post"
+                >
+                  <Heart className="h-3.5 w-3.5" />
+                  <span>{likes}</span>
+                </button>
+                <span className="inline-flex items-center gap-1.5">
+                  <MessageCircle className="h-3.5 w-3.5" />
+                  {post.replies.length}
+                </span>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Replies */}
+      <div className="space-y-3">
+        <h2 className="text-sm font-semibold text-muted-foreground">
+          {post.replies.length} {post.replies.length === 1 ? 'reply' : 'replies'}
+        </h2>
+        {post.replies.length === 0 ? (
+          <EmptyState
+            icon={MessageCircle}
+            title="No replies yet"
+            description="Be the first to reply to this post."
+          />
+        ) : (
+          <div className="space-y-3">
+            {post.replies.map((reply) => (
+              <Reply
+                key={reply.id}
+                reply={reply}
+                isOp={reply.author.id === post.author.id}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Reply compose */}
+      <Card>
+        <CardContent className="p-4">
+          <form
+            onSubmit={handleSubmit((values) => replyMutation.mutate(values.body.trim()))}
+            className="space-y-3"
+          >
+            <Textarea
+              placeholder="Write a reply..."
+              rows={3}
+              {...register('body', { required: 'Reply cannot be empty', minLength: { value: 2, message: 'At least 2 characters' } })}
+              aria-invalid={!!errors.body}
+            />
+            {errors.body ? (
+              <p className="text-xs text-destructive">{errors.body.message}</p>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Replying as <span className="font-medium text-foreground">{user?.fullname}</span>
+              </p>
+            )}
+            <div className="flex justify-end">
+              <Button
+                type="submit"
+                disabled={replyMutation.isPending || replyBody.trim().length < 2}
+                className="gap-1.5"
+              >
+                {replyMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+                Post reply
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
+}
+
+export default function LecturerForumPostDetailPage({
+  params,
+}: {
+  params: Promise<{ postId: string }>;
+}) {
+  const { postId } = use(params);
+  return (
+    <LecturerShell>
+      <PostDetailView postId={postId} />
+    </LecturerShell>
+  );
+}

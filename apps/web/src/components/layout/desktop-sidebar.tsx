@@ -56,7 +56,7 @@ export function DesktopSidebar({ items, role, user }: DesktopSidebarProps) {
   }
 
   return (
-    <aside className="hidden w-64 shrink-0 flex-col border-r border-border bg-card md:flex">
+    <aside className="hidden w-64 shrink-0 flex-col border-r border-border bg-card md:flex sticky top-0 h-screen">
       <div className="flex h-16 items-center gap-2 border-b border-border px-4">
         <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
           <GraduationCap className="h-5 w-5" />
@@ -67,7 +67,7 @@ export function DesktopSidebar({ items, role, user }: DesktopSidebarProps) {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-2 py-3">
+      <div className="flex-1 px-2 py-3">
         <nav className="flex flex-col gap-0.5" aria-label="Sidebar">
           {items.map((item) => {
             const Icon = item.icon;
