@@ -193,11 +193,11 @@ export default function StudentCoursesPage() {
         <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-xs uppercase tracking-wider text-muted-foreground">
-              Academic session ·{' '}
+              {user?.level?.replace('L', '')}L ·{' '}
               {enrollmentsQuery.data?.session.name ?? 'Loading…'}
             </p>
             <h2 className="mt-1 text-lg font-semibold">
-              {semester === 'FIRST' ? 'First' : 'Second'} Semester
+              {user?.level?.replace('L', '')}L {semester === 'FIRST' ? 'First' : 'Second'} Semester
             </h2>
           </div>
           <div className="flex flex-wrap items-center gap-2">

@@ -66,7 +66,7 @@ export function ResultSlip({
 
         <div className="text-center">
           <h1 className="text-2xl font-bold tracking-wide">STATEMENT OF RESULT</h1>
-          <p className="mt-1 text-xs uppercase tracking-wider">{session} Academic Session</p>
+          <p className="mt-1 text-xs uppercase tracking-wider">{student.level?.replace('L', '')}L {session} Academic Session</p>
         </div>
 
         <table className="w-full border-collapse text-sm">

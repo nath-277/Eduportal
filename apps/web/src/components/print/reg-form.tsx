@@ -62,7 +62,7 @@ export function RegForm({
         <div className="text-center">
           <h1 className="text-2xl font-bold uppercase tracking-widest">Course Registration Form</h1>
           <p className="mt-1 text-xs uppercase tracking-wider">
-            {session} Academic Session · {semester === 'FIRST' ? 'First' : 'Second'} Semester
+            {student.level?.replace('L', '')}L {session} Academic Session · {semester === 'FIRST' ? 'First' : 'Second'} Semester
           </p>
         </div>
 
