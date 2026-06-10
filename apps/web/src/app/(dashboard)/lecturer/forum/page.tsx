@@ -379,7 +379,10 @@ export default function LecturerForumPage() {
             animate="show"
             variants={{
               hidden: { opacity: 0 },
-              show: { opacity: 1, transition: { staggerChildren: 0.04 } },
+              show: {
+                opacity: 1,
+                transition: { staggerChildren: 0.05 },
+              },
             }}
             className="space-y-3"
           >
@@ -389,8 +392,10 @@ export default function LecturerForumPage() {
               return (
                 <motion.div
                   key={post.id}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
+                  variants={{
+                    hidden: { opacity: 0, y: 12 },
+                    show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 260, damping: 20 } },
+                  }}
                 >
                   <Card className="transition hover:border-primary/30 hover:shadow-sm">
                     <CardContent className="p-4">
@@ -438,16 +443,25 @@ export default function LecturerForumPage() {
                           ) : null}
 
                           <div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
-                            <button
+                            <motion.button
+                              whileHover={{ scale: 1.08 }}
+                              whileTap={{ scale: 0.92 }}
                               type="button"
                               onClick={() => likeMutation.mutate(post.id)}
                               disabled={likeMutation.isPending}
-                              className="inline-flex items-center gap-1 transition hover:text-rose-500"
+                              className="inline-flex items-center gap-1 transition hover:text-rose-500 focus:outline-none"
                               aria-label="Like"
                             >
-                              <Heart className="h-3.5 w-3.5" />
+                              <motion.span
+                                initial={{ scale: 1 }}
+                                whileTap={{ scale: 1.4 }}
+                                transition={{ type: 'spring', stiffness: 450, damping: 15 }}
+                                className="flex items-center"
+                              >
+                                <Heart className="h-3.5 w-3.5" />
+                              </motion.span>
                               <span>{post.likesCount}</span>
-                            </button>
+                            </motion.button>
                             <Link
                               href={`/lecturer/forum/${post.id}`}
                               className="inline-flex items-center gap-1 transition hover:text-foreground"
