@@ -4,30 +4,54 @@ export type ThemeVariables = Record<`--${string}`, string>;
 
 export const roleThemes: Record<UserRole, ThemeVariables> = {
   STUDENT: {
-    '--primary': '217 91% 60%',
-    '--primary-foreground': '0 0% 100%',
-    '--accent': '189 94% 43%',
-    '--ring': '217 91% 60%',
+    '--primary-light': 'oklch(0.55 0.18 250)', // Sapphire Blue
+    '--primary-dark': 'oklch(0.68 0.16 250)',
+    '--primary-foreground-light': 'oklch(0.99 0.002 0)',
+    '--primary-foreground-dark': 'oklch(0.10 0.01 250)',
+    '--accent-light': 'oklch(0.95 0.018 250)',
+    '--accent-dark': 'oklch(0.20 0.02 250)',
+    '--accent-foreground-light': 'oklch(0.55 0.18 250)',
+    '--accent-foreground-dark': 'oklch(0.70 0.14 250)',
+    '--ring-light': 'oklch(0.55 0.18 250)',
+    '--ring-dark': 'oklch(0.68 0.16 250)',
   },
   LECTURER: {
-    '--primary': '160 84% 39%',
-    '--primary-foreground': '0 0% 100%',
-    '--accent': '173 80% 40%',
-    '--ring': '160 84% 39%',
+    '--primary-light': 'oklch(0.55 0.15 160)', // Teal/Emerald
+    '--primary-dark': 'oklch(0.68 0.13 160)',
+    '--primary-foreground-light': 'oklch(0.99 0.002 0)',
+    '--primary-foreground-dark': 'oklch(0.10 0.01 160)',
+    '--accent-light': 'oklch(0.95 0.015 160)',
+    '--accent-dark': 'oklch(0.19 0.02 160)',
+    '--accent-foreground-light': 'oklch(0.55 0.15 160)',
+    '--accent-foreground-dark': 'oklch(0.68 0.13 160)',
+    '--ring-light': 'oklch(0.55 0.15 160)',
+    '--ring-dark': 'oklch(0.68 0.13 160)',
   },
   ADMIN: {
-    '--primary': '271 91% 65%',
-    '--primary-foreground': '0 0% 100%',
-    '--accent': '263 70% 50%',
-    '--ring': '271 91% 65%',
+    '--primary-light': 'oklch(0.52 0.20 285)', // Purple/Violet
+    '--primary-dark': 'oklch(0.65 0.18 285)',
+    '--primary-foreground-light': 'oklch(0.99 0.002 0)',
+    '--primary-foreground-dark': 'oklch(0.10 0.01 285)',
+    '--accent-light': 'oklch(0.95 0.018 285)',
+    '--accent-dark': 'oklch(0.20 0.02 285)',
+    '--accent-foreground-light': 'oklch(0.52 0.20 285)',
+    '--accent-foreground-dark': 'oklch(0.65 0.18 285)',
+    '--ring-light': 'oklch(0.52 0.20 285)',
+    '--ring-dark': 'oklch(0.65 0.18 285)',
   },
 };
 
 export const defaultTheme: ThemeVariables = {
-  '--primary': '222 47% 11%',
-  '--primary-foreground': '210 40% 98%',
-  '--accent': '210 40% 96%',
-  '--ring': '222 47% 11%',
+  '--primary-light': 'oklch(0.25 0.02 245)', // Deep Slate Blue
+  '--primary-dark': 'oklch(0.70 0.12 245)',
+  '--primary-foreground-light': 'oklch(0.99 0.002 0)',
+  '--primary-foreground-dark': 'oklch(0.10 0.01 245)',
+  '--accent-light': 'oklch(0.96 0.01 245)',
+  '--accent-dark': 'oklch(0.20 0.02 245)',
+  '--accent-foreground-light': 'oklch(0.25 0.02 245)',
+  '--accent-foreground-dark': 'oklch(0.70 0.12 245)',
+  '--ring-light': 'oklch(0.25 0.02 245)',
+  '--ring-dark': 'oklch(0.70 0.12 245)',
 };
 
 export function applyTheme(theme: ThemeVariables): void {
