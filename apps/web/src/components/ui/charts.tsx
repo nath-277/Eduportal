@@ -24,14 +24,22 @@ export function BarChart({ data, height = 160, className, unit = '' }: BarChartP
                 {d.value}
                 {unit}
               </span>
-              <div className="relative w-full flex-1 overflow-hidden rounded-md bg-muted/60">
+              <div className="group relative w-full flex-1 rounded-md bg-muted/60">
                 <motion.div
-                  className="absolute bottom-0 left-0 right-0 rounded-md"
+                  className="absolute bottom-0 left-0 right-0 rounded-md transition-all duration-200 group-hover:brightness-95"
                   style={{ backgroundColor: d.color ?? 'hsl(var(--primary))' }}
                   initial={{ height: 0 }}
                   animate={{ height: `${pct}%` }}
+                  whileHover={{ scaleX: 1.05 }}
                   transition={{ duration: 0.6, delay: i * 0.05, ease: 'easeOut' }}
                 />
+                {/* Visual Tooltip Overlay */}
+                <div className="absolute left-1/2 bottom-full mb-1.5 z-30 hidden group-hover:flex -translate-x-1/2 flex-col items-center">
+                  <div className="bg-popover text-popover-foreground border border-border text-[10px] px-2 py-0.5 rounded-md shadow-md whitespace-nowrap font-medium">
+                    {d.label}: {d.value}{unit}
+                  </div>
+                  <div className="w-1.5 h-1.5 bg-popover border-b border-r border-border rotate-45 -mt-1" />
+                </div>
               </div>
               <span className="text-[10px] font-medium text-muted-foreground">
                 {d.label}
@@ -114,8 +122,12 @@ export function LineChart({ data, height = 200, className }: LineChartProps) {
             fill="hsl(var(--primary))"
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
+            whileHover={{ r: 1.8, fill: 'oklch(0.65 0.16 245)' }}
             transition={{ delay: 0.6 + i * 0.05, duration: 0.2 }}
-          />
+            className="cursor-pointer transition-colors duration-150"
+          >
+            <title>{p.label}: {p.value}</title>
+          </motion.circle>
         ))}
       </svg>
       <div className="mt-2 flex justify-between text-[10px] text-muted-foreground">
@@ -193,8 +205,12 @@ export function PieChart({
               strokeDashoffset={-offset}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
+              whileHover={{ strokeWidth: thickness / 1.9 }}
               transition={{ delay: i * 0.05, duration: 0.4 }}
-            />
+              className="cursor-pointer transition-all duration-200"
+            >
+              <title>{d.label}: {d.value}{unit} ({Math.round((d.value / total) * 100)}%)</title>
+            </motion.circle>
           ))}
         </svg>
         {centerLabel ? (

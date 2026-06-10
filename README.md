@@ -1067,3 +1067,14 @@ link to the role's full notifications page.
   `/lecturer/dashboard` 200, `/admin/dashboard` 200
   with valid auth cookies; `GET /api/notifications/mine`
   200 returning the seeded test notification.
+
+## v1.0.2 — Premium Color Overhaul & Dynamic Role Themes
+
+Visual polish, dynamic theming, print optimization, and interactive chart enhancements:
+
+- **Premium Colors**: Overhauled dynamic stylesheet themes in [globals.css](file:///home/themw/DEV/Project_DEV/OPENCODE/Portal-V1/eduportal/apps/web/src/app/globals.css) with light slate-indigo and midnight-blue OKLCH palettes, mapping variables to dynamic light/dark pointers.
+- **Dynamic Role Themes**: Overhauled [themes.ts](file:///home/themw/DEV/Project_DEV/OPENCODE/Portal-V1/eduportal/apps/web/src/lib/themes.ts) to supply valid, browser-compatible CSS OKLCH declarations for dynamic styling (Student, Lecturer, and Admin workspaces) with separate light/dark colors.
+- **Printslip Enhancements**: Enhanced statement of result slip in [result-slip.tsx](file:///home/themw/DEV/Project_DEV/OPENCODE/Portal-V1/eduportal/apps/web/src/components/print/result-slip.tsx) with an elegant official Graduation Cap watermark backdrop, official seal, and structured signature areas.
+- **Interactive SVG Charts**: Added micro-interactive animations to custom bar, line, and donut charts in [charts.tsx](file:///home/themw/DEV/Project_DEV/OPENCODE/Portal-V1/eduportal/apps/web/src/components/ui/charts.tsx), including segment bulging and point scaling on hover.
+- **Forum Animations**: Cascading staggered entrance animations for forum post lists and spring scale/bounce clicks on post Like buttons.
+
