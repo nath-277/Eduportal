@@ -17,7 +17,7 @@ import notificationRouter from './routes/notification.routes.js';
 import analyticsRouter from './routes/analytics.routes.js';
 import { departmentRouter, sessionRouter } from './routes/department.routes.js';
 
-const app = new Hono();
+export const app = new Hono();
 
 app.use('*', logger());
 app.use(
