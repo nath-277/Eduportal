@@ -9,7 +9,7 @@ This guide details the steps to deploy the EduPortal system (Backend API, Prisma
 ```mermaid
 graph TD
     User([User Browser]) -->|Next.js App| Frontend[Frontend Page - Vercel / Netlify]
-    User -->|REST Request| API[Backend API - Docker / Render / Railway]
+    User -->|REST Request| API[Backend API - Docker / Vercel Serverless / Railway]
     API -->|Prisma ORM| Database[(PostgreSQL Database)]
     API -->|Image Uploads| Cloudinary[(Cloudinary Service)]
 ```
@@ -35,7 +35,7 @@ Before deploying, collect your production environment secrets.
 ### Frontend Web (`apps/web`)
 | Variable | Description | Example / Default |
 | :--- | :--- | :--- |
-| `NEXT_PUBLIC_API_URL` | Base URL of your deployed Backend API | `https://my-eduportal-api.onrender.com` |
+| `NEXT_PUBLIC_API_URL` | Base URL of your deployed Backend API | `https://my-eduportal-api.vercel.app` |
 
 ---
 
@@ -85,17 +85,31 @@ Best for scaling, ease of maintenance, and high availability.
 1. Spin up a managed PostgreSQL database (e.g., [Supabase](https://supabase.com) or [Neon](https://neon.tech)).
 2. Copy the connection string. Make sure to append `?sslmode=require` if required by the cloud provider.
 
-### Step 2: Backend API Setup (Render / Railway / Fly.io)
-1. Connect your Github repository to the hosting platform (e.g. [Render](https://render.com)).
+### Step 2: Backend API Setup (Option 1: Docker Containers - Render / Railway)
+1. Connect your Github repository to the hosting platform (e.g., [Render](https://render.com)).
 2. Create a new **Web Service** with the following options:
    - **Runtime**: `Docker`
    - **Docker Context**: `.` (Root of the workspace)
    - **Dockerfile Path**: `apps/api/Dockerfile`
 3. Configure the environment variables in the service dashboard settings.
 4. **Database migration**: 
-   Add a build command or a start command to auto-run migrations before launching:
+   Add a build command or start command to auto-run migrations before launching:
    ```bash
    npx prisma migrate deploy && node dist/index.js
+   ```
+
+### Step 2: Backend API Setup (Option 2: Serverless Function - Vercel)
+We have added a custom Vercel Serverless Function adapter at `apps/api/api/index.ts` and `apps/api/vercel.json` to enable zero-config serverless hosting for Hono.
+1. Create a new project on [Vercel](https://vercel.com) and import your Git repository.
+2. Configure the project settings for the **Backend API** service:
+   - **Root Directory**: `apps/api`
+   - **Framework Preset**: `Other`
+   - **Build Command**: `npx prisma generate && tsc`
+   - **Install Command**: `pnpm install`
+3. Configure your Environment Variables in the project settings.
+4. **Database Migration**: Since Vercel serverless environments are read-only at runtime, you cannot run prisma migration on startup inside Vercel. Instead, apply database migrations from your local development environment using the production database URL:
+   ```bash
+   DATABASE_URL="postgresql://your-prod-neon-database-url" pnpm --filter @eduportal/api exec prisma migrate deploy
    ```
 
 ### Step 3: Frontend Setup (Vercel / Netlify)
@@ -105,5 +119,5 @@ Best for scaling, ease of maintenance, and high availability.
    - **Build Command**: `pnpm build`
    - **Install Command**: `pnpm install`
 3. Add the build-time environment variable:
-   - `NEXT_PUBLIC_API_URL` set to the deployed backend URL (e.g. `https://my-eduportal-api.onrender.com`).
+   - `NEXT_PUBLIC_API_URL` set to the deployed backend URL (e.g., `https://my-eduportal-api.vercel.app`).
 4. Trigger the deployment.
