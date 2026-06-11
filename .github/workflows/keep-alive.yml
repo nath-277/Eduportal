@@ -1,0 +1,26 @@
+name: Keep Alive
+
+on:
+  schedule:
+    - cron: '*/10 * * * *' # Runs every 10 minutes
+  workflow_dispatch: # Allows manual trigger
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping API Server
+        env:
+          KEEP_ALIVE_URL: ${{ secrets.KEEP_ALIVE_URL }}
+        run: |
+          if [ -z "$KEEP_ALIVE_URL" ]; then
+            echo "=========================================================================="
+            echo "WARNING: KEEP_ALIVE_URL secret is not set in this repository."
+            echo "To fix this, go to your GitHub Repository -> Settings -> Secrets and variables -> Actions."
+            echo "Create a repository secret named KEEP_ALIVE_URL set to your deployed API health check URL."
+            echo "Example: https://my-eduportal-api.onrender.com/api/health"
+            echo "=========================================================================="
+            exit 0
+          fi
+          echo "Pinging $KEEP_ALIVE_URL..."
+          curl -s -I "$KEEP_ALIVE_URL" | head -n 1 || echo "Ping failed or server is booting up"
