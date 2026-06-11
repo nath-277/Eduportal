@@ -246,6 +246,7 @@ model ForumPost {
   likesCount Int          @default(0)
   views      Int          @default(0)
   isPinned   Boolean      @default(false)
+  imageUrl   String?
   replies    ForumReply[]
   createdAt  DateTime     @default(now())
   updatedAt  DateTime     @updatedAt

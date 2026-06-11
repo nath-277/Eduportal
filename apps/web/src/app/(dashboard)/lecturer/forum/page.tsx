@@ -8,6 +8,7 @@ import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import {
   Heart,
+  Image as ImageIcon,
   Loader2,
   MessageCircle,
   MessageSquare,
@@ -52,6 +53,7 @@ interface ForumPost {
   likesCount: number;
   isPinned: boolean;
   replyCount: number;
+  imageUrl?: string;
   createdAt: string;
   author: { id: string; fullname: string; avatarUrl: string | null; role: UserRole };
 }
@@ -103,6 +105,7 @@ function CreatePostSheet({ onCreated }: { onCreated: () => void }) {
   const [open, setOpen] = useState(false);
   const [tagChips, setTagChips] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   const { register, handleSubmit, reset, watch, formState: { errors } } = useForm<CreateForm>({
     defaultValues: { title: '', body: '', tags: '' },
@@ -112,7 +115,7 @@ function CreatePostSheet({ onCreated }: { onCreated: () => void }) {
   const title = watch('title') ?? '';
 
   const createMutation = useMutation({
-    mutationFn: async (input: { title: string; body: string; tags: string[] }) => {
+    mutationFn: async (input: { title: string; body: string; tags: string[]; imageUrl?: string }) => {
       return api.post<ForumPost>('/forum/posts', input);
     },
     onSuccess: () => {
@@ -122,11 +125,30 @@ function CreatePostSheet({ onCreated }: { onCreated: () => void }) {
       reset();
       setTagChips([]);
       setTagInput('');
+      setImagePreview(null);
     },
     onError: (err: unknown) => {
       toast.error(err instanceof Error ? err.message : 'Could not publish post');
     },
   });
+
+  function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image must be under 5MB');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setImagePreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function removeImage() {
+    setImagePreview(null);
+  }
 
   function addTag() {
     const t = tagInput.trim().toLowerCase().replace(/[^a-z0-9-]/g, '');
@@ -153,7 +175,12 @@ function CreatePostSheet({ onCreated }: { onCreated: () => void }) {
           .filter(Boolean),
       ]),
     );
-    createMutation.mutate({ title: values.title.trim(), body: values.body.trim(), tags });
+    createMutation.mutate({
+      title: values.title.trim(),
+      body: values.body.trim(),
+      tags,
+      imageUrl: imagePreview ?? undefined,
+    });
   }
 
   return (
@@ -202,6 +229,50 @@ function CreatePostSheet({ onCreated }: { onCreated: () => void }) {
               aria-invalid={!!errors.body}
             />
             {errors.body ? <p className="text-xs text-destructive">{errors.body.message}</p> : null}
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Attach Image</Label>
+            {imagePreview ? (
+              <div className="relative mt-1 aspect-[16/10] w-full overflow-hidden rounded-xl border border-border bg-muted/30">
+                <img
+                  src={imagePreview}
+                  alt="Attachment preview"
+                  className="h-full w-full object-cover"
+                />
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="destructive"
+                  className="absolute right-2 top-2 h-7 w-7 rounded-full shadow-md hover:scale-105 active:scale-95 transition"
+                  onClick={removeImage}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <div
+                onClick={() => document.getElementById('image-upload-lecturer')?.click()}
+                className="group flex cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-border py-5 text-center transition hover:border-primary/50 hover:bg-muted/10"
+              >
+                <div className="rounded-full bg-muted p-2 group-hover:bg-primary/10 group-hover:text-primary transition">
+                  <ImageIcon className="h-5 w-5 text-muted-foreground group-hover:text-primary transition" />
+                </div>
+                <span className="mt-2 text-xs font-medium text-muted-foreground group-hover:text-primary transition">
+                  Click to upload an image
+                </span>
+                <span className="text-[10px] text-muted-foreground/70">
+                  PNG, JPG, GIF up to 5MB
+                </span>
+                <input
+                  id="image-upload-lecturer"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  className="hidden"
+                />
+              </div>
+            )}
           </div>
 
           <div className="space-y-1.5">
@@ -430,6 +501,20 @@ export default function LecturerForumPage() {
                             </h3>
                           </Link>
                           <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{post.body}</p>
+
+                          {post.imageUrl ? (
+                            <Link
+                              href={`/lecturer/forum/${post.id}`}
+                              className="mt-3 block overflow-hidden rounded-xl border border-border/60 bg-muted/10"
+                            >
+                              <img
+                                src={post.imageUrl}
+                                alt={post.title}
+                                className="aspect-[21/9] w-full object-cover transition-transform duration-500 hover:scale-[1.02]"
+                                loading="lazy"
+                              />
+                            </Link>
+                          ) : null}
 
                           {post.tags.length > 0 ? (
                             <div className="mt-2 flex flex-wrap gap-1.5">

@@ -13,6 +13,7 @@ export const createPostSchema = z.object({
   title: z.string().min(3).max(200),
   body: z.string().min(1).max(10000),
   tags: z.array(z.string().min(1).max(30)).max(10).default([]),
+  imageUrl: z.string().optional(),
 });
 
 export type CreatePostInput = z.infer<typeof createPostSchema>;

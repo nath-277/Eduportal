@@ -4,6 +4,7 @@ import { authenticate } from '../middleware/auth.js';
 import { writeAudit } from '../lib/audit.js';
 import { parsePagination, paginated } from '../lib/pagination.js';
 import { forbidden, notFound, ok, serverError } from '../lib/response.js';
+import { uploadBase64, isCloudinaryConfigured } from '../lib/cloudinary.js';
 import {
   listPostsSchema,
   createPostSchema,
@@ -66,6 +67,7 @@ forumRouter.get('/posts', async (c) => {
         likesCount: p.likesCount,
         views: p.views,
         isPinned: p.isPinned,
+        imageUrl: p.imageUrl ?? undefined,
         author: p.author,
         replyCount: p._count.replies,
         createdAt: p.createdAt,
@@ -86,11 +88,27 @@ forumRouter.post('/posts', authenticate, async (c) => {
     return c.var.handleZodError(e);
   }
 
+  let imageUrl = body.imageUrl;
+  if (imageUrl && imageUrl.startsWith('data:')) {
+    if (isCloudinaryConfigured()) {
+      try {
+        const uploaded = await uploadBase64(imageUrl, 'eduportal/forum');
+        imageUrl = uploaded.url;
+      } catch (err) {
+        console.error('Forum post image upload failed:', err);
+        return serverError('Failed to upload image');
+      }
+    } else {
+      console.warn('Cloudinary not configured; storing base64 image directly in database');
+    }
+  }
+
   const post = await prisma.forumPost.create({
     data: {
       title: body.title,
       body: body.body,
       tags: body.tags,
+      imageUrl,
       authorId: c.get('user').userId,
     },
     include: { author: { select: { id: true, fullname: true, avatarUrl: true, role: true } } },

@@ -55,6 +55,7 @@ interface ForumPostDetail {
   likesCount: number;
   views: number;
   isPinned: boolean;
+  imageUrl?: string;
   createdAt: string;
   author: Author;
   replies: ForumReply[];
@@ -241,6 +242,15 @@ function PostDetailView({ postId }: { postId: string }) {
                 ) : null}
                 <span className="text-xs text-muted-foreground">· {formatTimeAgo(post.createdAt)}</span>
               </div>
+              {post.imageUrl ? (
+                <div className="my-4 overflow-hidden rounded-xl border border-border bg-muted/10">
+                  <img
+                    src={post.imageUrl}
+                    alt={post.title}
+                    className="max-h-[500px] w-full object-contain"
+                  />
+                </div>
+              ) : null}
               <div className="mt-3 whitespace-pre-wrap text-sm leading-relaxed">{post.body}</div>
 
               {post.tags.length > 0 ? (

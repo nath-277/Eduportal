@@ -153,6 +153,7 @@ export interface ForumPost {
   likesCount: number;
   views: number;
   isPinned: boolean;
+  imageUrl?: string;
   createdAt: string;
   updatedAt: string;
 }
