@@ -127,4 +127,6 @@ const start = (): void => {
   }
 };
 
-start();
+if (!process.env.VERCEL) {
+  start();
+}
