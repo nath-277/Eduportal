@@ -130,3 +130,5 @@ const start = (): void => {
 if (!process.env.VERCEL) {
   start();
 }
+
+export default app;
