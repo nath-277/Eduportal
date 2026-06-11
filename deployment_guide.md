@@ -104,7 +104,7 @@ We have added a custom Vercel Serverless Function adapter at `apps/api/api/index
 2. Configure the project settings for the **Backend API** service:
    - **Root Directory**: `apps/api`
    - **Framework Preset**: `Other`
-   - **Build Command**: `npx prisma generate && tsc`
+   - **Build Command**: `npx prisma generate && pnpm run build`
    - **Install Command**: `pnpm install`
 3. Configure your Environment Variables in the project settings.
 4. **Database Migration**: Since Vercel serverless environments are read-only at runtime, you cannot run prisma migration on startup inside Vercel. Instead, apply database migrations from your local development environment using the production database URL:
