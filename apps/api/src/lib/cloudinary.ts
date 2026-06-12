@@ -72,10 +72,29 @@ export async function uploadBase64(
   };
 }
 
-export async function deleteAsset(publicId: string): Promise<void> {
+function getCloudinaryResourceType(mimeTypeOrExtension?: string): 'image' | 'raw' | 'video' {
+  if (!mimeTypeOrExtension) return 'image';
+
+  const lower = mimeTypeOrExtension.toLowerCase();
+
+  if (!lower.includes('/')) {
+    if (lower === 'pdf') return 'image';
+    if (['mp4', 'webm', 'mov', 'avi', 'mkv', 'mp3', 'wav', 'ogg'].includes(lower)) return 'video';
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(lower)) return 'image';
+    return 'raw';
+  }
+
+  if (lower === 'application/pdf') return 'image';
+  if (lower.startsWith('image/')) return 'image';
+  if (lower.startsWith('video/') || lower.startsWith('audio/')) return 'video';
+  return 'raw';
+}
+
+export async function deleteAsset(publicId: string, mimeTypeOrExtension?: string): Promise<void> {
   ensureConfigured();
   if (!configured) return;
-  await cloudinary.uploader.destroy(publicId, { invalidate: true });
+  const resourceType = getCloudinaryResourceType(mimeTypeOrExtension);
+  await cloudinary.uploader.destroy(publicId, { resource_type: resourceType, invalidate: true });
 }
 
 export function signedDownloadUrl(publicId: string, expiresInSeconds = 3600): string {

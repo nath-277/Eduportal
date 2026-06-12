@@ -129,7 +129,7 @@ resourceRouter.delete('/:id', authenticate, async (c) => {
 
   if (resource.filePublicId) {
     try {
-      await deleteAsset(resource.filePublicId);
+      await deleteAsset(resource.filePublicId, resource.fileType);
     } catch (err) {
       console.warn('Cloudinary delete failed (continuing):', err);
     }
