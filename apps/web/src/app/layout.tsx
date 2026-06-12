@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { QueryProvider } from '@/providers/query-provider';
+import { Analytics } from '@vercel/analytics/next';
 
 const inter = Inter({
   variable: '--font-inter',
@@ -31,6 +32,7 @@ export default function RootLayout({
     >
       <body className="min-h-full bg-background font-sans text-foreground antialiased">
         <QueryProvider>{children}</QueryProvider>
+        <Analytics />
       </body>
     </html>
   );
