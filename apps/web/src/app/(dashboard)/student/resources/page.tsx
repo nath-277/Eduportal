@@ -137,10 +137,10 @@ function ResourceLibraryView() {
   const coursesQuery = useQuery({
     queryKey: ['courses', 'all-min'],
     queryFn: async () => {
-      const data = await api.get<Paginated<{ id: string; code: string; title: string }>>(
+      const data = await api.get<Array<{ id: string; code: string; title: string }>>(
         '/courses?limit=100',
       );
-      return data.data;
+      return data;
     },
   });
 
