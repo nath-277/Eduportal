@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -106,6 +106,18 @@ export default function RegisterPage() {
     },
   });
 
+  const settingsQuery = useQuery({
+    queryKey: ['settings', 'public'],
+    queryFn: async () => {
+      return api.get<{
+        portalName: string;
+        displayName: string;
+        allowedEmailDomain: string;
+      }>('/settings');
+    },
+  });
+  const allowedEmailDomain = settingsQuery.data?.allowedEmailDomain;
+
   const goToPersonal = (role: AccountType) => {
     setState((s) => ({ ...s, role }));
     setStep(1);
@@ -192,6 +204,7 @@ export default function RegisterPage() {
                 defaults={state}
                 departments={departmentsQuery.data ?? []}
                 loadingDepartments={departmentsQuery.isLoading}
+                allowedEmailDomain={allowedEmailDomain}
                 onBack={() => setStep(0)}
                 onContinue={submitPersonal}
               />
@@ -304,6 +317,7 @@ function PersonalStep({
   defaults,
   departments,
   loadingDepartments,
+  allowedEmailDomain,
   onBack,
   onContinue,
 }: {
@@ -311,10 +325,39 @@ function PersonalStep({
   defaults: FormState;
   departments: Department[];
   loadingDepartments: boolean;
+  allowedEmailDomain?: string;
   onBack: () => void;
   onContinue: (data: PersonalValues) => void;
 }) {
   const isStudent = role === 'STUDENT';
+
+  const personalSchema = useMemo(() => {
+    return z.object({
+      fullname: z.string().min(2, 'Full name is required'),
+      email: z.string().email('Enter a valid email').refine((email) => {
+        if (!allowedEmailDomain) return true;
+        return email.toLowerCase().endsWith(`@${allowedEmailDomain.toLowerCase()}`);
+      }, {
+        message: allowedEmailDomain ? `Email must end with @${allowedEmailDomain}` : 'Invalid email domain',
+      }),
+      departmentId: z.string().min(1, 'Department is required'),
+      level: z.string(),
+      matricNumber: z.string(),
+      staffId: z.string().optional(),
+    }).refine((data) => {
+      if (isStudent && !data.level) return false;
+      return true;
+    }, {
+      path: ['level'],
+      message: 'Level is required',
+    }).refine((data) => {
+      if (isStudent && (!data.matricNumber || data.matricNumber.length < 3)) return false;
+      return true;
+    }, {
+      path: ['matricNumber'],
+      message: 'Matric number is required (at least 3 characters)',
+    });
+  }, [allowedEmailDomain, isStudent]);
 
   const {
     register,
@@ -323,7 +366,8 @@ function PersonalStep({
     watch,
     formState: { errors },
   } = useForm<PersonalValues>({
-    resolver: zodResolver(personalSchema),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    resolver: zodResolver(personalSchema) as any,
     defaultValues: {
       fullname: defaults.fullname ?? '',
       email: defaults.email ?? '',
@@ -364,6 +408,11 @@ function PersonalStep({
             <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input id="email" type="email" className="pl-9" {...register('email')} />
           </div>
+          {allowedEmailDomain && (
+            <p className="text-xs text-muted-foreground">
+              Please register using your school email ending in <span className="font-semibold text-primary">@{allowedEmailDomain}</span>.
+            </p>
+          )}
           {errors.email && (
             <p className="text-xs text-destructive">{errors.email.message}</p>
           )}

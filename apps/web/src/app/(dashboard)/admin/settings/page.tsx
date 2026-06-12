@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { Bell, Lock, Save, Shield, UserCog } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Bell, Lock, Save, Shield, UserCog, Building2, Globe, Sparkles, Laptop, ShieldCheck } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 import { AdminShell } from '@/components/layout/admin-shell';
 import { PageHeader } from '@/components/ui/page-header';
@@ -35,33 +36,94 @@ function initials(n: string): string {
 }
 
 export default function AdminSettingsPage() {
+  const qc = useQueryClient();
   const { user, setAuth, token } = useAuthStore();
+  const [activeTab, setActiveTab] = useState<'branding' | 'security' | 'profile' | 'password'>('branding');
 
-  const [portalName, setPortalName] = useState('EduPortal');
-  const [displayName, setDisplayName] = useState('EduPortal — University Companion');
+  // Portal/Settings states
+  const [portalName, setPortalName] = useState('');
+  const [displayName, setDisplayName] = useState('');
   const [maxLoginAttempts, setMaxLoginAttempts] = useState('5');
   const [sessionExpiry, setSessionExpiry] = useState('24h');
+  const [allowedEmailDomain, setAllowedEmailDomain] = useState('');
 
-  const [profileName, setProfileName] = useState(user?.fullname ?? '');
-  const [profileEmail, setProfileEmail] = useState(user?.email ?? '');
+  // Profile states
+  const [profileName, setProfileName] = useState('');
+  const [profileEmail, setProfileEmail] = useState('');
   const [profilePhone, setProfilePhone] = useState('');
   const [profileBio, setProfileBio] = useState('');
   const [savingProfile, setSavingProfile] = useState(false);
 
+  // Password states
   const [currentPwd, setCurrentPwd] = useState('');
   const [newPwd, setNewPwd] = useState('');
   const [confirmPwd, setConfirmPwd] = useState('');
   const [changingPwd, setChangingPwd] = useState(false);
+
+  const settingsQuery = useQuery({
+    queryKey: ['settings', 'admin'],
+    queryFn: async () => api.get<{
+      portalName: string;
+      displayName: string;
+      maxLoginAttempts: number;
+      sessionExpiry: string;
+      allowedEmailDomain: string;
+    }>('/settings'),
+  });
+
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    if (settingsQuery.data) {
+      setPortalName(settingsQuery.data.portalName || '');
+      setDisplayName(settingsQuery.data.displayName || '');
+      setMaxLoginAttempts(String(settingsQuery.data.maxLoginAttempts ?? '5'));
+      setSessionExpiry(settingsQuery.data.sessionExpiry || '24h');
+      setAllowedEmailDomain(settingsQuery.data.allowedEmailDomain || '');
+    }
+  }, [settingsQuery.data]);
 
   const profileQuery = useQuery({
     queryKey: ['me', 'admin'],
     queryFn: async () => api.get<{ user: typeof user & { phone?: string; bio?: string } }>('/auth/me'),
     enabled: !!user,
   });
-  const latest = profileQuery.data?.user;
+
+  useEffect(() => {
+    if (profileQuery.data?.user) {
+      setProfileName(profileQuery.data.user.fullname || '');
+      setProfileEmail(profileQuery.data.user.email || '');
+      setProfilePhone(profileQuery.data.user.phone || '');
+      setProfileBio(profileQuery.data.user.bio || '');
+    }
+  }, [profileQuery.data]);
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  const settingsMutation = useMutation({
+    mutationFn: async (payload: {
+      portalName: string;
+      displayName: string;
+      maxLoginAttempts: number;
+      sessionExpiry: string;
+      allowedEmailDomain: string;
+    }) => api.patch('/settings', payload),
+    onSuccess: () => {
+      toast.success('System settings saved successfully');
+      qc.invalidateQueries({ queryKey: ['settings'] });
+    },
+    onError: (err: unknown) => toast.error(err instanceof Error ? err.message : 'Could not save settings'),
+  });
 
   async function savePortal() {
-    toast.success('Portal settings saved', { description: `${displayName} · session ${sessionExpiry}, max attempts ${maxLoginAttempts}` });
+    if (!portalName.trim()) { toast.error('Portal name is required'); return; }
+    if (!displayName.trim()) { toast.error('Display name is required'); return; }
+
+    settingsMutation.mutate({
+      portalName,
+      displayName,
+      maxLoginAttempts: Number.parseInt(maxLoginAttempts, 10) || 5,
+      sessionExpiry,
+      allowedEmailDomain,
+    });
   }
 
   async function saveProfile() {
@@ -77,7 +139,7 @@ export default function AdminSettingsPage() {
         bio: profileBio || undefined,
       });
       if (res.user) setAuth(res.user, token ?? '');
-      toast.success('Profile updated');
+      toast.success('Profile updated successfully');
     } catch (e) {
       toast.error((e as Error).message ?? 'Could not update profile');
     } finally {
@@ -90,11 +152,11 @@ export default function AdminSettingsPage() {
     if (newPwd !== confirmPwd) { toast.error('Passwords do not match'); return; }
     setChangingPwd(true);
     try {
-      await api.post('/auth/change-password', {
+      await api.post('/users/me/change-password', {
         currentPassword: currentPwd,
         newPassword: newPwd,
       });
-      toast.success('Password changed. Please log in again.');
+      toast.success('Password changed successfully');
       setCurrentPwd(''); setNewPwd(''); setConfirmPwd('');
     } catch (e) {
       toast.error((e as Error).message ?? 'Could not change password');
@@ -103,207 +165,326 @@ export default function AdminSettingsPage() {
     }
   }
 
+  const tabs = [
+    { id: 'branding', label: 'Portal Identity', icon: Building2, desc: 'Customize system branding and visual identifiers.' },
+    { id: 'security', label: 'Security & Domains', icon: Shield, desc: 'Restrict signups and set security limitations.' },
+    { id: 'profile', label: 'Admin Profile', icon: UserCog, desc: 'Update your personal details and bio.' },
+    { id: 'password', label: 'Authentication', icon: Lock, desc: 'Change your account security password.' },
+  ] as const;
+
   return (
     <AdminShell>
       <PageHeader
-        title="System settings"
-        subtitle="Configure portal identity, security, and your admin profile."
+        title="System Settings"
+        subtitle="Manage portal parameters, registration guidelines, and security policies."
       />
 
-      <div className="mt-6 space-y-6">
-        <Card>
-          <CardHeader>
-            <div className="flex items-start justify-between">
-              <div>
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <Bell className="h-4 w-4 text-purple-600" />
-                  Portal settings
-                </CardTitle>
-                <CardDescription>Visible branding and identity for all users.</CardDescription>
-              </div>
-              <Badge variant="secondary" className="bg-purple-500/10 text-purple-700">Admin</Badge>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label htmlFor="portal-name">Department name</Label>
-                <Input id="portal-name" value={portalName} onChange={(e) => setPortalName(e.target.value)} />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="display-name">Display name</Label>
-                <Input id="display-name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
-              </div>
-            </div>
-            <div className="flex justify-end">
-              <Button onClick={savePortal} className="gap-1.5">
-                <Save className="h-4 w-4" /> Save portal
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-4">
+        {/* Navigation Sidebar */}
+        <div className="flex flex-col gap-2 lg:col-span-1">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            const active = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveTab(tab.id)}
+                className={[
+                  'flex items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-medium transition duration-200',
+                  active
+                    ? 'bg-primary text-primary-foreground shadow-md'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                ].join(' ')}
+              >
+                <Icon className="h-4 w-4 shrink-0" />
+                <div className="min-w-0">
+                  <p className="truncate">{tab.label}</p>
+                </div>
+              </button>
+            );
+          })}
+        </div>
 
-        <Card>
-          <CardHeader>
-            <div className="flex items-start justify-between">
-              <div>
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <Shield className="h-4 w-4 text-purple-600" />
-                  Security
-                </CardTitle>
-                <CardDescription>Login thresholds and session lifetime.</CardDescription>
-              </div>
-              <Badge variant="secondary" className="bg-purple-500/10 text-purple-700">Global</Badge>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label htmlFor="max-attempts">Max login attempts</Label>
-                <Input
-                  id="max-attempts"
-                  type="number"
-                  min={3}
-                  max={10}
-                  value={maxLoginAttempts}
-                  onChange={(e) => setMaxLoginAttempts(e.target.value)}
-                />
-                <p className="text-[10px] text-muted-foreground">After this many failures, the account is suspended.</p>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="session-expiry">Session expiry</Label>
-                <Select value={sessionExpiry} onValueChange={setSessionExpiry}>
-                  <SelectTrigger id="session-expiry" className="h-9 w-full"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {SESSION_OPTIONS.map((o) => (
-                      <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-[10px] text-muted-foreground">Active session length before re-authentication.</p>
-              </div>
-            </div>
-            <div className="flex justify-end">
-              <Button onClick={savePortal} variant="outline" className="gap-1.5">
-                <Save className="h-4 w-4" /> Save security
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <div className="flex items-start justify-between">
-              <div>
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <UserCog className="h-4 w-4 text-purple-600" />
-                  Admin profile
-                </CardTitle>
-                <CardDescription>Update your own display information.</CardDescription>
-              </div>
-              {user?.role && (
-                <Badge variant="secondary" className="bg-purple-500/10 text-purple-700">{user.role}</Badge>
+        {/* Form Content Area */}
+        <div className="lg:col-span-3">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+            >
+              {activeTab === 'branding' && (
+                <Card className="border border-border/40 shadow-lg">
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <CardTitle className="flex items-center gap-2 text-lg font-semibold">
+                          <Building2 className="h-5 w-5 text-primary" />
+                          Portal Identity Settings
+                        </CardTitle>
+                        <CardDescription>Configure branding shown across the application headers and landing page.</CardDescription>
+                      </div>
+                      <Badge variant="secondary" className="bg-primary/10 text-primary">System</Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    {settingsQuery.isLoading ? (
+                      <div className="space-y-4">
+                        <Skeleton className="h-10 w-full" />
+                        <Skeleton className="h-10 w-full" />
+                      </div>
+                    ) : (
+                      <div className="grid gap-6 sm:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label htmlFor="portal-name">Portal Short Name</Label>
+                          <Input
+                            id="portal-name"
+                            value={portalName}
+                            onChange={(e) => setPortalName(e.target.value)}
+                            placeholder="e.g. EduPortal"
+                          />
+                          <p className="text-[11px] text-muted-foreground">Used in sidebar and navigation links.</p>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="display-name">Portal Full Display Name</Label>
+                          <Input
+                            id="display-name"
+                            value={displayName}
+                            onChange={(e) => setDisplayName(e.target.value)}
+                            placeholder="e.g. EduPortal — University Companion"
+                          />
+                          <p className="text-[11px] text-muted-foreground">Used on login pages and emails.</p>
+                        </div>
+                      </div>
+                    )}
+                    <div className="flex justify-end border-t pt-4">
+                      <Button onClick={savePortal} disabled={settingsMutation.isPending} className="gap-2">
+                        <Save className="h-4 w-4" /> Save Branding
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
               )}
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center gap-3">
-              {profileQuery.isLoading && !latest ? (
-                <Skeleton className="h-14 w-14 rounded-full" />
-              ) : (
-                <Avatar className="h-14 w-14">
-                  <AvatarFallback className="bg-purple-500/10 text-base text-purple-700">
-                    {initials(latest?.fullname ?? profileName ?? user?.fullname ?? '?')}
-                  </AvatarFallback>
-                </Avatar>
-              )}
-              <div>
-                <p className="font-medium">{latest?.fullname ?? profileName ?? 'Admin'}</p>
-                <p className="text-xs text-muted-foreground">{latest?.email ?? profileEmail ?? '—'}</p>
-              </div>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label htmlFor="profile-name">Full name</Label>
-                <Input
-                  id="profile-name"
-                  value={profileName}
-                  onChange={(e) => setProfileName(e.target.value)}
-                  key={`name-${latest?.id ?? 'init'}`}
-                  defaultValue={latest?.fullname ?? user?.fullname ?? ''}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="profile-email">Email</Label>
-                <Input
-                  id="profile-email"
-                  type="email"
-                  value={profileEmail}
-                  onChange={(e) => setProfileEmail(e.target.value)}
-                  key={`email-${latest?.id ?? 'init'}`}
-                  defaultValue={latest?.email ?? user?.email ?? ''}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="profile-phone">Phone</Label>
-                <Input
-                  id="profile-phone"
-                  value={profilePhone}
-                  onChange={(e) => setProfilePhone(e.target.value)}
-                  key={`phone-${latest?.id ?? 'init'}`}
-                  defaultValue={latest?.phone ?? ''}
-                />
-              </div>
-              <div className="space-y-1.5 sm:col-span-2">
-                <Label htmlFor="profile-bio">Bio</Label>
-                <Input
-                  id="profile-bio"
-                  value={profileBio}
-                  onChange={(e) => setProfileBio(e.target.value)}
-                  placeholder="Short bio shown in the team page"
-                  key={`bio-${latest?.id ?? 'init'}`}
-                  defaultValue={latest?.bio ?? ''}
-                />
-              </div>
-            </div>
-            <div className="flex justify-end">
-              <Button onClick={saveProfile} disabled={savingProfile} className="gap-1.5">
-                <Save className="h-4 w-4" /> {savingProfile ? 'Saving…' : 'Save profile'}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Lock className="h-4 w-4 text-purple-600" />
-              Change password
-            </CardTitle>
-            <CardDescription>You will be asked to log in again after a successful change.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="current-pwd">Current password</Label>
-                <Input id="current-pwd" type="password" value={currentPwd} onChange={(e) => setCurrentPwd(e.target.value)} />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="new-pwd">New password</Label>
-                <Input id="new-pwd" type="password" value={newPwd} onChange={(e) => setNewPwd(e.target.value)} />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="confirm-pwd">Confirm</Label>
-                <Input id="confirm-pwd" type="password" value={confirmPwd} onChange={(e) => setConfirmPwd(e.target.value)} />
-              </div>
-            </div>
-            <div className="flex justify-end">
-              <Button onClick={changePassword} disabled={changingPwd} className="gap-1.5">
-                <Lock className="h-4 w-4" /> {changingPwd ? 'Changing…' : 'Change password'}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+              {activeTab === 'security' && (
+                <Card className="border border-border/40 shadow-lg">
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <CardTitle className="flex items-center gap-2 text-lg font-semibold">
+                          <Shield className="h-5 w-5 text-primary" />
+                          Security & Email Domain Rules
+                        </CardTitle>
+                        <CardDescription>Configure registration security policy and session durations.</CardDescription>
+                      </div>
+                      <Badge variant="secondary" className="bg-rose-500/10 text-rose-700">Security</Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    {settingsQuery.isLoading ? (
+                      <div className="space-y-4">
+                        <Skeleton className="h-10 w-full" />
+                        <Skeleton className="h-10 w-full" />
+                        <Skeleton className="h-10 w-full" />
+                      </div>
+                    ) : (
+                      <div className="space-y-6">
+                        <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-4 flex gap-3">
+                          <Globe className="h-5 w-5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+                          <div>
+                            <h4 className="font-semibold text-sm">School Email Domain Enforcement</h4>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              Enforces email validation on registration. If configured, users can only sign up if their email address ends with the specified domain. Keep empty to allow all email addresses.
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="allowed-domain">Allowed Email Domain</Label>
+                          <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground font-semibold">@</span>
+                            <Input
+                              id="allowed-domain"
+                              className="pl-7 font-mono"
+                              value={allowedEmailDomain}
+                              onChange={(e) => setAllowedEmailDomain(e.target.value)}
+                              placeholder="e.g. eduportal.com"
+                            />
+                          </div>
+                          <p className="text-[11px] text-muted-foreground">Example domain: `eduportal.com` or `university.edu`.</p>
+                        </div>
+
+                        <div className="grid gap-6 sm:grid-cols-2">
+                          <div className="space-y-2">
+                            <Label htmlFor="max-attempts">Max Login Attempts</Label>
+                            <Input
+                              id="max-attempts"
+                              type="number"
+                              min={3}
+                              max={10}
+                              value={maxLoginAttempts}
+                              onChange={(e) => setMaxLoginAttempts(e.target.value)}
+                            />
+                            <p className="text-[11px] text-muted-foreground">Accounts are temporarily locked after this many failures.</p>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="session-expiry">Session Timeout Limit</Label>
+                            <Select value={sessionExpiry} onValueChange={setSessionExpiry}>
+                              <SelectTrigger id="session-expiry" className="h-10"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                {SESSION_OPTIONS.map((o) => (
+                                  <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <p className="text-[11px] text-muted-foreground">Maximum login duration without user interaction.</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    <div className="flex justify-end border-t pt-4">
+                      <Button onClick={savePortal} disabled={settingsMutation.isPending} className="gap-2">
+                        <Save className="h-4 w-4" /> Save Security
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {activeTab === 'profile' && (
+                <Card className="border border-border/40 shadow-lg">
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <CardTitle className="flex items-center gap-2 text-lg font-semibold">
+                          <UserCog className="h-5 w-5 text-primary" />
+                          Administrator Profile
+                        </CardTitle>
+                        <CardDescription>Manage your administrative profile fields and visible identifiers.</CardDescription>
+                      </div>
+                      <Badge variant="secondary" className="bg-primary/10 text-primary">Profile</Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="flex items-center gap-4">
+                      {profileQuery.isLoading ? (
+                        <Skeleton className="h-16 w-16 rounded-full" />
+                      ) : (
+                        <Avatar className="h-16 w-16 ring-2 ring-primary/20">
+                          <AvatarFallback className="bg-primary/10 text-lg font-semibold text-primary">
+                            {initials(profileName || user?.fullname || 'Admin')}
+                          </AvatarFallback>
+                        </Avatar>
+                      )}
+                      <div>
+                        <h4 className="font-semibold text-base">{profileName || 'Administrator'}</h4>
+                        <p className="text-xs text-muted-foreground">Admin Account</p>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-6 sm:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="profile-name">Full Name</Label>
+                        <Input
+                          id="profile-name"
+                          value={profileName}
+                          onChange={(e) => setProfileName(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="profile-email">Email Address</Label>
+                        <Input
+                          id="profile-email"
+                          type="email"
+                          value={profileEmail}
+                          onChange={(e) => setProfileEmail(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2 sm:col-span-2">
+                        <Label htmlFor="profile-phone">Phone Number (Optional)</Label>
+                        <Input
+                          id="profile-phone"
+                          value={profilePhone}
+                          onChange={(e) => setProfilePhone(e.target.value)}
+                          placeholder="e.g. +1 (555) 000-0000"
+                        />
+                      </div>
+                      <div className="space-y-2 sm:col-span-2">
+                        <Label htmlFor="profile-bio">Administrative Bio</Label>
+                        <Input
+                          id="profile-bio"
+                          value={profileBio}
+                          onChange={(e) => setProfileBio(e.target.value)}
+                          placeholder="Provide a brief bio describing your administrative role"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end border-t pt-4">
+                      <Button onClick={saveProfile} disabled={savingProfile} className="gap-2">
+                        <Save className="h-4 w-4" /> {savingProfile ? 'Saving...' : 'Save Profile'}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {activeTab === 'password' && (
+                <Card className="border border-border/40 shadow-lg">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-lg font-semibold">
+                      <Lock className="h-5 w-5 text-primary" />
+                      Update Administrator Password
+                    </CardTitle>
+                    <CardDescription>Ensure your account security by modifying your credential password periodically.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="grid gap-6 sm:grid-cols-3">
+                      <div className="space-y-2">
+                        <Label htmlFor="current-pwd">Current Password</Label>
+                        <Input
+                          id="current-pwd"
+                          type="password"
+                          value={currentPwd}
+                          onChange={(e) => setCurrentPwd(e.target.value)}
+                          placeholder="••••••••"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="new-pwd">New Password</Label>
+                        <Input
+                          id="new-pwd"
+                          type="password"
+                          value={newPwd}
+                          onChange={(e) => setNewPwd(e.target.value)}
+                          placeholder="••••••••"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="confirm-pwd">Confirm New Password</Label>
+                        <Input
+                          id="confirm-pwd"
+                          type="password"
+                          value={confirmPwd}
+                          onChange={(e) => setConfirmPwd(e.target.value)}
+                          placeholder="••••••••"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex justify-end border-t pt-4">
+                      <Button onClick={changePassword} disabled={changingPwd} className="gap-2">
+                        <Lock className="h-4 w-4" /> {changingPwd ? 'Updating...' : 'Update Password'}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </motion.div>
+          </AnimatePresence>
+        </div>
       </div>
     </AdminShell>
   );

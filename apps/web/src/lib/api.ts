@@ -54,13 +54,13 @@ axiosInstance.interceptors.response.use(
     let fieldErrors: Record<string, string[]> | undefined = undefined;
 
     if (error.response?.data) {
-      const responseData = error.response.data as any;
+      const responseData = error.response.data as Record<string, unknown>;
       if (responseData && typeof responseData === 'object') {
-        if ('message' in responseData && responseData.message) {
+        if ('message' in responseData && typeof responseData.message === 'string') {
           message = responseData.message;
         }
         if ('errors' in responseData && responseData.errors) {
-          fieldErrors = responseData.errors;
+          fieldErrors = responseData.errors as Record<string, string[]>;
         }
       }
     }

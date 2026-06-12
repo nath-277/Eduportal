@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Eye,
+  KeyRound,
   Loader2,
   Pencil,
   Plus,
@@ -130,6 +131,7 @@ export default function AdminUsersPage() {
   const [editing, setEditing] = useState<User | null>(null);
   const [adding, setAdding] = useState(false);
   const [viewing, setViewing] = useState<User | null>(null);
+  const [resettingPasswordUser, setResettingPasswordUser] = useState<User | null>(null);
 
   useState(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 300);
@@ -272,6 +274,14 @@ export default function AdminUsersPage() {
               className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground"
             >
               <Pencil className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
+              aria-label="Reset password"
+              onClick={() => setResettingPasswordUser(u)}
+              className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground"
+            >
+              <KeyRound className="h-3.5 w-3.5" />
             </button>
             <button
               type="button"
@@ -425,7 +435,135 @@ export default function AdminUsersPage() {
       {viewing ? (
         <ViewUserDialog user={viewing} onClose={() => setViewing(null)} />
       ) : null}
+
+      {resettingPasswordUser ? (
+        <ResetPasswordDialog
+          user={resettingPasswordUser}
+          onClose={() => setResettingPasswordUser(null)}
+        />
+      ) : null}
     </AdminShell>
+  );
+}
+
+function ResetPasswordDialog({
+  user,
+  onClose,
+}: {
+  user: User;
+  onClose: () => void;
+}) {
+  const [password, setPassword] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [success, setSuccess] = useState(false);
+
+  function generatePassword() {
+    const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const lowercase = 'abcdefghijklmnopqrstuvwxyz';
+    const numbers = '0123456789';
+    const special = '!@#$%^&*()_+';
+    const all = uppercase + lowercase + numbers + special;
+
+    let res = '';
+    res += uppercase[Math.floor(Math.random() * uppercase.length)];
+    res += lowercase[Math.floor(Math.random() * lowercase.length)];
+    res += numbers[Math.floor(Math.random() * numbers.length)];
+    res += special[Math.floor(Math.random() * special.length)];
+
+    for (let i = 0; i < 8; i++) {
+      res += all[Math.floor(Math.random() * all.length)];
+    }
+    setPassword(res);
+  }
+
+  async function handleReset(e: React.FormEvent) {
+    e.preventDefault();
+    if (password.length < 8) {
+      toast.error('Password must be at least 8 characters long');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await api.post(`/users/${user.id}/reset-password`, { password });
+      toast.success("User's password reset successfully");
+      setSuccess(true);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Reset failed');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  function handleCopy() {
+    navigator.clipboard.writeText(password);
+    setCopied(true);
+    toast.success('Password copied to clipboard');
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  return (
+    <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Reset password</DialogTitle>
+          <DialogDescription>
+            Reset password for <span className="font-semibold text-foreground">{user.fullname}</span> ({user.email}).
+          </DialogDescription>
+        </DialogHeader>
+
+        {success ? (
+          <div className="space-y-4 py-2">
+            <div className="rounded-lg border bg-emerald-500/10 p-4 text-emerald-800 dark:text-emerald-300">
+              Password has been updated successfully. Please copy the new password and share it with the user securely.
+            </div>
+            <div className="flex items-center gap-2 rounded-lg border bg-muted p-3">
+              <span className="flex-1 select-all font-mono text-sm">{password}</span>
+              <Button size="sm" variant="outline" onClick={handleCopy}>
+                {copied ? 'Copied!' : 'Copy'}
+              </Button>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" className="w-full" onClick={onClose}>
+                Done
+              </Button>
+            </DialogFooter>
+          </div>
+        ) : (
+          <form onSubmit={handleReset} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="new-password">New password</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="new-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter custom password"
+                  className="font-mono text-sm"
+                  required
+                />
+                <Button type="button" variant="outline" onClick={generatePassword}>
+                  Generate
+                </Button>
+              </div>
+              <p className="text-[10px] text-muted-foreground">
+                Must be at least 8 characters and contain 1 uppercase letter, 1 lowercase letter, and 1 number.
+              </p>
+            </div>
+
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button type="button" variant="ghost" onClick={onClose}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={submitting || !password}>
+                {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                Reset password
+              </Button>
+            </DialogFooter>
+          </form>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
 
