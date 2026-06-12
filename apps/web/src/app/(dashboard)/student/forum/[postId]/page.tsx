@@ -265,7 +265,7 @@ function PostDetailView({ postId }: { postId: string }) {
   const isLecturer = post.author.role === 'LECTURER';
 
   return (
-    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="max-w-3xl mx-auto space-y-6">
       <div>
         <Button variant="ghost" size="sm" asChild className="-ml-2">
           <Link href="/student/forum">
