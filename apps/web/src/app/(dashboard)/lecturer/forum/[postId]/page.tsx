@@ -62,6 +62,7 @@ interface ForumPostDetail {
   createdAt: string;
   author: Author;
   replies: ForumReply[];
+  community?: { id: string; name: string; displayName: string };
 }
 
 interface ReplyForm {
@@ -355,6 +356,14 @@ function PostDetailView({ postId }: { postId: string }) {
                         Lecturer
                       </Badge>
                     ) : null}
+                    {post.community && (
+                      <Badge
+                        variant="secondary"
+                        className="text-[10px] bg-primary/5 text-primary border-primary/10"
+                      >
+                        r/{post.community.name}
+                      </Badge>
+                    )}
                     {post.isPinned ? (
                       <Badge variant="secondary" className="gap-1 text-[10px]">
                         <Pin className="h-3 w-3" />

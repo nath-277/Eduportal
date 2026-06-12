@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { prisma } from '../lib/prisma.js';
 import { authenticate } from '../middleware/auth.js';
 import { writeAudit } from '../lib/audit.js';
+import type { Prisma } from '@prisma/client';
 import { parsePagination, paginated } from '../lib/pagination.js';
 import { forbidden, notFound, ok, serverError } from '../lib/response.js';
 import { uploadBase64, isCloudinaryConfigured } from '../lib/cloudinary.js';
@@ -38,7 +39,7 @@ forumRouter.get('/posts', authenticate, async (c) => {
     String(query.limit ?? '')
   );
 
-  const where: Record<string, any> = {};
+  const where: Prisma.ForumPostWhereInput = {};
   if (query.tag) where.tags = { has: query.tag };
   if (query.search) {
     where.OR = [

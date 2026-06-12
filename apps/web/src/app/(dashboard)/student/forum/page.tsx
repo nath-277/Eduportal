@@ -7,6 +7,10 @@ import { motion } from 'framer-motion';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import {
+  Menu,
+  Info,
+  TrendingUp,
+  Home,
   Heart,
   Image as ImageIcon,
   Loader2,
@@ -45,6 +49,12 @@ import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth.store';
 import type { UserRole } from '@eduportal/shared';
 
+// Forum Components
+import { CreateCommunityRequestSheet } from '@/components/forum/create-community-request-sheet';
+import { JoinPrivateCommunityModal } from '@/components/forum/join-private-community-modal';
+import { ModeratorModal } from '@/components/forum/moderator-modal';
+import { AdminRequestsModal } from '@/components/forum/admin-requests-modal';
+
 interface ForumPost {
   id: string;
   title: string;
@@ -56,6 +66,7 @@ interface ForumPost {
   imageUrl?: string;
   createdAt: string;
   author: { id: string; fullname: string; avatarUrl: string | null; role: UserRole };
+  community?: { id: string; name: string; displayName: string };
 }
 
 interface Paginated<T> {
@@ -95,34 +106,100 @@ function initials(name: string): string {
     .join('');
 }
 
-function categoryForPost(tags: string[]): CategoryFilter {
-  if (tags.some((t) => t.toLowerCase().includes('question'))) return 'questions';
-  if (tags.some((t) => t.toLowerCase().includes('resource'))) return 'resources';
-  if (tags.some((t) => t.toLowerCase().includes('announcement'))) return 'announcements';
-  return 'general';
+interface CommunityItem {
+  id: string;
+  name: string;
+  displayName: string;
+  description: string | null;
+  isPrivate: boolean;
+  isSystem: boolean;
+  role: 'MEMBER' | 'MODERATOR';
+  memberCount: number;
+  createdAt: string;
+}
+
+interface DiscoverCommunityItem {
+  id: string;
+  name: string;
+  displayName: string;
+  description: string | null;
+  isSystem: boolean;
+  memberCount: number;
+  createdAt: string;
+}
+
+interface CommunityDetail {
+  id: string;
+  name: string;
+  displayName: string;
+  description: string | null;
+  isPrivate: boolean;
+  isSystem: boolean;
+  level: string | null;
+  departmentId: string | null;
+  creatorId: string | null;
+  memberRole: 'MEMBER' | 'MODERATOR' | null;
+  isMember: boolean;
+  hasPendingRequest: boolean;
+  memberCount: number;
+  joinQuestions: Array<{ id: string; question: string }>;
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface CreateForm {
   title: string;
   body: string;
   tags: string;
+  communityId: string;
 }
 
-function CreatePostSheet({ onCreated }: { onCreated: () => void }) {
+function CreatePostSheet({
+  defaultCommunityId,
+  onCreated,
+}: {
+  defaultCommunityId?: string;
+  onCreated: () => void;
+}) {
   const [open, setOpen] = useState(false);
   const [tagChips, setTagChips] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
-  const { register, handleSubmit, reset, watch, formState: { errors } } = useForm<CreateForm>({
-    defaultValues: { title: '', body: '', tags: '' },
+  const {
+    register,
+    handleSubmit,
+    reset,
+    watch,
+    setValue,
+    formState: { errors },
+  } = useForm<CreateForm>({
+    defaultValues: { title: '', body: '', tags: '', communityId: defaultCommunityId ?? '' },
   });
+
+  useEffect(() => {
+    if (open) {
+      setValue('communityId', defaultCommunityId ?? '');
+    }
+  }, [open, defaultCommunityId, setValue]);
 
   const body = watch('body') ?? '';
   const title = watch('title') ?? '';
 
+  const { data: joinedCommunities = [] } = useQuery({
+    queryKey: ['joined-communities'],
+    queryFn: async () => api.get<CommunityItem[]>('/communities'),
+    enabled: open,
+  });
+
   const createMutation = useMutation({
-    mutationFn: async (input: { title: string; body: string; tags: string[]; imageUrl?: string }) => {
+    mutationFn: async (input: {
+      title: string;
+      body: string;
+      tags: string[];
+      imageUrl?: string;
+      communityId?: string;
+    }) => {
       return api.post<ForumPost>('/forum/posts', input);
     },
     onSuccess: () => {
@@ -180,13 +257,14 @@ function CreatePostSheet({ onCreated }: { onCreated: () => void }) {
           .split(',')
           .map((s) => s.trim().toLowerCase().replace(/[^a-z0-9-]/g, ''))
           .filter(Boolean),
-      ]),
+      ])
     );
     createMutation.mutate({
       title: values.title.trim(),
       body: values.body.trim(),
       tags,
       imageUrl: imagePreview ?? undefined,
+      communityId: values.communityId || undefined,
     });
   }
 
@@ -207,18 +285,35 @@ function CreatePostSheet({ onCreated }: { onCreated: () => void }) {
       >
         <SheetHeader>
           <SheetTitle>New discussion</SheetTitle>
-          <SheetDescription>
-            Ask a question, share a resource, or start a thread.
-          </SheetDescription>
+          <SheetDescription>Ask a question, share a resource, or start a thread.</SheetDescription>
         </SheetHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 px-4 pb-6">
+          <div className="space-y-1.5">
+            <Label htmlFor="post-community">Post to Community</Label>
+            <select
+              id="post-community"
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              {...register('communityId')}
+            >
+              <option value="">General (Global Feed)</option>
+              {joinedCommunities.map((c) => (
+                <option key={c.id} value={c.id}>
+                  r/{c.name} - {c.displayName}
+                </option>
+              ))}
+            </select>
+          </div>
+
           <div className="space-y-1.5">
             <Label htmlFor="title">Title</Label>
             <Input
               id="title"
               placeholder="What's on your mind?"
-              {...register('title', { required: 'Title is required', minLength: { value: 5, message: 'At least 5 characters' } })}
+              {...register('title', {
+                required: 'Title is required',
+                minLength: { value: 5, message: 'At least 5 characters' },
+              })}
               aria-invalid={!!errors.title}
             />
             {errors.title ? <p className="text-xs text-destructive">{errors.title.message}</p> : null}
@@ -232,7 +327,10 @@ function CreatePostSheet({ onCreated }: { onCreated: () => void }) {
               id="body"
               rows={5}
               placeholder="Share the details..."
-              {...register('body', { required: 'Body is required', minLength: { value: 20, message: 'At least 20 characters' } })}
+              {...register('body', {
+                required: 'Body is required',
+                minLength: { value: 20, message: 'At least 20 characters' },
+              })}
               aria-invalid={!!errors.body}
             />
             {errors.body ? <p className="text-xs text-destructive">{errors.body.message}</p> : null}
@@ -242,11 +340,7 @@ function CreatePostSheet({ onCreated }: { onCreated: () => void }) {
             <Label>Attach Image</Label>
             {imagePreview ? (
               <div className="relative mt-1 aspect-[16/10] w-full overflow-hidden rounded-xl border border-border bg-muted/30">
-                <img
-                  src={imagePreview}
-                  alt="Attachment preview"
-                  className="h-full w-full object-cover"
-                />
+                <img src={imagePreview} alt="Attachment preview" className="h-full w-full object-cover" />
                 <Button
                   type="button"
                   size="icon"
@@ -268,9 +362,7 @@ function CreatePostSheet({ onCreated }: { onCreated: () => void }) {
                 <span className="mt-2 text-xs font-medium text-muted-foreground group-hover:text-primary transition">
                   Click to upload an image
                 </span>
-                <span className="text-[10px] text-muted-foreground/70">
-                  PNG, JPG, GIF up to 5MB
-                </span>
+                <span className="text-[10px] text-muted-foreground/70">PNG, JPG, GIF up to 5MB</span>
                 <input
                   id="image-upload-student"
                   type="file"
@@ -319,9 +411,7 @@ function CreatePostSheet({ onCreated }: { onCreated: () => void }) {
                 ))}
               </div>
             ) : null}
-            <p className="text-xs text-muted-foreground">
-              Or separate tags with commas in the field above.
-            </p>
+            <p className="text-xs text-muted-foreground">Or separate tags with commas in the field above.</p>
           </div>
 
           <div className="flex items-center justify-end gap-2 pt-2">
@@ -341,28 +431,90 @@ function CreatePostSheet({ onCreated }: { onCreated: () => void }) {
   );
 }
 
+
 export default function StudentForumPage() {
   const user = useAuthStore((s) => s.user);
   const qc = useQueryClient();
   const [filter, setFilter] = useState<CategoryFilter>('ALL');
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [activeCommunityId, setActiveCommunityId] = useState<string>('');
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search.trim()), 300);
     return () => clearTimeout(t);
   }, [search]);
 
+  // Query: Joined Communities
+  const joinedQuery = useQuery({
+    queryKey: ['joined-communities'],
+    queryFn: async () => api.get<CommunityItem[]>('/communities'),
+  });
+
+  // Query: Discoverable Communities
+  const discoverQuery = useQuery({
+    queryKey: ['discover-communities'],
+    queryFn: async () => api.get<DiscoverCommunityItem[]>('/communities/discover'),
+  });
+
+  // Query: Active Community Details
+  const activeCommunityQuery = useQuery({
+    queryKey: ['community', activeCommunityId],
+    queryFn: async () => api.get<CommunityDetail>(`/communities/${activeCommunityId}`),
+    enabled: !!activeCommunityId && activeCommunityId !== 'popular',
+  });
+
+  // Query: Posts Feed
   const postsQuery = useQuery({
-    queryKey: ['forum', 'posts', filter, debouncedSearch],
+    queryKey: ['forum', 'posts', activeCommunityId, filter, debouncedSearch],
     queryFn: async () => {
       const params = new URLSearchParams();
       const cat = CATEGORIES.find((c) => c.value === filter);
       if (cat?.tag) params.set('tag', cat.tag);
       if (debouncedSearch) params.set('search', debouncedSearch);
+
+      if (activeCommunityId === 'popular') {
+        params.set('popular', 'true');
+      } else if (activeCommunityId) {
+        params.set('communityId', activeCommunityId);
+      }
+
       params.set('limit', '30');
       const data = await api.get<Paginated<ForumPost>>(`/forum/posts?${params.toString()}`);
       return data;
+    },
+  });
+
+  // Mutation: Join Public Community
+  const joinMutation = useMutation({
+    mutationFn: async (id: string) => api.post(`/communities/${id}/join`, {}),
+    onSuccess: () => {
+      toast.success('Joined community successfully!');
+      qc.invalidateQueries({ queryKey: ['joined-communities'] });
+      qc.invalidateQueries({ queryKey: ['discover-communities'] });
+      qc.invalidateQueries({ queryKey: ['forum', 'posts'] });
+      if (activeCommunityId) {
+        qc.invalidateQueries({ queryKey: ['community', activeCommunityId] });
+      }
+    },
+    onError: (err: unknown) => {
+      toast.error(err instanceof Error ? err.message : 'Failed to join');
+    },
+  });
+
+  // Mutation: Leave Community
+  const leaveMutation = useMutation({
+    mutationFn: async (id: string) => api.post(`/communities/${id}/leave`, {}),
+    onSuccess: () => {
+      toast.success('Left community successfully.');
+      qc.invalidateQueries({ queryKey: ['joined-communities'] });
+      qc.invalidateQueries({ queryKey: ['discover-communities'] });
+      qc.invalidateQueries({ queryKey: ['forum', 'posts'] });
+      setActiveCommunityId('');
+      setFilter('ALL');
+    },
+    onError: (err: unknown) => {
+      toast.error(err instanceof Error ? err.message : 'Failed to leave');
     },
   });
 
@@ -372,16 +524,14 @@ export default function StudentForumPage() {
     },
     onSuccess: (data, id) => {
       qc.setQueryData<Paginated<ForumPost> | undefined>(
-        ['forum', 'posts', filter, debouncedSearch],
+        ['forum', 'posts', activeCommunityId, filter, debouncedSearch],
         (prev) => {
           if (!prev) return prev;
           return {
             ...prev,
-            data: prev.data.map((p) =>
-              p.id === id ? { ...p, likesCount: data.likesCount } : p,
-            ),
+            data: prev.data.map((p) => (p.id === id ? { ...p, likesCount: data.likesCount } : p)),
           };
-        },
+        }
       );
     },
     onError: (err: unknown) => {
@@ -389,12 +539,291 @@ export default function StudentForumPage() {
     },
   });
 
+  const joinedCommunities = joinedQuery.data ?? [];
+  const discoverCommunities = discoverQuery.data ?? [];
   const posts = postsQuery.data?.data ?? [];
+
+  // Left Sidebar Render Function
+  const renderLeftSidebar = () => (
+    <div className="space-y-5">
+      <div className="space-y-1">
+        <Button
+          variant={!activeCommunityId ? 'secondary' : 'ghost'}
+          className="w-full justify-start gap-2.5 h-10 px-3 font-semibold"
+          onClick={() => {
+            setActiveCommunityId('');
+            setFilter('ALL');
+          }}
+        >
+          <Home className="h-4.5 w-4.5 text-primary" />
+          Home Feed
+        </Button>
+        <Button
+          variant={activeCommunityId === 'popular' ? 'secondary' : 'ghost'}
+          className="w-full justify-start gap-2.5 h-10 px-3 font-semibold"
+          onClick={() => {
+            setActiveCommunityId('popular');
+            setFilter('ALL');
+          }}
+        >
+          <TrendingUp className="h-4.5 w-4.5 text-primary" />
+          Popular Feed
+        </Button>
+      </div>
+
+      {user?.role === 'ADMIN' && (
+        <div className="pt-2 border-t">
+          <AdminRequestsModal />
+        </div>
+      )}
+
+      <div className="pt-2 border-t space-y-1.5">
+        <div className="flex items-center justify-between px-3 py-1">
+          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            Communities
+          </span>
+          <CreateCommunityRequestSheet />
+        </div>
+        <div className="space-y-0.5">
+          {joinedQuery.isLoading ? (
+            Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-9 w-full rounded-lg" />)
+          ) : joinedCommunities.length === 0 ? (
+            <p className="text-xs text-muted-foreground px-3 py-1 italic">No communities joined yet.</p>
+          ) : (
+            joinedCommunities.map((c) => (
+              <Button
+                key={c.id}
+                variant={activeCommunityId === c.id || activeCommunityId === c.name ? 'secondary' : 'ghost'}
+                className="w-full justify-start gap-2 h-9 px-3 text-sm font-medium"
+                onClick={() => {
+                  setActiveCommunityId(c.id);
+                  setFilter('ALL');
+                }}
+              >
+                <span className="font-bold text-primary/70">r/</span>
+                <span className="truncate">{c.displayName}</span>
+              </Button>
+            ))
+          )}
+        </div>
+      </div>
+
+      <div className="pt-2 border-t space-y-2">
+        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3 block">
+          Discover
+        </span>
+        <div className="space-y-1">
+          {discoverQuery.isLoading ? (
+            Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-10 w-full rounded-lg" />)
+          ) : discoverCommunities.length === 0 ? (
+            <p className="text-xs text-muted-foreground px-3 py-1 italic">No public communities to join.</p>
+          ) : (
+            discoverCommunities.map((c) => (
+              <div
+                key={c.id}
+                className="flex items-center justify-between gap-2 p-1.5 px-3 rounded-lg hover:bg-muted/40 transition"
+              >
+                <button
+                  type="button"
+                  className="flex-1 text-left text-sm truncate font-medium hover:underline focus:outline-none"
+                  onClick={() => {
+                    setActiveCommunityId(c.id);
+                    setFilter('ALL');
+                  }}
+                >
+                  r/{c.name}
+                </button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 px-2.5 text-xs font-semibold shrink-0"
+                  onClick={() => joinMutation.mutate(c.id)}
+                  disabled={joinMutation.isPending}
+                >
+                  Join
+                </Button>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
+  // Right Sidebar Render Function
+  const renderRightSidebar = () => {
+    if (activeCommunityId && activeCommunityId !== 'popular') {
+      const community = activeCommunityQuery.data;
+      if (activeCommunityQuery.isLoading) {
+        return (
+          <Card>
+            <CardContent className="p-4 space-y-3">
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-8 w-full" />
+            </CardContent>
+          </Card>
+        );
+      }
+      if (!community) return null;
+
+      const isMember = community.isMember;
+      const isMod = community.memberRole === 'MODERATOR';
+
+      return (
+        <div className="space-y-4">
+          <Card className="border border-border/80 shadow-sm">
+            <CardContent className="p-4 space-y-4">
+              <div>
+                <h3 className="font-bold text-base text-foreground">r/{community.name}</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">{community.displayName}</p>
+              </div>
+
+              {community.description && (
+                <p className="text-xs text-muted-foreground leading-relaxed bg-muted/20 p-2.5 rounded-lg border">
+                  {community.description}
+                </p>
+              )}
+
+              <div className="flex items-center justify-between text-xs py-2.5 border-y">
+                <span className="text-muted-foreground">Members:</span>
+                <span className="font-semibold text-foreground">{community.memberCount || 1}</span>
+              </div>
+
+              <div className="space-y-2 pt-1">
+                {isMember ? (
+                  <>
+                    {!community.isSystem && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full text-destructive border-destructive/20 hover:bg-destructive/10"
+                        onClick={() => leaveMutation.mutate(community.id)}
+                        disabled={leaveMutation.isPending}
+                      >
+                        Leave Community
+                      </Button>
+                    )}
+                    {community.isSystem && (
+                      <p className="text-[10px] text-center text-muted-foreground italic">
+                        System community. Members are managed automatically.
+                      </p>
+                    )}
+                  </>
+                ) : community.isPrivate ? (
+                  community.hasPendingRequest ? (
+                    <Button className="w-full" disabled variant="outline">
+                      Request Pending
+                    </Button>
+                  ) : (
+                    <JoinPrivateCommunityModal
+                      communityId={community.id}
+                      communityName={community.name}
+                      questions={community.joinQuestions || []}
+                    />
+                  )
+                ) : (
+                  <Button
+                    className="w-full"
+                    onClick={() => joinMutation.mutate(community.id)}
+                    disabled={joinMutation.isPending}
+                  >
+                    Join Community
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {isMod && (
+            <ModeratorModal
+              communityId={community.id}
+              communityName={community.name}
+              initialQuestions={community.joinQuestions || []}
+            />
+          )}
+        </div>
+      );
+    }
+
+    // Default Right Sidebar (when viewing Home / Popular feed)
+    return (
+      <div className="space-y-4">
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <h3 className="font-semibold text-sm">About Academy Forum</h3>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Welcome to the Eduportal Academy Forum! Start conversations, ask questions, share academic
+              resources, and interact with lecturers and peers.
+            </p>
+            <div className="pt-2 border-t text-xs text-muted-foreground space-y-1">
+              <div className="flex justify-between">
+                <span>Type:</span>
+                <span className="font-medium text-foreground">Academic & Social</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Audience:</span>
+                <span className="font-medium text-foreground">Students & Faculty</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <h3 className="font-semibold text-sm">Popular Tags</h3>
+            <div className="flex flex-wrap gap-1.5">
+              {[
+                'exam-prep',
+                'resource',
+                'question',
+                'general',
+                'announcement',
+                'registration',
+                'maths',
+                'programming',
+                'study-group',
+              ].map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setSearch(t)}
+                  className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/30 px-2.5 py-1 text-[10px] font-medium transition hover:border-primary/40 hover:text-primary"
+                >
+                  #{t}
+                </button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <h3 className="font-semibold text-sm">Community Guidelines</h3>
+            <ol className="list-decimal pl-4 text-xs text-muted-foreground space-y-1.5">
+              <li>Be respectful to peers and staff.</li>
+              <li>Keep discussions educational and academic.</li>
+              <li>Maintain academic honesty (no sharing test answers).</li>
+              <li>Use descriptive titles and tag your posts.</li>
+            </ol>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  };
+
+  const activeCommunity = activeCommunityQuery.data;
 
   return (
     <StudentShell>
       <PageHeader
-        title="Academic forum"
+        title={
+          activeCommunityId === 'popular'
+            ? 'Popular Feed'
+            : activeCommunity
+            ? `r/${activeCommunity.name}`
+            : 'Academic forum'
+        }
         subtitle={
           postsQuery.data
             ? `${postsQuery.data.total} ${postsQuery.data.total === 1 ? 'discussion' : 'discussions'}`
@@ -402,10 +831,45 @@ export default function StudentForumPage() {
         }
       />
 
+      {/* Main Grid: Responsive 3-Column Layout */}
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-4">
-        {/* Main Feed */}
-        <div className="lg:col-start-2 lg:col-span-2 space-y-4">
-          {/* Search */}
+        {/* Left Column (Navigation) - Hidden on Mobile */}
+        <div className="hidden lg:block lg:col-span-1">
+          {renderLeftSidebar()}
+        </div>
+
+        {/* Center Column (Feed) - 50% width on Desktop */}
+        <div className="lg:col-span-2 space-y-4">
+          {/* Mobile Navigation and About Buttons */}
+          <div className="flex items-center justify-between border-b pb-3 lg:hidden">
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Menu className="h-4 w-4 mr-1.5" />
+                  Communities
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-[300px] overflow-y-auto">
+                {renderLeftSidebar()}
+              </SheetContent>
+            </Sheet>
+
+            {activeCommunityId && activeCommunityId !== 'popular' && (
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Info className="h-4 w-4 mr-1.5" />
+                    About Community
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="right" className="w-[300px] overflow-y-auto">
+                  {renderRightSidebar()}
+                </SheetContent>
+              </Sheet>
+            )}
+          </div>
+
+          {/* Search bar */}
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -429,7 +893,7 @@ export default function StudentForumPage() {
                     'shrink-0 rounded-full border px-4 py-1.5 text-xs font-medium transition',
                     active
                       ? 'border-primary bg-primary text-primary-foreground'
-                      : 'border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground',
+                      : 'border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground'
                   )}
                 >
                   {cat.label}
@@ -441,7 +905,7 @@ export default function StudentForumPage() {
           {/* Posts list */}
           <div className="space-y-3">
             {postsQuery.isLoading ? (
-              Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-32 w-full" />)
+              Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-32 w-full rounded-2xl" />)
             ) : posts.length === 0 ? (
               <EmptyState
                 icon={MessageSquare}
@@ -494,13 +958,23 @@ export default function StudentForumPage() {
                                     Lecturer
                                   </Badge>
                                 ) : null}
+                                {post.community && (
+                                  <Badge
+                                    variant="secondary"
+                                    className="text-[10px] bg-primary/5 text-primary border-primary/10"
+                                  >
+                                    r/{post.community.name}
+                                  </Badge>
+                                )}
                                 {post.isPinned ? (
                                   <Badge variant="secondary" className="gap-1 text-[10px]">
                                     <Pin className="h-3 w-3" />
                                     Pinned
                                   </Badge>
                                 ) : null}
-                                <span className="text-xs text-muted-foreground">· {formatTimeAgo(post.createdAt)}</span>
+                                <span className="text-xs text-muted-foreground">
+                                  · {formatTimeAgo(post.createdAt)}
+                                </span>
                               </div>
 
                               <Link href={`/student/forum/${post.id}`} className="mt-1 block">
@@ -576,60 +1050,16 @@ export default function StudentForumPage() {
           </div>
         </div>
 
-        {/* Right Sidebar */}
-        <div className="hidden lg:block lg:col-span-1 space-y-4">
-          <Card>
-            <CardContent className="p-4 space-y-3">
-              <h3 className="font-semibold text-sm">About Academy Forum</h3>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Welcome to the Eduportal Academy Forum! Start conversations, ask questions, share academic resources, and interact with lecturers and peers.
-              </p>
-              <div className="pt-2 border-t text-xs text-muted-foreground space-y-1">
-                <div className="flex justify-between">
-                  <span>Type:</span>
-                  <span className="font-medium text-foreground">Academic & Social</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Audience:</span>
-                  <span className="font-medium text-foreground">Students & Faculty</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-4 space-y-3">
-              <h3 className="font-semibold text-sm">Popular Tags</h3>
-              <div className="flex flex-wrap gap-1.5">
-                {['exam-prep', 'resource', 'question', 'general', 'announcement', 'registration', 'maths', 'programming', 'study-group'].map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => setSearch(t)}
-                    className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/30 px-2.5 py-1 text-[10px] font-medium transition hover:border-primary/40 hover:text-primary"
-                  >
-                    #{t}
-                  </button>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-4 space-y-3">
-              <h3 className="font-semibold text-sm">Community Guidelines</h3>
-              <ol className="list-decimal pl-4 text-xs text-muted-foreground space-y-1.5">
-                <li>Be respectful to peers and staff.</li>
-                <li>Keep discussions educational and academic.</li>
-                <li>Maintain academic honesty (no sharing test answers).</li>
-                <li>Use descriptive titles and tag your posts.</li>
-              </ol>
-            </CardContent>
-          </Card>
+        {/* Right Column (Sidebar) - Hidden on Mobile */}
+        <div className="hidden lg:block lg:col-span-1">
+          {renderRightSidebar()}
         </div>
       </div>
 
       <CreatePostSheet
+        defaultCommunityId={
+          activeCommunityId && activeCommunityId !== 'popular' ? activeCommunityId : undefined
+        }
         onCreated={() => {
           qc.invalidateQueries({ queryKey: ['forum', 'posts'] });
         }}

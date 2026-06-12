@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { prisma } from '../lib/prisma.js';
 import { authenticate } from '../middleware/auth.js';
-import { ok, forbidden, notFound, serverError } from '../lib/response.js';
+import { ok, forbidden, notFound } from '../lib/response.js';
 import { z } from 'zod';
 import {
   requestCommunitySchema,
@@ -387,7 +387,7 @@ communityRouter.post('/:id/request-join', authenticate, async (c) => {
 
     if (body.answers.length > 0) {
       await tx.communityJoinAnswer.createMany({
-        data: body.answers.map((ans: any) => ({
+        data: body.answers.map((ans: { questionId: string; questionText: string; answer: string }) => ({
           requestId: joinRequest.id,
           questionId: ans.questionId,
           questionText: ans.questionText,
