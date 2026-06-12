@@ -9,9 +9,11 @@ import {
   listPostsSchema,
   createPostSchema,
   createReplySchema,
+  updatePostSchema,
   type ListPostsQuery,
   type CreatePostInput,
   type CreateReplyInput,
+  type UpdatePostInput,
 } from '../validators/forum.validator.js';
 
 const forumRouter = new Hono();
@@ -189,6 +191,57 @@ forumRouter.patch('/posts/:id/like', authenticate, async (c) => {
   return ok({ likesCount: post.likesCount + 1 });
 });
 
+forumRouter.patch('/posts/:id', authenticate, async (c) => {
+  const { id } = c.req.param();
+  const current = c.get('user');
+
+  const post = await prisma.forumPost.findUnique({ where: { id } });
+  if (!post) return notFound('Post not found');
+
+  if (current.role !== 'ADMIN' && post.authorId !== current.userId) {
+    return forbidden('You can only modify your own posts');
+  }
+
+  let body: UpdatePostInput;
+  try {
+    body = updatePostSchema.parse(await c.req.json());
+  } catch (e) {
+    return c.var.handleZodError(e);
+  }
+
+  let imageUrl = body.imageUrl;
+  if (imageUrl && imageUrl.startsWith('data:')) {
+    if (isCloudinaryConfigured()) {
+      try {
+        const uploaded = await uploadBase64(imageUrl, 'eduportal/forum');
+        imageUrl = uploaded.url;
+      } catch (err) {
+        console.error('Forum post image upload failed:', err);
+        return serverError('Failed to upload image');
+      }
+    }
+  }
+
+  const updated = await prisma.forumPost.update({
+    where: { id },
+    data: {
+      title: body.title,
+      body: body.body,
+      tags: body.tags,
+      imageUrl: imageUrl,
+    },
+  });
+
+  await writeAudit(c, {
+    userId: current.userId,
+    action: 'FORUM_POST_UPDATE',
+    entity: 'ForumPost',
+    entityId: id,
+  });
+
+  return ok({ post: updated });
+});
+
 forumRouter.delete('/posts/:id', authenticate, async (c) => {
   const { id } = c.req.param();
   const current = c.get('user');
@@ -196,11 +249,8 @@ forumRouter.delete('/posts/:id', authenticate, async (c) => {
   const post = await prisma.forumPost.findUnique({ where: { id } });
   if (!post) return notFound('Post not found');
 
-  if (current.role === 'STUDENT' && post.authorId !== current.userId) {
+  if (current.role !== 'ADMIN' && post.authorId !== current.userId) {
     return forbidden('You can only delete your own posts');
-  }
-  if (current.role === 'STUDENT') {
-    return forbidden('Only moderators and admins can delete forum posts');
   }
 
   try {

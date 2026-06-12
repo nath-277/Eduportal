@@ -402,176 +402,231 @@ export default function StudentForumPage() {
         }
       />
 
-      {/* Search */}
-      <div className="mt-6">
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search posts..."
-            className="pl-9"
-          />
-        </div>
-      </div>
+      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-4">
+        {/* Main Feed */}
+        <div className="lg:col-span-3 space-y-4">
+          {/* Search */}
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search posts..."
+              className="pl-9"
+            />
+          </div>
 
-      {/* Category chips */}
-      <div className="mt-4 -mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0">
-        {CATEGORIES.map((cat) => {
-          const active = filter === cat.value;
-          return (
-            <button
-              key={cat.value}
-              type="button"
-              onClick={() => setFilter(cat.value)}
-              className={cn(
-                'shrink-0 rounded-full border px-4 py-1.5 text-xs font-medium transition',
-                active
-                  ? 'border-primary bg-primary text-primary-foreground'
-                  : 'border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground',
-              )}
-            >
-              {cat.label}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Posts list */}
-      <div className="mt-6 space-y-3">
-        {postsQuery.isLoading ? (
-          Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-32 w-full" />)
-        ) : posts.length === 0 ? (
-          <EmptyState
-            icon={MessageSquare}
-            title="No discussions yet"
-            description={
-              filter === 'ALL' && !debouncedSearch
-                ? 'Be the first to start a conversation. Tap the + button below.'
-                : `No posts match ${filter !== 'ALL' ? `this category` : 'your search'}.`
-            }
-          />
-        ) : (
-          <motion.div
-            initial="hidden"
-            animate="show"
-            variants={{
-              hidden: { opacity: 0 },
-              show: {
-                opacity: 1,
-                transition: { staggerChildren: 0.05 },
-              },
-            }}
-            className="space-y-3"
-          >
-            {posts.map((post) => {
-              const isAuthor = user?.id === post.author.id;
-              const isLecturer = post.author.role === 'LECTURER';
+          {/* Category chips */}
+          <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0">
+            {CATEGORIES.map((cat) => {
+              const active = filter === cat.value;
               return (
-                <motion.div
-                  key={post.id}
-                  variants={{
-                    hidden: { opacity: 0, y: 12 },
-                    show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 260, damping: 20 } },
-                  }}
+                <button
+                  key={cat.value}
+                  type="button"
+                  onClick={() => setFilter(cat.value)}
+                  className={cn(
+                    'shrink-0 rounded-full border px-4 py-1.5 text-xs font-medium transition',
+                    active
+                      ? 'border-primary bg-primary text-primary-foreground'
+                      : 'border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground',
+                  )}
                 >
-                  <Card className="transition hover:border-primary/30 hover:shadow-sm">
-                    <CardContent className="p-4">
-                      <div className="flex items-start gap-3">
-                        <Avatar className="h-9 w-9 shrink-0">
-                          {post.author.avatarUrl ? (
-                            <AvatarImage src={post.author.avatarUrl} alt={post.author.fullname} />
-                          ) : null}
-                          <AvatarFallback>{initials(post.author.fullname)}</AvatarFallback>
-                        </Avatar>
-
-                        <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="text-sm font-medium">{post.author.fullname}</span>
-                            {isLecturer ? (
-                              <Badge className="bg-emerald-500/10 text-emerald-700 text-[10px] hover:bg-emerald-500/10">
-                                Lecturer
-                              </Badge>
-                            ) : null}
-                            {post.isPinned ? (
-                              <Badge variant="secondary" className="gap-1 text-[10px]">
-                                <Pin className="h-3 w-3" />
-                                Pinned
-                              </Badge>
-                            ) : null}
-                            <span className="text-xs text-muted-foreground">· {formatTimeAgo(post.createdAt)}</span>
-                          </div>
-
-                          <Link href={`/student/forum/${post.id}`} className="mt-1 block">
-                            <h3 className="line-clamp-2 font-semibold leading-snug hover:underline">
-                              {post.title}
-                            </h3>
-                          </Link>
-                          <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{post.body}</p>
-
-                          {post.imageUrl ? (
-                            <Link
-                              href={`/student/forum/${post.id}`}
-                              className="mt-3 block overflow-hidden rounded-xl border border-border/60 bg-muted/10"
-                            >
-                              <img
-                                src={post.imageUrl}
-                                alt={post.title}
-                                className="aspect-[21/9] w-full object-cover transition-transform duration-500 hover:scale-[1.02]"
-                                loading="lazy"
-                              />
-                            </Link>
-                          ) : null}
-
-                          {post.tags.length > 0 ? (
-                            <div className="mt-2 flex flex-wrap gap-1.5">
-                              {post.tags.slice(0, 5).map((tag) => (
-                                <Badge key={tag} variant="outline" className="text-[10px]">
-                                  <TagIcon className="mr-0.5 h-2.5 w-2.5" />
-                                  {tag}
-                                </Badge>
-                              ))}
-                            </div>
-                          ) : null}
-
-                          <div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
-                            <motion.button
-                              whileHover={{ scale: 1.08 }}
-                              whileTap={{ scale: 0.92 }}
-                              type="button"
-                              onClick={() => likeMutation.mutate(post.id)}
-                              disabled={likeMutation.isPending}
-                              className="inline-flex items-center gap-1 transition hover:text-rose-500 focus:outline-none"
-                              aria-label="Like"
-                            >
-                              <motion.span
-                                initial={{ scale: 1 }}
-                                whileTap={{ scale: 1.4 }}
-                                transition={{ type: 'spring', stiffness: 450, damping: 15 }}
-                                className="flex items-center"
-                              >
-                                <Heart className="h-3.5 w-3.5" />
-                              </motion.span>
-                              <span>{post.likesCount}</span>
-                            </motion.button>
-                            <Link
-                              href={`/student/forum/${post.id}`}
-                              className="inline-flex items-center gap-1 transition hover:text-foreground"
-                            >
-                              <MessageCircle className="h-3.5 w-3.5" />
-                              <span>{post.replyCount}</span>
-                            </Link>
-                            <span>{isAuthor ? 'You posted' : formatTimeAgo(post.createdAt)}</span>
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
+                  {cat.label}
+                </button>
               );
             })}
-          </motion.div>
-        )}
+          </div>
+
+          {/* Posts list */}
+          <div className="space-y-3">
+            {postsQuery.isLoading ? (
+              Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-32 w-full" />)
+            ) : posts.length === 0 ? (
+              <EmptyState
+                icon={MessageSquare}
+                title="No discussions yet"
+                description={
+                  filter === 'ALL' && !debouncedSearch
+                    ? 'Be the first to start a conversation. Tap the + button below.'
+                    : `No posts match ${filter !== 'ALL' ? `this category` : 'your search'}.`
+                }
+              />
+            ) : (
+              <motion.div
+                initial="hidden"
+                animate="show"
+                variants={{
+                  hidden: { opacity: 0 },
+                  show: {
+                    opacity: 1,
+                    transition: { staggerChildren: 0.05 },
+                  },
+                }}
+                className="space-y-3"
+              >
+                {posts.map((post) => {
+                  const isAuthor = user?.id === post.author.id;
+                  const isLecturer = post.author.role === 'LECTURER';
+                  return (
+                    <motion.div
+                      key={post.id}
+                      variants={{
+                        hidden: { opacity: 0, y: 12 },
+                        show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 260, damping: 20 } },
+                      }}
+                    >
+                      <Card className="transition hover:border-primary/30 hover:shadow-sm">
+                        <CardContent className="p-4">
+                          <div className="flex items-start gap-3">
+                            <Avatar className="h-9 w-9 shrink-0">
+                              {post.author.avatarUrl ? (
+                                <AvatarImage src={post.author.avatarUrl} alt={post.author.fullname} />
+                              ) : null}
+                              <AvatarFallback>{initials(post.author.fullname)}</AvatarFallback>
+                            </Avatar>
+
+                            <div className="min-w-0 flex-1">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="text-sm font-medium">{post.author.fullname}</span>
+                                {isLecturer ? (
+                                  <Badge className="bg-emerald-500/10 text-emerald-700 text-[10px] hover:bg-emerald-500/10">
+                                    Lecturer
+                                  </Badge>
+                                ) : null}
+                                {post.isPinned ? (
+                                  <Badge variant="secondary" className="gap-1 text-[10px]">
+                                    <Pin className="h-3 w-3" />
+                                    Pinned
+                                  </Badge>
+                                ) : null}
+                                <span className="text-xs text-muted-foreground">· {formatTimeAgo(post.createdAt)}</span>
+                              </div>
+
+                              <Link href={`/student/forum/${post.id}`} className="mt-1 block">
+                                <h3 className="line-clamp-2 font-semibold leading-snug hover:underline">
+                                  {post.title}
+                                </h3>
+                              </Link>
+                              <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{post.body}</p>
+
+                              {post.imageUrl ? (
+                                <Link
+                                  href={`/student/forum/${post.id}`}
+                                  className="mt-3 block overflow-hidden rounded-xl border border-border/60 bg-muted/10"
+                                >
+                                  <img
+                                    src={post.imageUrl}
+                                    alt={post.title}
+                                    className="aspect-[21/9] w-full object-cover transition-transform duration-500 hover:scale-[1.02]"
+                                    loading="lazy"
+                                  />
+                                </Link>
+                              ) : null}
+
+                              {post.tags.length > 0 ? (
+                                <div className="mt-2 flex flex-wrap gap-1.5">
+                                  {post.tags.slice(0, 5).map((tag) => (
+                                    <Badge key={tag} variant="outline" className="text-[10px]">
+                                      <TagIcon className="mr-0.5 h-2.5 w-2.5" />
+                                      {tag}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              ) : null}
+
+                              <div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
+                                <motion.button
+                                  whileHover={{ scale: 1.08 }}
+                                  whileTap={{ scale: 0.92 }}
+                                  type="button"
+                                  onClick={() => likeMutation.mutate(post.id)}
+                                  disabled={likeMutation.isPending}
+                                  className="inline-flex items-center gap-1 transition hover:text-rose-500 focus:outline-none"
+                                  aria-label="Like"
+                                >
+                                  <motion.span
+                                    initial={{ scale: 1 }}
+                                    whileTap={{ scale: 1.4 }}
+                                    transition={{ type: 'spring', stiffness: 450, damping: 15 }}
+                                    className="flex items-center"
+                                  >
+                                    <Heart className="h-3.5 w-3.5" />
+                                  </motion.span>
+                                  <span>{post.likesCount}</span>
+                                </motion.button>
+                                <Link
+                                  href={`/student/forum/${post.id}`}
+                                  className="inline-flex items-center gap-1 transition hover:text-foreground"
+                                >
+                                  <MessageCircle className="h-3.5 w-3.5" />
+                                  <span>{post.replyCount}</span>
+                                </Link>
+                                <span>{isAuthor ? 'You posted' : formatTimeAgo(post.createdAt)}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  );
+                })}
+              </motion.div>
+            )}
+          </div>
+        </div>
+
+        {/* Right Sidebar */}
+        <div className="hidden lg:block lg:col-span-1 space-y-4">
+          <Card>
+            <CardContent className="p-4 space-y-3">
+              <h3 className="font-semibold text-sm">About Academy Forum</h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Welcome to the Eduportal Academy Forum! Start conversations, ask questions, share academic resources, and interact with lecturers and peers.
+              </p>
+              <div className="pt-2 border-t text-xs text-muted-foreground space-y-1">
+                <div className="flex justify-between">
+                  <span>Type:</span>
+                  <span className="font-medium text-foreground">Academic & Social</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Audience:</span>
+                  <span className="font-medium text-foreground">Students & Faculty</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4 space-y-3">
+              <h3 className="font-semibold text-sm">Popular Tags</h3>
+              <div className="flex flex-wrap gap-1.5">
+                {['exam-prep', 'resource', 'question', 'general', 'announcement', 'registration', 'maths', 'programming', 'study-group'].map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setSearch(t)}
+                    className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/30 px-2.5 py-1 text-[10px] font-medium transition hover:border-primary/40 hover:text-primary"
+                  >
+                    #{t}
+                  </button>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4 space-y-3">
+              <h3 className="font-semibold text-sm">Community Guidelines</h3>
+              <ol className="list-decimal pl-4 text-xs text-muted-foreground space-y-1.5">
+                <li>Be respectful to peers and staff.</li>
+                <li>Keep discussions educational and academic.</li>
+                <li>Maintain academic honesty (no sharing test answers).</li>
+                <li>Use descriptive titles and tag your posts.</li>
+              </ol>
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       <CreatePostSheet

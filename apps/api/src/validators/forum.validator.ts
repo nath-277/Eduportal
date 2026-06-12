@@ -23,3 +23,13 @@ export const createReplySchema = z.object({
 });
 
 export type CreateReplyInput = z.infer<typeof createReplySchema>;
+
+export const updatePostSchema = z.object({
+  title: z.string().min(3).max(200).optional(),
+  body: z.string().min(1).max(10000).optional(),
+  tags: z.array(z.string().min(1).max(30)).max(10).optional(),
+  imageUrl: z.string().optional(),
+});
+
+export type UpdatePostInput = z.infer<typeof updatePostSchema>;
+

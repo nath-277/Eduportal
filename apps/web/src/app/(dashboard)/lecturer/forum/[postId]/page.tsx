@@ -13,9 +13,11 @@ import {
   Heart,
   Loader2,
   MessageCircle,
+  Pencil,
   Pin,
   Send,
   Tag as TagIcon,
+  Trash2,
   User as UserIcon,
 } from 'lucide-react';
 
@@ -28,6 +30,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth.store';
 import type { UserRole } from '@eduportal/shared';
@@ -167,6 +170,70 @@ function PostDetailView({ postId }: { postId: string }) {
 
   const post = postQuery.data;
 
+  const [isEditing, setIsEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState('');
+  const [editBody, setEditBody] = useState('');
+  const [editTags, setEditTags] = useState('');
+
+  const startEditing = () => {
+    if (post) {
+      setEditTitle(post.title);
+      setEditBody(post.body);
+      setEditTags(post.tags.join(', '));
+      setIsEditing(true);
+    }
+  };
+
+  const editMutation = useMutation({
+    mutationFn: async (payload: { title: string; body: string; tags: string[] }) => {
+      return api.patch<{ post: ForumPostDetail }>(`/forum/posts/${postId}`, payload);
+    },
+    onSuccess: () => {
+      toast.success('Post updated');
+      setIsEditing(false);
+      qc.invalidateQueries({ queryKey: ['forum', 'post', postId] });
+      qc.invalidateQueries({ queryKey: ['forum', 'posts'] });
+    },
+    onError: (err: unknown) => {
+      toast.error(err instanceof Error ? err.message : 'Could not update post');
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      return api.delete(`/forum/posts/${postId}`);
+    },
+    onSuccess: () => {
+      toast.success('Post deleted');
+      router.push('/lecturer/forum');
+    },
+    onError: (err: unknown) => {
+      toast.error(err instanceof Error ? err.message : 'Could not delete post');
+    },
+  });
+
+  const handleDelete = () => {
+    if (confirm('Are you sure you want to delete this post?')) {
+      deleteMutation.mutate();
+    }
+  };
+
+  const handleSaveEdit = () => {
+    if (!editTitle.trim()) {
+      toast.error('Title cannot be empty');
+      return;
+    }
+    if (editBody.trim().length < 20) {
+      toast.error('Body must be at least 20 characters');
+      return;
+    }
+    editMutation.mutate({
+      title: editTitle.trim(),
+      body: editBody.trim(),
+      tags: editTags.split(',').map((t) => t.trim()).filter(Boolean),
+    });
+  };
+
   if (postQuery.isLoading) {
     return (
       <div className="space-y-4">
@@ -217,73 +284,139 @@ function PostDetailView({ postId }: { postId: string }) {
       />
 
       {/* Post body */}
-      <Card>
-        <CardContent className="p-5">
-          <div className="flex items-start gap-3">
-            <Avatar className="h-10 w-10 shrink-0">
-              {post.author.avatarUrl ? (
-                <AvatarImage src={post.author.avatarUrl} alt={post.author.fullname} />
-              ) : null}
-              <AvatarFallback>{initials(post.author.fullname)}</AvatarFallback>
-            </Avatar>
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-sm font-medium">{post.author.fullname}</span>
-                {isLecturer ? (
-                  <Badge className="bg-emerald-500/10 text-emerald-700 text-[10px] hover:bg-emerald-500/10">
-                    Lecturer
-                  </Badge>
+      {isEditing ? (
+        <Card>
+          <CardContent className="space-y-4 p-5">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Edit Post</h3>
+              <Button variant="ghost" size="sm" onClick={() => setIsEditing(false)}>Cancel</Button>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground" htmlFor="edit-title">Title</label>
+              <Input
+                id="edit-title"
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                placeholder="Post title"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground" htmlFor="edit-body">Body</label>
+              <Textarea
+                id="edit-body"
+                value={editBody}
+                onChange={(e) => setEditBody(e.target.value)}
+                placeholder="Post content..."
+                rows={6}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground" htmlFor="edit-tags">Tags (comma-separated)</label>
+              <Input
+                id="edit-tags"
+                value={editTags}
+                onChange={(e) => setEditTags(e.target.value)}
+                placeholder="e.g. general, help"
+              />
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" size="sm" onClick={() => setIsEditing(false)} disabled={editMutation.isPending}>
+                Cancel
+              </Button>
+              <Button size="sm" onClick={handleSaveEdit} disabled={editMutation.isPending}>
+                {editMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  'Save changes'
+                )}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardContent className="p-5">
+            <div className="flex items-start gap-3">
+              <Avatar className="h-10 w-10 shrink-0">
+                {post.author.avatarUrl ? (
+                  <AvatarImage src={post.author.avatarUrl} alt={post.author.fullname} />
                 ) : null}
-                {post.isPinned ? (
-                  <Badge variant="secondary" className="gap-1 text-[10px]">
-                    <Pin className="h-3 w-3" />
-                    Pinned
-                  </Badge>
+                <AvatarFallback>{initials(post.author.fullname)}</AvatarFallback>
+              </Avatar>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm font-medium">{post.author.fullname}</span>
+                    {isLecturer ? (
+                      <Badge className="bg-emerald-500/10 text-emerald-700 text-[10px] hover:bg-emerald-500/10">
+                        Lecturer
+                      </Badge>
+                    ) : null}
+                    {post.isPinned ? (
+                      <Badge variant="secondary" className="gap-1 text-[10px]">
+                        <Pin className="h-3 w-3" />
+                        Pinned
+                      </Badge>
+                    ) : null}
+                    <span className="text-xs text-muted-foreground">· {formatTimeAgo(post.createdAt)}</span>
+                  </div>
+                  {user && (post.author.id === user.id || user.role === 'ADMIN') && (
+                    <div className="flex items-center gap-1">
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={startEditing} aria-label="Edit post">
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={handleDelete} aria-label="Delete post">
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
+                {post.imageUrl ? (
+                  <div className="my-4 overflow-hidden rounded-xl border border-border bg-muted/10">
+                    <img
+                      src={post.imageUrl}
+                      alt={post.title}
+                      className="max-h-[500px] w-full object-contain"
+                    />
+                  </div>
                 ) : null}
-                <span className="text-xs text-muted-foreground">· {formatTimeAgo(post.createdAt)}</span>
-              </div>
-              {post.imageUrl ? (
-                <div className="my-4 overflow-hidden rounded-xl border border-border bg-muted/10">
-                  <img
-                    src={post.imageUrl}
-                    alt={post.title}
-                    className="max-h-[500px] w-full object-contain"
-                  />
-                </div>
-              ) : null}
-              <div className="mt-3 whitespace-pre-wrap text-sm leading-relaxed">{post.body}</div>
+                <div className="mt-3 whitespace-pre-wrap text-sm leading-relaxed">{post.body}</div>
 
-              {post.tags.length > 0 ? (
-                <div className="mt-3 flex flex-wrap gap-1.5">
-                  {post.tags.map((tag) => (
-                    <Badge key={tag} variant="outline" className="text-[10px]">
-                      <TagIcon className="mr-0.5 h-2.5 w-2.5" />
-                      {tag}
-                    </Badge>
-                  ))}
-                </div>
-              ) : null}
+                {post.tags.length > 0 ? (
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    {post.tags.map((tag) => (
+                      <Badge key={tag} variant="outline" className="text-[10px]">
+                        <TagIcon className="mr-0.5 h-2.5 w-2.5" />
+                        {tag}
+                      </Badge>
+                    ))}
+                  </div>
+                ) : null}
 
-              <div className="mt-4 flex items-center gap-3 text-xs text-muted-foreground">
-                <button
-                  type="button"
-                  onClick={() => likeMutation.mutate()}
-                  disabled={likeMutation.isPending}
-                  className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1 transition hover:border-rose-500 hover:text-rose-500"
-                  aria-label="Like post"
-                >
-                  <Heart className="h-3.5 w-3.5" />
-                  <span>{likes}</span>
-                </button>
-                <span className="inline-flex items-center gap-1.5">
-                  <MessageCircle className="h-3.5 w-3.5" />
-                  {post.replies.length}
-                </span>
+                <div className="mt-4 flex items-center gap-3 text-xs text-muted-foreground">
+                  <button
+                    type="button"
+                    onClick={() => likeMutation.mutate()}
+                    disabled={likeMutation.isPending}
+                    className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1 transition hover:border-rose-500 hover:text-rose-500"
+                    aria-label="Like post"
+                  >
+                    <Heart className="h-3.5 w-3.5" />
+                    <span>{likes}</span>
+                  </button>
+                  <span className="inline-flex items-center gap-1.5">
+                    <MessageCircle className="h-3.5 w-3.5" />
+                    {post.replies.length}
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Replies */}
       <div className="space-y-3">
