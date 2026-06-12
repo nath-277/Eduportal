@@ -97,14 +97,13 @@ export async function deleteAsset(publicId: string, mimeTypeOrExtension?: string
   await cloudinary.uploader.destroy(publicId, { resource_type: resourceType, invalidate: true });
 }
 
-export function signedDownloadUrl(publicId: string, expiresInSeconds = 3600): string {
+export function signedDownloadUrl(publicId: string, mimeTypeOrExtension?: string): string {
   ensureConfigured();
   if (!configured) return '';
-  const expiresAt = Math.floor(Date.now() / 1000) + expiresInSeconds;
+  const resourceType = getCloudinaryResourceType(mimeTypeOrExtension);
   return cloudinary.url(publicId, {
-    sign_url: true,
-    type: 'authenticated',
-    expires_at: expiresAt,
+    resource_type: resourceType,
+    flags: 'attachment',
     secure: true,
   });
 }

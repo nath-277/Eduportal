@@ -162,7 +162,7 @@ resourceRouter.post('/:id/download', authenticate, async (c) => {
   let downloadUrl = resource.fileUrl;
   if (resource.filePublicId && isCloudinaryConfigured()) {
     try {
-      downloadUrl = signedDownloadUrl(resource.filePublicId);
+      downloadUrl = signedDownloadUrl(resource.filePublicId, resource.fileType);
     } catch (err) {
       console.warn('Signed URL failed, using raw URL:', err);
     }
