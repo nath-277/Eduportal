@@ -33,7 +33,8 @@ export interface UploadResult {
 
 export async function uploadBase64(
   dataUri: string,
-  folder = 'eduportal'
+  folder = 'eduportal',
+  fileName?: string
 ): Promise<UploadResult> {
   ensureConfigured();
   if (!configured) {
@@ -41,10 +42,29 @@ export async function uploadBase64(
       'Cloudinary is not configured. Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET in .env'
     );
   }
-  const result = await cloudinary.uploader.upload(dataUri, {
+
+  const options: Record<string, unknown> = {
     folder,
     resource_type: 'auto',
-  });
+  };
+
+  if (fileName) {
+    const lastDot = fileName.lastIndexOf('.');
+    const baseName = lastDot !== -1 ? fileName.substring(0, lastDot) : fileName;
+    const extension = lastDot !== -1 ? fileName.substring(lastDot + 1) : '';
+
+    const cleanBaseName = baseName
+      .replace(/[^a-zA-Z0-9-_]/g, '_')
+      .substring(0, 80);
+
+    if (extension) {
+      options.public_id = `${cleanBaseName}_${Date.now()}.${extension.toLowerCase()}`;
+    } else {
+      options.public_id = `${cleanBaseName}_${Date.now()}`;
+    }
+  }
+
+  const result = await cloudinary.uploader.upload(dataUri, options);
   return {
     url: result.secure_url,
     publicId: result.public_id,
