@@ -50,10 +50,38 @@ axiosInstance.interceptors.request.use((config) => {
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error: AxiosError) => {
-    if (error.response?.status === 401) {
-      clearTokenAndRedirect();
+    let message = error.message;
+    let fieldErrors: Record<string, string[]> | undefined = undefined;
+
+    if (error.response?.data) {
+      const responseData = error.response.data as any;
+      if (responseData && typeof responseData === 'object') {
+        if ('message' in responseData && responseData.message) {
+          message = responseData.message;
+        }
+        if ('errors' in responseData && responseData.errors) {
+          fieldErrors = responseData.errors;
+        }
+      }
     }
-    return Promise.reject(error);
+
+    if (error.response?.status === 401) {
+      const isLoginRequest = error.config?.url?.endsWith('/auth/login');
+      if (!isLoginRequest) {
+        clearTokenAndRedirect();
+      }
+    }
+
+    const enhancedError = new Error(message) as Error & {
+      status?: number;
+      errors?: Record<string, string[]>;
+      originalError: AxiosError;
+    };
+    enhancedError.status = error.response?.status;
+    enhancedError.errors = fieldErrors;
+    enhancedError.originalError = error;
+
+    return Promise.reject(enhancedError);
   }
 );
 
