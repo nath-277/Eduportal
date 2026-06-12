@@ -71,6 +71,21 @@ const COURSES: ReadonlyArray<CourseSeed> = [
 async function main(): Promise<void> {
   console.log('Starting database seed...\n');
 
+  const settings = await prisma.systemSettings.upsert({
+    where: { id: 'settings' },
+    update: {},
+    create: {
+      id: 'settings',
+      portalName: 'EduPortal',
+      displayName: 'EduPortal — University Companion',
+      maxLoginAttempts: 5,
+      sessionExpiry: '24h',
+      allowedEmailDomain: 'eduportal.com',
+    },
+  });
+  console.log(`[SystemSettings] Initialized with domain ${settings.allowedEmailDomain}`);
+
+
   const department = await prisma.department.upsert({
     where: { code: 'CSC' },
     update: {},

@@ -403,3 +403,15 @@ enum CreationRequestStatus {
   APPROVED
   REJECTED
 }
+
+model SystemSettings {
+  id                 String   @id @default("settings")
+  portalName         String   @default("EduPortal")
+  displayName        String   @default("EduPortal — University Companion")
+  maxLoginAttempts   Int      @default(5)
+  sessionExpiry      String   @default("24h")
+  allowedEmailDomain String   @default("eduportal.com")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
