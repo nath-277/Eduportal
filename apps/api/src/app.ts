@@ -99,3 +99,6 @@ app.onError((err, c) => {
   };
   return c.json(response, 500);
 });
+
+export default app;
+
