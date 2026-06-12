@@ -7,6 +7,7 @@ import { sanitizeUser, type SanitizedUser } from '../lib/sanitize.js';
 import { authenticate } from '../middleware/auth.js';
 import { badRequest, conflict, created, forbidden, notFound, ok, okMessage, unauthorized } from '../lib/response.js';
 import { writeAudit } from '../lib/audit.js';
+import { syncUserCommunities } from '../lib/community.js';
 import {
   registerSchema,
   loginSchema,
@@ -74,6 +75,8 @@ authRouter.post('/register', async (c) => {
       departmentId: body.departmentId,
     },
   });
+
+  await syncUserCommunities(user.id);
 
   const token = signToken({ userId: user.id, role: user.role });
 

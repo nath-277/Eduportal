@@ -23,6 +23,7 @@ import {
   type UpdateUserInput,
   type AvatarInput,
 } from '../validators/user.validator.js';
+import { syncUserCommunities } from '../lib/community.js';
 import { hashPassword, comparePassword } from '../lib/password.js';
 
 const userRouter = new Hono();
@@ -151,6 +152,10 @@ userRouter.patch('/:id', authenticate, async (c) => {
     where: { id },
     data: body,
   });
+
+  if (body.level !== undefined || body.departmentId !== undefined) {
+    await syncUserCommunities(user.id);
+  }
 
   await writeAudit(c, {
     userId: current.userId,

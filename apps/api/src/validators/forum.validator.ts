@@ -5,6 +5,8 @@ export const listPostsSchema = z.object({
   search: z.string().optional(),
   page: z.coerce.number().int().min(1).optional(),
   limit: z.coerce.number().int().min(1).max(100).optional(),
+  communityId: z.string().optional(),
+  popular: z.string().optional(),
 });
 
 export type ListPostsQuery = z.infer<typeof listPostsSchema>;
@@ -14,6 +16,7 @@ export const createPostSchema = z.object({
   body: z.string().min(1).max(10000),
   tags: z.array(z.string().min(1).max(30)).max(10).default([]),
   imageUrl: z.string().optional(),
+  communityId: z.string().optional(),
 });
 
 export type CreatePostInput = z.infer<typeof createPostSchema>;

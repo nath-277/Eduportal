@@ -1,5 +1,6 @@
 import { PrismaClient, Level, Semester, UserRole } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import { syncUserCommunities } from '../src/lib/community.js';
 
 const prisma = new PrismaClient();
 
@@ -192,6 +193,22 @@ async function main(): Promise<void> {
     console.log(
       `[Course] ${course.code} - ${course.title} (${course.creditUnits}cu, ${course.level}, ${course.semester}) (${course.id})`
     );
+  }
+
+  console.log('\nSyncing user communities...');
+  await syncUserCommunities(admin.id);
+  await syncUserCommunities(lecturer.id);
+  await syncUserCommunities(student.id);
+  console.log('User communities synced.');
+
+  // Backfill any existing posts with null communityId to general
+  const generalComm = await prisma.community.findUnique({ where: { name: 'general' } });
+  if (generalComm) {
+    const backfilled = await prisma.forumPost.updateMany({
+      where: { communityId: null },
+      data: { communityId: generalComm.id }
+    });
+    console.log(`Backfilled ${backfilled.count} existing posts to General community.`);
   }
 
   console.log('\nSeed completed successfully.');

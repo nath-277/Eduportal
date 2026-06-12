@@ -18,7 +18,7 @@ import {
 
 const forumRouter = new Hono();
 
-forumRouter.get('/posts', async (c) => {
+forumRouter.get('/posts', authenticate, async (c) => {
   let query: ListPostsQuery;
   try {
     query = listPostsSchema.parse({
@@ -26,6 +26,8 @@ forumRouter.get('/posts', async (c) => {
       search: c.req.query('search'),
       page: c.req.query('page'),
       limit: c.req.query('limit'),
+      communityId: c.req.query('communityId'),
+      popular: c.req.query('popular'),
     });
   } catch (e) {
     return c.var.handleZodError(e);
@@ -36,13 +38,53 @@ forumRouter.get('/posts', async (c) => {
     String(query.limit ?? '')
   );
 
-  const where: Record<string, unknown> = {};
+  const where: Record<string, any> = {};
   if (query.tag) where.tags = { has: query.tag };
   if (query.search) {
     where.OR = [
       { title: { contains: query.search, mode: 'insensitive' } },
       { body: { contains: query.search, mode: 'insensitive' } },
     ];
+  }
+
+  // Handle Community Filtering
+  if (query.communityId) {
+    const community = await prisma.community.findFirst({
+      where: {
+        OR: [{ id: query.communityId }, { name: query.communityId }]
+      }
+    });
+
+    if (!community) {
+      return ok(paginated([], 0, page, limit));
+    }
+
+    if (community.isPrivate) {
+      const isMember = await prisma.communityMember.findUnique({
+        where: {
+          communityId_userId: {
+            communityId: community.id,
+            userId: c.get('user').userId
+          }
+        }
+      });
+      if (!isMember && c.get('user').role !== 'ADMIN') {
+        return forbidden('This community is private. You must join to view posts.');
+      }
+    }
+    where.communityId = community.id;
+  } else if (query.popular === 'true') {
+    where.community = {
+      isPrivate: false
+    };
+  } else {
+    const userId = c.get('user').userId;
+    const userMemberships = await prisma.communityMember.findMany({
+      where: { userId },
+      select: { communityId: true }
+    });
+    const joinedCommunityIds = userMemberships.map(m => m.communityId);
+    where.communityId = { in: joinedCommunityIds };
   }
 
   const [total, posts] = await Promise.all([
@@ -54,6 +96,7 @@ forumRouter.get('/posts', async (c) => {
       orderBy: [{ isPinned: 'desc' }, { createdAt: 'desc' }],
       include: {
         author: { select: { id: true, fullname: true, avatarUrl: true, role: true } },
+        community: { select: { id: true, name: true, displayName: true } },
         _count: { select: { replies: true } },
       },
     }),
@@ -71,6 +114,7 @@ forumRouter.get('/posts', async (c) => {
         isPinned: p.isPinned,
         imageUrl: p.imageUrl ?? undefined,
         author: p.author,
+        community: p.community,
         replyCount: p._count.replies,
         createdAt: p.createdAt,
         updatedAt: p.updatedAt,
@@ -105,6 +149,48 @@ forumRouter.post('/posts', authenticate, async (c) => {
     }
   }
 
+  // Resolve target community
+  let targetCommunityId = body.communityId;
+  if (targetCommunityId) {
+    const community = await prisma.community.findFirst({
+      where: {
+        OR: [{ id: targetCommunityId }, { name: targetCommunityId }]
+      }
+    });
+    if (!community) {
+      return c.json({ error: 'Community not found' }, 404);
+    }
+    targetCommunityId = community.id;
+
+    if (community.isPrivate) {
+      const isMember = await prisma.communityMember.findUnique({
+        where: {
+          communityId_userId: {
+            communityId: targetCommunityId,
+            userId: c.get('user').userId
+          }
+        }
+      });
+      if (!isMember && c.get('user').role !== 'ADMIN') {
+        return forbidden('You must be a member of this private community to post.');
+      }
+    }
+  } else {
+    let general = await prisma.community.findUnique({ where: { name: 'general' } });
+    if (!general) {
+      general = await prisma.community.create({
+        data: {
+          name: 'general',
+          displayName: 'General',
+          description: 'Global forum for all students and lecturers',
+          isSystem: true,
+          isPrivate: false,
+        }
+      });
+    }
+    targetCommunityId = general.id;
+  }
+
   const post = await prisma.forumPost.create({
     data: {
       title: body.title,
@@ -112,20 +198,25 @@ forumRouter.post('/posts', authenticate, async (c) => {
       tags: body.tags,
       imageUrl,
       authorId: c.get('user').userId,
+      communityId: targetCommunityId,
     },
-    include: { author: { select: { id: true, fullname: true, avatarUrl: true, role: true } } },
+    include: {
+      author: { select: { id: true, fullname: true, avatarUrl: true, role: true } },
+      community: { select: { id: true, name: true, displayName: true } }
+    },
   });
 
   return c.json({ success: true, data: post }, 201);
 });
 
-forumRouter.get('/posts/:id', async (c) => {
+forumRouter.get('/posts/:id', authenticate, async (c) => {
   const { id } = c.req.param();
 
   const post = await prisma.forumPost.findUnique({
     where: { id },
     include: {
       author: { select: { id: true, fullname: true, avatarUrl: true, role: true } },
+      community: { select: { id: true, name: true, displayName: true, isPrivate: true } },
       replies: {
         orderBy: { createdAt: 'asc' },
         include: { author: { select: { id: true, fullname: true, avatarUrl: true, role: true } } },
@@ -133,6 +224,20 @@ forumRouter.get('/posts/:id', async (c) => {
     },
   });
   if (!post) return notFound('Post not found');
+
+  if (post.community?.isPrivate) {
+    const isMember = await prisma.communityMember.findUnique({
+      where: {
+        communityId_userId: {
+          communityId: post.community.id,
+          userId: c.get('user').userId
+        }
+      }
+    });
+    if (!isMember && c.get('user').role !== 'ADMIN') {
+      return forbidden('This community is private. You must join to view its posts.');
+    }
+  }
 
   await prisma.forumPost.update({
     where: { id },
