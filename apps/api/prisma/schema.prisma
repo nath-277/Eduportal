@@ -49,14 +49,16 @@ enum ResultStatus {
 }
 
 model Department {
-  id          String    @id @default(cuid())
-  name        String    @unique
-  code        String    @unique
+  id          String      @id @default(cuid())
+  name        String      @unique
+  code        String      @unique
   description String?
+  maxLevel    Level       @default(L400)
   users       User[]
   courses     Course[]
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  communities Community[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
 }
 
 model User {
@@ -89,6 +91,10 @@ model User {
   uploadedResults     Result[]            @relation("ResultUploader")
   approvedResults     Result[]            @relation("ResultApprover")
   publishedResults    Result[]            @relation("ResultPublisher")
+  createdCommunities  Community[]         @relation("CommunityCreator")
+  communityMemberships CommunityMember[]
+  joinRequests        CommunityJoinRequest[]
+  creationRequests    CommunityCreationRequest[]
   createdAt           DateTime            @default(now())
   updatedAt           DateTime            @updatedAt
 
@@ -237,21 +243,24 @@ model Announcement {
 }
 
 model ForumPost {
-  id         String       @id @default(cuid())
-  title      String
-  body       String
-  author     User         @relation(fields: [authorId], references: [id])
-  authorId   String
-  tags       String[]
-  likesCount Int          @default(0)
-  views      Int          @default(0)
-  isPinned   Boolean      @default(false)
-  imageUrl   String?
-  replies    ForumReply[]
-  createdAt  DateTime     @default(now())
-  updatedAt  DateTime     @updatedAt
+  id           String       @id @default(cuid())
+  title        String
+  body         String
+  author       User         @relation(fields: [authorId], references: [id])
+  authorId     String
+  tags         String[]
+  likesCount   Int          @default(0)
+  views        Int          @default(0)
+  isPinned     Boolean      @default(false)
+  imageUrl     String?
+  replies      ForumReply[]
+  communityId  String?
+  community    Community?   @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
 
   @@index([authorId])
+  @@index([communityId])
 }
 
 model ForumReply {
@@ -295,4 +304,102 @@ model AuditLog {
   @@index([userId])
   @@index([action])
   @@index([createdAt])
+}
+
+model Community {
+  id            String                  @id @default(cuid())
+  name          String                  @unique
+  displayName   String
+  description   String?
+  isPrivate     Boolean                 @default(false)
+  isSystem      Boolean                 @default(false)
+  level         Level?
+  departmentId  String?
+  department    Department?             @relation(fields: [departmentId], references: [id])
+  creatorId     String?
+  creator       User?                   @relation("CommunityCreator", fields: [creatorId], references: [id])
+  members       CommunityMember[]
+  posts         ForumPost[]
+  joinQuestions CommunityJoinQuestion[]
+  joinRequests  CommunityJoinRequest[]
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
+
+  @@index([departmentId])
+  @@index([level])
+}
+
+model CommunityMember {
+  id          String        @id @default(cuid())
+  communityId String
+  community   Community     @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role        CommunityRole @default(MEMBER)
+  createdAt   DateTime      @default(now())
+
+  @@unique([communityId, userId])
+}
+
+enum CommunityRole {
+  MODERATOR
+  MEMBER
+}
+
+model CommunityJoinQuestion {
+  id          String    @id @default(cuid())
+  communityId String
+  community   Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  question    String
+  createdAt   DateTime  @default(now())
+}
+
+model CommunityJoinRequest {
+  id          String                @id @default(cuid())
+  communityId String
+  community   Community             @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status      JoinRequestStatus     @default(PENDING)
+  answers     CommunityJoinAnswer[]
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+
+  @@unique([communityId, userId])
+}
+
+enum JoinRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model CommunityJoinAnswer {
+  id           String               @id @default(cuid())
+  requestId    String
+  request      CommunityJoinRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  questionId   String
+  questionText String
+  answer       String
+  createdAt    DateTime             @default(now())
+}
+
+model CommunityCreationRequest {
+  id          String                @id @default(cuid())
+  name        String                @unique
+  displayName String
+  description String?
+  isPrivate   Boolean               @default(false)
+  requesterId String
+  requester   User                  @relation(fields: [requesterId], references: [id], onDelete: Cascade)
+  status      CreationRequestStatus @default(PENDING)
+  adminNotes  String?
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+}
+
+enum CreationRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
