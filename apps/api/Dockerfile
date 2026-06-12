@@ -5,7 +5,7 @@ RUN corepack enable && corepack prepare pnpm@10.33.4 --activate
 WORKDIR /app
 
 FROM base AS deps
-COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./ 
 COPY apps/api/package.json apps/api/
 COPY packages/shared/package.json packages/shared/
 COPY packages/*/package.json packages/ 2>/dev/null || true
@@ -21,7 +21,7 @@ RUN cd apps/api && pnpm exec prisma generate
 RUN cd apps/api && pnpm run build
 
 FROM base AS prod-deps
-COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./ 
 COPY apps/api/package.json apps/api/
 COPY packages/shared/package.json packages/shared/
 RUN pnpm install --prod --frozen-lockfile --filter @eduportal/api... --filter @eduportal/shared...
