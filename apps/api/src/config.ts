@@ -39,7 +39,7 @@ const getEnvNumber = (key: string, fallback: number): number => {
 const parseOrigins = (origins: string): string[] => {
   return origins
     .split(',')
-    .map((o) => o.trim())
+    .map((o) => o.trim().replace(/\/+$/, ''))
     .filter((o) => o.length > 0);
 };
 
