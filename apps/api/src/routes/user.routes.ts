@@ -282,4 +282,46 @@ userRouter.post('/me/change-password', authenticate, async (c) => {
   return okMessage('Password changed successfully');
 });
 
+const adminResetPasswordSchema = z.object({
+  password: z
+    .string()
+    .min(8, 'Password must be at least 8 characters')
+    .regex(/[A-Z]/, 'Must contain an uppercase letter')
+    .regex(/[a-z]/, 'Must contain a lowercase letter')
+    .regex(/\d/, 'Must contain a number'),
+});
+
+userRouter.post('/:id/reset-password', authenticate, authorize('ADMIN'), async (c) => {
+  const { id } = c.req.param();
+  let body: z.infer<typeof adminResetPasswordSchema>;
+  try {
+    body = adminResetPasswordSchema.parse(await c.req.json());
+  } catch (e) {
+    return c.var.handleZodError(e);
+  }
+
+  const user = await prisma.user.findUnique({ where: { id } });
+  if (!user) return notFound('User not found');
+
+  const passwordHash = await hashPassword(body.password);
+  await prisma.user.update({
+    where: { id },
+    data: {
+      passwordHash,
+      passwordResetToken: null,
+      passwordResetExpiry: null,
+    },
+  });
+
+  const current = c.get('user');
+  await writeAudit(c, {
+    userId: current.userId,
+    action: 'ADMIN_PASSWORD_RESET',
+    entity: 'User',
+    entityId: id,
+  });
+
+  return okMessage('Password reset successfully');
+});
+
 export default userRouter;

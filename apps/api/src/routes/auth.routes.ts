@@ -36,6 +36,18 @@ authRouter.post('/register', async (c) => {
     return conflict('Email already in use');
   }
 
+  const settings = await prisma.systemSettings.findUnique({
+    where: { id: 'settings' },
+  });
+
+  if (settings && settings.allowedEmailDomain) {
+    const domain = settings.allowedEmailDomain.trim().toLowerCase();
+    const emailLower = body.email.trim().toLowerCase();
+    if (domain.length > 0 && !emailLower.endsWith(`@${domain}`)) {
+      return badRequest(`Only emails with the domain @${domain} are allowed for registration.`);
+    }
+  }
+
   if (body.matricNumber) {
     const existingMatric = await prisma.user.findUnique({
       where: { matricNumber: body.matricNumber },

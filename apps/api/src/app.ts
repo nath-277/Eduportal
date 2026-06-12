@@ -16,6 +16,7 @@ import notificationRouter from './routes/notification.routes.js';
 import analyticsRouter from './routes/analytics.routes.js';
 import { departmentRouter, sessionRouter } from './routes/department.routes.js';
 import communityRouter from './routes/community.routes.js';
+import settingsRouter from './routes/settings.routes.js';
 
 export const app = new Hono();
 
@@ -82,6 +83,7 @@ app.route('/api/analytics', analyticsRouter);
 app.route('/api/departments', departmentRouter);
 app.route('/api/sessions', sessionRouter);
 app.route('/api/communities', communityRouter);
+app.route('/api/settings', settingsRouter);
 
 app.notFound((c) => {
   const response: ApiResponse<null> = {
