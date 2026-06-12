@@ -86,7 +86,7 @@ resourceRouter.post('/', authenticate, authorize('LECTURER', 'ADMIN'), async (c)
 
   let uploaded;
   try {
-    uploaded = await uploadBase64(body.fileBase64, 'eduportal/resources');
+    uploaded = await uploadBase64(body.fileBase64, 'eduportal/resources', body.fileName);
   } catch (err) {
     console.error('Resource upload failed:', err);
     return serverError('Failed to upload file');
