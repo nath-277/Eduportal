@@ -106,6 +106,23 @@ function initials(name: string): string {
     .join('');
 }
 
+function getCommunityColor(name: string) {
+  const colors = [
+    'bg-blue-500/10 text-blue-600 dark:text-blue-400',
+    'bg-purple-500/10 text-purple-600 dark:text-purple-400',
+    'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+    'bg-rose-500/10 text-rose-600 dark:text-rose-400',
+    'bg-amber-500/10 text-amber-600 dark:text-amber-400',
+    'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400',
+  ];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const index = Math.abs(hash) % colors.length;
+  return colors[index];
+}
+
 interface CommunityItem {
   id: string;
   name: string;
@@ -155,13 +172,16 @@ interface CreateForm {
 }
 
 function CreatePostSheet({
+  open,
+  setOpen,
   defaultCommunityId,
   onCreated,
 }: {
+  open: boolean;
+  setOpen: (o: boolean) => void;
   defaultCommunityId?: string;
   onCreated: () => void;
 }) {
-  const [open, setOpen] = useState(false);
   const [tagChips, setTagChips] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -270,15 +290,6 @@ function CreatePostSheet({
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger asChild>
-        <Button
-          size="icon"
-          className="fixed bottom-24 right-4 z-40 h-14 w-14 rounded-full shadow-lg md:bottom-8 md:right-8"
-          aria-label="Create post"
-        >
-          <Plus className="h-6 w-6" />
-        </Button>
-      </SheetTrigger>
       <SheetContent
         side="bottom"
         className="max-h-[90vh] overflow-y-auto rounded-t-3xl sm:max-w-lg sm:translate-x-[-50%] sm:left-1/2"
@@ -439,6 +450,7 @@ export default function StudentForumPage() {
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [activeCommunityId, setActiveCommunityId] = useState<string>('');
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search.trim()), 300);
@@ -549,7 +561,7 @@ export default function StudentForumPage() {
       <div className="space-y-1">
         <Button
           variant={!activeCommunityId ? 'secondary' : 'ghost'}
-          className="w-full justify-start gap-2.5 h-10 px-3 font-semibold"
+          className="w-full justify-start gap-2.5 h-10 px-3 font-semibold rounded-xl transition duration-200"
           onClick={() => {
             setActiveCommunityId('');
             setFilter('ALL');
@@ -560,7 +572,7 @@ export default function StudentForumPage() {
         </Button>
         <Button
           variant={activeCommunityId === 'popular' ? 'secondary' : 'ghost'}
-          className="w-full justify-start gap-2.5 h-10 px-3 font-semibold"
+          className="w-full justify-start gap-2.5 h-10 px-3 font-semibold rounded-xl transition duration-200"
           onClick={() => {
             setActiveCommunityId('popular');
             setFilter('ALL');
@@ -577,66 +589,91 @@ export default function StudentForumPage() {
         </div>
       )}
 
-      <div className="pt-2 border-t space-y-1.5">
+      <div className="pt-2 border-t space-y-2">
         <div className="flex items-center justify-between px-3 py-1">
-          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+          <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
             Communities
           </span>
-          <CreateCommunityRequestSheet />
+          <CreateCommunityRequestSheet
+            trigger={
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground shrink-0"
+                aria-label="Start a community"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            }
+          />
         </div>
         <div className="space-y-0.5">
           {joinedQuery.isLoading ? (
-            Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-9 w-full rounded-lg" />)
+            Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-9 w-full rounded-xl" />)
           ) : joinedCommunities.length === 0 ? (
             <p className="text-xs text-muted-foreground px-3 py-1 italic">No communities joined yet.</p>
           ) : (
-            joinedCommunities.map((c) => (
-              <Button
-                key={c.id}
-                variant={activeCommunityId === c.id || activeCommunityId === c.name ? 'secondary' : 'ghost'}
-                className="w-full justify-start gap-2 h-9 px-3 text-sm font-medium"
-                onClick={() => {
-                  setActiveCommunityId(c.id);
-                  setFilter('ALL');
-                }}
-              >
-                <span className="font-bold text-primary/70">r/</span>
-                <span className="truncate">{c.displayName}</span>
-              </Button>
-            ))
+            joinedCommunities.map((c) => {
+              const isActive = activeCommunityId === c.id;
+              return (
+                <Button
+                  key={c.id}
+                  variant={isActive ? 'secondary' : 'ghost'}
+                  className="w-full justify-start gap-2.5 h-9.5 px-3 text-sm font-medium rounded-xl transition duration-200"
+                  onClick={() => {
+                    setActiveCommunityId(c.id);
+                    setFilter('ALL');
+                  }}
+                >
+                  <div className={cn(
+                    "flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold shadow-sm transition",
+                    getCommunityColor(c.name)
+                  )}>
+                    {c.name[0].toUpperCase()}
+                  </div>
+                  <span className="truncate">r/{c.name}</span>
+                </Button>
+              );
+            })
           )}
         </div>
       </div>
 
       <div className="pt-2 border-t space-y-2">
-        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3 block">
+        <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider px-3 block">
           Discover
         </span>
         <div className="space-y-1">
           {discoverQuery.isLoading ? (
-            Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-10 w-full rounded-lg" />)
+            Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-10 w-full rounded-xl" />)
           ) : discoverCommunities.length === 0 ? (
             <p className="text-xs text-muted-foreground px-3 py-1 italic">No public communities to join.</p>
           ) : (
             discoverCommunities.map((c) => (
               <div
                 key={c.id}
-                className="flex items-center justify-between gap-2 p-1.5 px-3 rounded-lg hover:bg-muted/40 transition"
+                className="flex items-center justify-between gap-2 p-1.5 px-3 rounded-xl hover:bg-muted/40 transition duration-200"
               >
                 <button
                   type="button"
-                  className="flex-1 text-left text-sm truncate font-medium hover:underline focus:outline-none"
+                  className="flex flex-1 items-center gap-2 text-left text-sm truncate font-medium hover:underline focus:outline-none"
                   onClick={() => {
                     setActiveCommunityId(c.id);
                     setFilter('ALL');
                   }}
                 >
-                  r/{c.name}
+                  <div className={cn(
+                    "flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold shadow-sm",
+                    getCommunityColor(c.name)
+                  )}>
+                    {c.name[0].toUpperCase()}
+                  </div>
+                  <span className="truncate">r/{c.name}</span>
                 </button>
                 <Button
                   size="sm"
                   variant="outline"
-                  className="h-7 px-2.5 text-xs font-semibold shrink-0"
+                  className="h-7 px-2.5 text-xs font-semibold shrink-0 rounded-lg shadow-sm hover:bg-primary hover:text-primary-foreground hover:border-primary transition duration-200"
                   onClick={() => joinMutation.mutate(c.id)}
                   disabled={joinMutation.isPending}
                 >
@@ -876,8 +913,31 @@ export default function StudentForumPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search posts..."
-              className="pl-9"
+              className="pl-9 rounded-xl shadow-sm border-border/80"
             />
+          </div>
+
+          {/* Create Post Bar */}
+          <div className="flex items-center gap-3 rounded-2xl border bg-card p-3 shadow-sm hover:border-primary/20 transition duration-300">
+            <Avatar className="h-9 w-9 shrink-0">
+              {user?.avatarUrl ? <AvatarImage src={user.avatarUrl} alt={user.fullname} /> : null}
+              <AvatarFallback>{initials(user?.fullname ?? '')}</AvatarFallback>
+            </Avatar>
+            <Input
+              readOnly
+              onClick={() => setIsCreateOpen(true)}
+              placeholder="Create a new post..."
+              className="h-10 cursor-pointer bg-muted/40 hover:bg-muted/60 border-transparent hover:border-muted-foreground/20 rounded-xl transition duration-200"
+            />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="shrink-0 text-muted-foreground hover:text-primary hover:bg-primary/5 rounded-xl h-10 w-10 transition duration-200"
+              onClick={() => setIsCreateOpen(true)}
+              aria-label="Create post with image"
+            >
+              <ImageIcon className="h-5 w-5" />
+            </Button>
           </div>
 
           {/* Category chips */}
@@ -1057,6 +1117,8 @@ export default function StudentForumPage() {
       </div>
 
       <CreatePostSheet
+        open={isCreateOpen}
+        setOpen={setIsCreateOpen}
         defaultCommunityId={
           activeCommunityId && activeCommunityId !== 'popular' ? activeCommunityId : undefined
         }
@@ -1064,6 +1126,16 @@ export default function StudentForumPage() {
           qc.invalidateQueries({ queryKey: ['forum', 'posts'] });
         }}
       />
+
+      {/* Floating Action Button for Mobile / Quick Access */}
+      <Button
+        size="icon"
+        className="fixed bottom-24 right-4 z-40 h-14 w-14 rounded-full shadow-lg md:bottom-8 md:right-8 hover:scale-105 active:scale-95 transition"
+        onClick={() => setIsCreateOpen(true)}
+        aria-label="Create post"
+      >
+        <Plus className="h-6 w-6" />
+      </Button>
     </StudentShell>
   );
 }
