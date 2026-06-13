@@ -103,10 +103,23 @@ function formatTimeAgo(d: string): string {
 
 function greeting(name: string): string {
   const hour = new Date().getHours();
-  const first = name.split(' ')[0] ?? name;
-  if (hour < 12) return `Good morning, ${first}`;
-  if (hour < 17) return `Good afternoon, ${first}`;
-  return `Good evening, ${first}`;
+  let displayName = name;
+  const parts = name.split(/\s+/).filter(Boolean);
+  
+  if (parts.length > 0) {
+    const salutations = ['dr', 'dr.', 'prof', 'prof.', 'mr', 'mr.', 'mrs', 'mrs.', 'ms', 'ms.'];
+    const firstLower = parts[0].toLowerCase();
+    
+    if (salutations.includes(firstLower)) {
+      displayName = parts.length > 1 ? `${parts[0]} ${parts[1]}` : name;
+    } else {
+      displayName = parts[0];
+    }
+  }
+
+  if (hour < 12) return `Good morning, ${displayName}`;
+  if (hour < 17) return `Good afternoon, ${displayName}`;
+  return `Good evening, ${displayName}`;
 }
 
 export default function LecturerDashboardPage() {
