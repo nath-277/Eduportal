@@ -1078,3 +1078,35 @@ Visual polish, dynamic theming, print optimization, and interactive chart enhanc
 - **Interactive SVG Charts**: Added micro-interactive animations to custom bar, line, and donut charts in [charts.tsx](file:///home/themw/DEV/Project_DEV/OPENCODE/Portal-V1/eduportal/apps/web/src/components/ui/charts.tsx), including segment bulging and point scaling on hover.
 - **Forum Animations**: Cascading staggered entrance animations for forum post lists and spring scale/bounce clicks on post Like buttons.
 
+## v1.0.3 — Reddit-style Communities & Forum Enhancements
+
+Implemented forum communities, post attachments, and forum information layouts:
+- **Community Database Schema**: Added `Community` and `CommunityMember` tables in [schema.prisma](file:///home/themw/DEV/Project_DEV/OPENCODE/Portal-V1/eduportal/apps/api/prisma/schema.prisma) supporting membership, descriptions, and creation timelines.
+- **Backend API Endpoints**: Created endpoints under `/api/forum` to create communities, list communities, and join/leave specific forums.
+- **Three-Column Reddit-style Forum Layout**: Replaced the flat forum view with a standard three-column layout (left: community lists with dynamic category colors; center: main discussions feed/post details; right: community details and forum posting instructions).
+- **Post Composer & Image Uploads**: Supported attaching base64 images to discussion threads, rendering them cleanly as responsive inline attachments uploaded to Cloudinary.
+
+## v1.0.4 — Vercel Serverless, CORS & Security Hardening
+
+Hardened the deployment, error reporting, and signup filters:
+- **Serverless Hono API**: Restructured backend entrypoint [index.ts](file:///home/themw/DEV/Project_DEV/OPENCODE/Portal-V1/eduportal/apps/api/src/index.ts) to export Hono API handlers compatible with Vercel Serverless Function runtimes, separating local server bindings.
+- **CORS Handling**: Fixed preflight checks by dynamically stripping trailing slashes from request origins.
+- **Allowed Email Domain Enforcer**: Enabled domain restrictions for university registrations. Users can only register if their email matches the whitelist domains set by the administrator in settings.
+- **Axios Interceptor Upgrades**: Refactored Axios interceptor in [api.ts](file:///home/themw/DEV/Project_DEV/OPENCODE/Portal-V1/eduportal/apps/web/src/lib/api.ts) to extract and format specific nested error responses from API requests.
+
+## v1.0.5 — Notifications & Logout Hardening
+
+Hardened session termination flows and user alert clearing:
+- **Clear & Delete Endpoints**: Added `DELETE /api/notifications` (clear all) and `DELETE /api/notifications/:id` (delete specific notification) routes.
+- **Notifications UI Refactoring**: Replaced duplicated notification screens with a unified, role-based [NotificationsView](file:///home/themw/DEV/Project_DEV/OPENCODE/Portal-V1/eduportal/apps/web/src/components/notifications/notifications-view.tsx) rendering category-specific filters (Results, Resources, Announcements).
+- **Dropdown Updates**: Upgraded popover dropdown to support clearing and deleting single alerts, with real-time cached query invalidations.
+- **Logout Flow Fix**: Resolved Next.js router conflicts causing spinner screens to hang on logout by using full-page `window.location.replace('/login')` redirects.
+
+## v1.0.6 — Dynamic Branding & Favicon Sync
+
+Allowed full customization of portal branding dynamically from the settings panel:
+- **Dynamic Organization Logo & Favicon**: Added Cloudinary-integrated logo upload under settings. Supported dynamic tab icon updates via a global [BrandingLoader](file:///home/themw/DEV/Project_DEV/OPENCODE/Portal-V1/eduportal/apps/web/src/components/layout/branding-loader.tsx).
+- **Dynamic Portal Name Rendering**: Replaced static "EduPortal" strings inside page headers, sidebar menus, copyright footers, login cards, and registration wizard forms with the dynamically fetched portal name.
+- **Logo Container Styling**: Automatically removes solid container backgrounds and paddings when a custom branding logo is loaded, allowing it to render on transparent elements.
+
+
