@@ -1,6 +1,6 @@
 'use client';
 
-import { useRouter, usePathname } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import type { LucideIcon } from 'lucide-react';
 import { GraduationCap, LogOut } from 'lucide-react';
@@ -46,13 +46,12 @@ function initials(fullname: string): string {
 }
 
 export function DesktopSidebar({ items, role, user }: DesktopSidebarProps) {
-  const router = useRouter();
   const pathname = usePathname();
   const clearAuth = useAuthStore((s) => s.clearAuth);
 
   function handleLogout(): void {
     clearAuth();
-    router.push('/login');
+    window.location.replace('/login');
   }
 
   return (

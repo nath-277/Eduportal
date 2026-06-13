@@ -1,6 +1,5 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { DashboardShell } from './dashboard-shell';
@@ -23,7 +22,6 @@ interface NotificationsResponse {
 }
 
 export function StudentShell({ children }: { children: ReactNode }) {
-  const router = useRouter();
   const { user, role, isAuthenticated, isLoading } = useAuthGuard();
   const clearAuth = useAuthStore((s) => s.clearAuth);
 
@@ -34,14 +32,14 @@ export function StudentShell({ children }: { children: ReactNode }) {
     staleTime: 30_000,
   });
 
+  if (!isAuthenticated) return null;
   if (isLoading || !user || role !== 'STUDENT') {
     return <FullPageSpinner label="Loading your dashboard…" />;
   }
-  if (!isAuthenticated) return null;
 
   const handleLogout = () => {
     clearAuth();
-    router.push('/login');
+    window.location.replace('/login');
   };
 
   return (

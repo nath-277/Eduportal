@@ -1,7 +1,6 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
 import { Bell, LogOut } from 'lucide-react';
 import { DesktopSidebar, type SidebarItem } from './desktop-sidebar';
 import { BottomNavDock, type NavItem } from './bottom-nav-dock';
@@ -43,7 +42,6 @@ export function DashboardShell({
   showDock = true,
 }: DashboardShellProps) {
   useRoleTheme();
-  const router = useRouter();
   const clearAuth = useAuthStore((s) => s.clearAuth);
 
   const logoutItem: NavItem = {
@@ -51,7 +49,7 @@ export function DashboardShell({
     label: 'Log out',
     onClick: () => {
       clearAuth();
-      router.push('/login');
+      window.location.replace('/login');
     },
   };
 
@@ -82,7 +80,7 @@ export function DashboardShell({
 
   function handleLogout(): void {
     clearAuth();
-    router.push('/login');
+    window.location.replace('/login');
   }
 
   return (
