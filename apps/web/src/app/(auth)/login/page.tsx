@@ -7,7 +7,8 @@ import { z } from 'zod';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Eye, EyeOff, GraduationCap, Loader2, Lock, Mail, Sparkles, ShieldCheck, Layers } from 'lucide-react';
+import { Eye, EyeOff, Loader2, Lock, Mail, Sparkles, ShieldCheck, Layers } from 'lucide-react';
+import { Logo } from '@/components/ui/logo';
 
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth.store';
@@ -82,8 +83,8 @@ export default function LoginPage() {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.18),transparent_55%)]" />
         <div className="relative z-10 flex w-full flex-col justify-between p-10 xl:p-16">
           <Link href="/" className="flex items-center gap-2 text-lg font-semibold">
-            <span className="grid h-9 w-9 place-items-center rounded-xl bg-white/10 backdrop-blur">
-              <GraduationCap className="h-5 w-5" />
+            <span className="grid h-9 w-9 place-items-center rounded-xl bg-white/10 backdrop-blur overflow-hidden">
+              <Logo className="h-9 w-9 p-1.5" iconClassName="h-5 w-5" />
             </span>
             EduPortal
           </Link>
@@ -125,8 +126,8 @@ export default function LoginPage() {
             href="/"
             className="mb-8 inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground lg:hidden"
           >
-            <span className="grid h-8 w-8 place-items-center rounded-lg bg-primary text-primary-foreground">
-              <GraduationCap className="h-4 w-4" />
+            <span className="grid h-8 w-8 place-items-center rounded-lg bg-primary text-primary-foreground overflow-hidden">
+              <Logo className="h-8 w-8 p-1.5" iconClassName="h-4 w-4" />
             </span>
             EduPortal
           </Link>

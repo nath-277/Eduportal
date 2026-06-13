@@ -11,11 +11,11 @@ import {
   CheckCircle2,
   ClipboardList,
   FileText,
-  GraduationCap,
   MessageSquare,
   ShieldCheck,
   Users,
 } from 'lucide-react';
+import { Logo } from '@/components/ui/logo';
 
 import { useAuthStore } from '@/stores/auth.store';
 import { applyTheme, clearTheme, roleThemes } from '@/lib/themes';
@@ -126,8 +126,8 @@ function Header({ isAuthenticated }: { isAuthenticated: boolean }) {
     <header className="sticky top-0 z-40 border-b border-border/40 bg-background/80 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <Link href="/" className="flex items-center gap-2 text-base font-semibold">
-          <span className="grid h-8 w-8 place-items-center rounded-lg bg-primary text-primary-foreground">
-            <GraduationCap className="h-4 w-4" />
+          <span className="grid h-8 w-8 place-items-center rounded-lg bg-primary text-primary-foreground overflow-hidden">
+            <Logo className="h-8 w-8 p-1.5" iconClassName="h-4 w-4" />
           </span>
           EduPortal
         </Link>
@@ -474,8 +474,8 @@ function Footer() {
       <div className="mx-auto grid max-w-6xl gap-10 px-4 py-12 sm:px-6 md:grid-cols-2 lg:px-8">
         <div>
           <Link href="/" className="flex items-center gap-2 text-base font-semibold">
-            <span className="grid h-8 w-8 place-items-center rounded-lg bg-primary text-primary-foreground">
-              <GraduationCap className="h-4 w-4" />
+            <span className="grid h-8 w-8 place-items-center rounded-lg bg-primary text-primary-foreground overflow-hidden">
+              <Logo className="h-8 w-8 p-1.5" iconClassName="h-4 w-4" />
             </span>
             EduPortal
           </Link>

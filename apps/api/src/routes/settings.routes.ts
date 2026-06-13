@@ -67,7 +67,7 @@ settingsRouter.patch('/', authenticate, authorize('ADMIN'), async (c) => {
     }
   }
 
-  const { portalLogo, ...settingsData } = body;
+  const { portalLogo: _portalLogo, ...settingsData } = body;
   const updateData = {
     ...settingsData,
     portalLogoUrl,

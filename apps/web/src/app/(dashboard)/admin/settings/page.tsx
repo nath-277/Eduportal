@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Bell, Lock, Save, Shield, UserCog, Building2, Globe, Sparkles, Laptop, ShieldCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -46,6 +46,11 @@ export default function AdminSettingsPage() {
   const [maxLoginAttempts, setMaxLoginAttempts] = useState('5');
   const [sessionExpiry, setSessionExpiry] = useState('24h');
   const [allowedEmailDomain, setAllowedEmailDomain] = useState('');
+  const [portalLogoUrl, setPortalLogoUrl] = useState<string | null>(null);
+  const [portalLogo, setPortalLogo] = useState<string | undefined>(undefined);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const logoInputRef = useRef<HTMLInputElement>(null);
 
   // Profile states
   const [profileName, setProfileName] = useState('');
@@ -68,6 +73,7 @@ export default function AdminSettingsPage() {
       maxLoginAttempts: number;
       sessionExpiry: string;
       allowedEmailDomain: string;
+      portalLogoUrl: string | null;
     }>('/settings'),
   });
 
@@ -79,6 +85,9 @@ export default function AdminSettingsPage() {
       setMaxLoginAttempts(String(settingsQuery.data.maxLoginAttempts ?? '5'));
       setSessionExpiry(settingsQuery.data.sessionExpiry || '24h');
       setAllowedEmailDomain(settingsQuery.data.allowedEmailDomain || '');
+      setPortalLogoUrl(settingsQuery.data.portalLogoUrl || null);
+      setLogoPreview(settingsQuery.data.portalLogoUrl || null);
+      setPortalLogo(undefined);
     }
   }, [settingsQuery.data]);
 
@@ -105,6 +114,8 @@ export default function AdminSettingsPage() {
       maxLoginAttempts: number;
       sessionExpiry: string;
       allowedEmailDomain: string;
+      portalLogo?: string;
+      portalLogoUrl?: string | null;
     }) => api.patch('/settings', payload),
     onSuccess: () => {
       toast.success('System settings saved successfully');
@@ -112,6 +123,43 @@ export default function AdminSettingsPage() {
     },
     onError: (err: unknown) => toast.error(err instanceof Error ? err.message : 'Could not save settings'),
   });
+
+  const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('Pick an image file');
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('Logo must be under 2 MB');
+      return;
+    }
+    setUploadingLogo(true);
+    try {
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = () => reject(new Error('Failed to read file'));
+        reader.readAsDataURL(file);
+      });
+      setPortalLogo(dataUrl);
+      setLogoPreview(dataUrl);
+      toast.success('Logo selected. Click Save Branding to apply.');
+    } catch (err) {
+      toast.error('Failed to read logo image file');
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
+
+  const clearLogo = () => {
+    setPortalLogo(undefined);
+    setPortalLogoUrl(null);
+    setLogoPreview(null);
+    if (logoInputRef.current) logoInputRef.current.value = '';
+    toast.success('Logo cleared. Click Save Branding to apply.');
+  };
 
   async function savePortal() {
     if (!portalName.trim()) { toast.error('Portal name is required'); return; }
@@ -123,6 +171,8 @@ export default function AdminSettingsPage() {
       maxLoginAttempts: Number.parseInt(maxLoginAttempts, 10) || 5,
       sessionExpiry,
       allowedEmailDomain,
+      portalLogo,
+      portalLogoUrl,
     });
   }
 
@@ -237,28 +287,83 @@ export default function AdminSettingsPage() {
                         <Skeleton className="h-10 w-full" />
                       </div>
                     ) : (
-                      <div className="grid gap-6 sm:grid-cols-2">
-                        <div className="space-y-2">
-                          <Label htmlFor="portal-name">Portal Short Name</Label>
-                          <Input
-                            id="portal-name"
-                            value={portalName}
-                            onChange={(e) => setPortalName(e.target.value)}
-                            placeholder="e.g. EduPortal"
-                          />
-                          <p className="text-[11px] text-muted-foreground">Used in sidebar and navigation links.</p>
+                      <>
+                        <div className="grid gap-6 sm:grid-cols-2">
+                          <div className="space-y-2">
+                            <Label htmlFor="portal-name">Portal Short Name</Label>
+                            <Input
+                              id="portal-name"
+                              value={portalName}
+                              onChange={(e) => setPortalName(e.target.value)}
+                              placeholder="e.g. EduPortal"
+                            />
+                            <p className="text-[11px] text-muted-foreground">Used in sidebar and navigation links.</p>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="display-name">Portal Full Display Name</Label>
+                            <Input
+                              id="display-name"
+                              value={displayName}
+                              onChange={(e) => setDisplayName(e.target.value)}
+                              placeholder="e.g. EduPortal — University Companion"
+                            />
+                            <p className="text-[11px] text-muted-foreground">Used on login pages and emails.</p>
+                          </div>
                         </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="display-name">Portal Full Display Name</Label>
-                          <Input
-                            id="display-name"
-                            value={displayName}
-                            onChange={(e) => setDisplayName(e.target.value)}
-                            placeholder="e.g. EduPortal — University Companion"
+
+                        <div className="space-y-4 border-t pt-6">
+                          <Label>Organization Branding Icon</Label>
+                          <div className="flex flex-wrap items-center gap-6">
+                            <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl border-2 border-dashed border-border bg-muted/30 overflow-hidden relative group/logo">
+                              {logoPreview ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                  src={logoPreview}
+                                  alt="Branding preview"
+                                  className="h-full w-full object-contain p-1"
+                                />
+                              ) : (
+                                <Building2 className="h-8 w-8 text-muted-foreground/60" />
+                              )}
+                            </div>
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => logoInputRef.current?.click()}
+                                  disabled={uploadingLogo}
+                                  className="h-8 text-xs gap-1.5"
+                                >
+                                  Upload Icon
+                                </Button>
+                                {logoPreview && (
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={clearLogo}
+                                    className="h-8 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
+                                  >
+                                    Remove Icon
+                                  </Button>
+                                )}
+                              </div>
+                              <p className="text-[11px] text-muted-foreground">
+                                PNG, JPG, SVG or ICO format. Max 2MB. Replaces all default icons and syncs the browser favicon.
+                              </p>
+                            </div>
+                          </div>
+                          <input
+                            type="file"
+                            ref={logoInputRef}
+                            onChange={handleLogoChange}
+                            accept="image/*"
+                            className="hidden"
                           />
-                          <p className="text-[11px] text-muted-foreground">Used on login pages and emails.</p>
                         </div>
-                      </div>
+                      </>
                     )}
                     <div className="flex justify-end border-t pt-4">
                       <Button onClick={savePortal} disabled={settingsMutation.isPending} className="gap-2">

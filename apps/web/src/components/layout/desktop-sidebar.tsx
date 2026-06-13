@@ -3,7 +3,7 @@
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import type { LucideIcon } from 'lucide-react';
-import { GraduationCap, LogOut } from 'lucide-react';
+import { LogOut } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth.store';
 import type { User, UserRole } from '@eduportal/shared';
+import { Logo } from '@/components/ui/logo';
 
 export interface SidebarItem {
   icon: LucideIcon;
@@ -57,8 +58,8 @@ export function DesktopSidebar({ items, role, user }: DesktopSidebarProps) {
   return (
     <aside className="hidden w-64 shrink-0 flex-col border-r border-border bg-card md:flex sticky top-0 h-screen">
       <div className="flex h-16 items-center gap-2 border-b border-border px-4">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-          <GraduationCap className="h-5 w-5" />
+        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground overflow-hidden">
+          <Logo className="h-9 w-9 p-1.5" iconClassName="h-5 w-5" />
         </div>
         <div className="leading-tight">
           <p className="text-sm font-semibold">EduPortal</p>

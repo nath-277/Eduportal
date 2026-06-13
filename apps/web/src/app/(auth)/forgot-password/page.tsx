@@ -6,7 +6,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { ChevronLeft, GraduationCap, Loader2, Mail, Send } from 'lucide-react';
+import { ChevronLeft, Loader2, Mail, Send } from 'lucide-react';
+import { Logo } from '@/components/ui/logo';
 
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
@@ -58,8 +59,8 @@ export default function ForgotPasswordPage() {
         transition={{ duration: 0.3 }}
         className="rounded-2xl border bg-card p-8 shadow-sm"
       >
-        <span className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary">
-          <GraduationCap className="h-5 w-5" />
+        <span className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary overflow-hidden">
+          <Logo className="h-10 w-10 p-1.5" iconClassName="h-5 w-5" />
         </span>
         <h1 className="mt-6 text-2xl font-semibold tracking-tight">Forgot your password?</h1>
         <p className="mt-1 text-sm text-muted-foreground">
