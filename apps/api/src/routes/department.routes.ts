@@ -35,7 +35,12 @@ departmentRouter.post('/', authenticate, authorize('ADMIN'), async (c) => {
   if (existing) return conflict('Department with that name or code already exists');
 
   const dept = await prisma.department.create({
-    data: { name: body.name, code: body.code, description: body.description },
+    data: {
+      name: body.name,
+      code: body.code,
+      description: body.description,
+      maxLevel: body.maxLevel,
+    },
   });
 
   await writeAudit(c, {

@@ -4,6 +4,7 @@ export const createDepartmentSchema = z.object({
   name: z.string().min(2).max(100),
   code: z.string().min(2).max(10).regex(/^[A-Z]{2,5}$/, 'Code must be uppercase letters'),
   description: z.string().max(500).optional(),
+  maxLevel: z.enum(['L100', 'L200', 'L300', 'L400', 'L500']).optional(),
 });
 
 export type CreateDepartmentInput = z.infer<typeof createDepartmentSchema>;
@@ -13,6 +14,7 @@ export const updateDepartmentSchema = z
     name: z.string().min(2).max(100).optional(),
     code: z.string().min(2).max(10).regex(/^[A-Z]{2,5}$/).optional(),
     description: z.string().max(500).nullable().optional(),
+    maxLevel: z.enum(['L100', 'L200', 'L300', 'L400', 'L500']).optional(),
   })
   .refine((data) => Object.keys(data).length > 0, { message: 'No fields to update' });
 

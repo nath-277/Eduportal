@@ -130,6 +130,7 @@ interface CommunityItem {
   description: string | null;
   isPrivate: boolean;
   isSystem: boolean;
+  level?: string | null;
   role: 'MEMBER' | 'MODERATOR';
   memberCount: number;
   createdAt: string;
@@ -141,6 +142,7 @@ interface DiscoverCommunityItem {
   displayName: string;
   description: string | null;
   isSystem: boolean;
+  level?: string | null;
   memberCount: number;
   createdAt: string;
 }

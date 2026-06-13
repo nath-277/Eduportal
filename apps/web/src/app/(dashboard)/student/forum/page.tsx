@@ -130,6 +130,7 @@ interface CommunityItem {
   description: string | null;
   isPrivate: boolean;
   isSystem: boolean;
+  level?: string | null;
   role: 'MEMBER' | 'MODERATOR';
   memberCount: number;
   createdAt: string;
@@ -141,6 +142,7 @@ interface DiscoverCommunityItem {
   displayName: string;
   description: string | null;
   isSystem: boolean;
+  level?: string | null;
   memberCount: number;
   createdAt: string;
 }
@@ -670,15 +672,21 @@ export default function StudentForumPage() {
                   </div>
                   <span className="truncate">r/{c.name}</span>
                 </button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-7 px-2.5 text-xs font-semibold shrink-0 rounded-lg shadow-sm hover:bg-primary hover:text-primary-foreground hover:border-primary transition duration-200"
-                  onClick={() => joinMutation.mutate(c.id)}
-                  disabled={joinMutation.isPending}
-                >
-                  Join
-                </Button>
+                {c.level && user?.level !== c.level ? (
+                  <Badge variant="outline" className="text-[10px] text-muted-foreground border-dashed bg-muted/20 shrink-0 h-6">
+                    {c.level} Only
+                  </Badge>
+                ) : (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 px-2.5 text-xs font-semibold shrink-0 rounded-lg shadow-sm hover:bg-primary hover:text-primary-foreground hover:border-primary transition duration-200"
+                    onClick={() => joinMutation.mutate(c.id)}
+                    disabled={joinMutation.isPending}
+                  >
+                    Join
+                  </Button>
+                )}
               </div>
             ))
           )}
@@ -747,6 +755,10 @@ export default function StudentForumPage() {
                       </p>
                     )}
                   </>
+                ) : community.level && user?.level !== community.level ? (
+                  <Button className="w-full" disabled variant="outline">
+                    Restricted ({community.level} Only)
+                  </Button>
                 ) : community.isPrivate ? (
                   community.hasPendingRequest ? (
                     <Button className="w-full" disabled variant="outline">

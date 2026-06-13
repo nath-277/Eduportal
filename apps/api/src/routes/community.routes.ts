@@ -31,6 +31,7 @@ communityRouter.get('/', authenticate, async (c) => {
       description: m.community.description,
       isPrivate: m.community.isPrivate,
       isSystem: m.community.isSystem,
+      level: m.community.level,
       role: m.role,
       memberCount: m.community._count.members,
       createdAt: m.community.createdAt,
@@ -65,6 +66,7 @@ communityRouter.get('/discover', authenticate, async (c) => {
       displayName: com.displayName,
       description: com.description,
       isSystem: com.isSystem,
+      level: com.level,
       memberCount: com._count.members,
       createdAt: com.createdAt,
     }))
@@ -284,6 +286,15 @@ communityRouter.post('/:id/join', authenticate, async (c) => {
     return c.json({ error: 'Cannot directly join a private community' }, 400);
   }
 
+  const callerUser = await prisma.user.findUnique({
+    where: { id: userId },
+  });
+  if (!callerUser) return notFound('User not found');
+
+  if (callerUser.role === 'STUDENT' && community.level && callerUser.level !== community.level) {
+    return c.json({ error: `Students can only join communities that match their level (${community.level})` }, 400);
+  }
+
   const membership = await prisma.communityMember.upsert({
     where: {
       communityId_userId: {
@@ -347,6 +358,15 @@ communityRouter.post('/:id/request-join', authenticate, async (c) => {
   if (!community) return notFound('Community not found');
   if (!community.isPrivate) {
     return c.json({ error: 'This community is public. Join directly.' }, 400);
+  }
+
+  const callerUser = await prisma.user.findUnique({
+    where: { id: userId },
+  });
+  if (!callerUser) return notFound('User not found');
+
+  if (callerUser.role === 'STUDENT' && community.level && callerUser.level !== community.level) {
+    return c.json({ error: `Students can only join communities that match their level (${community.level})` }, 400);
   }
 
   const isMember = await prisma.communityMember.findUnique({
@@ -467,6 +487,14 @@ communityRouter.post('/:id/join-requests/:requestId/approve', authenticate, asyn
     where: { id: requestId },
   });
   if (!joinRequest) return notFound('Join request not found');
+
+  const targetUser = await prisma.user.findUnique({
+    where: { id: joinRequest.userId },
+  });
+  if (!targetUser) return notFound('Target user not found');
+  if (targetUser.role === 'STUDENT' && community.level && targetUser.level !== community.level) {
+    return c.json({ error: `Target user level does not match the community level restriction (${community.level})` }, 400);
+  }
 
   const result = await prisma.$transaction(async (tx) => {
     await tx.communityJoinRequest.update({

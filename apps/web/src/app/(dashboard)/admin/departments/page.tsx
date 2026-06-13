@@ -33,6 +33,7 @@ interface Department {
   name: string;
   code: string;
   description?: string | null;
+  maxLevel: string;
   createdAt: string;
 }
 
@@ -53,6 +54,7 @@ interface DeptForm {
   name: string;
   code: string;
   description: string;
+  maxLevel: string;
 }
 
 interface SessionForm {
@@ -108,7 +110,7 @@ function DepartmentsTab() {
   });
 
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<DeptForm>({
-    defaultValues: { name: '', code: '', description: '' },
+    defaultValues: { name: '', code: '', description: '', maxLevel: 'L400' },
   });
 
   const createMutation = useMutation({
@@ -117,6 +119,7 @@ function DepartmentsTab() {
         name: input.name,
         code: input.code.toUpperCase(),
         description: input.description || undefined,
+        maxLevel: input.maxLevel,
       }),
     onSuccess: () => {
       toast.success('Department created');
@@ -144,7 +147,7 @@ function DepartmentsTab() {
         <CardContent>
           <form
             onSubmit={handleSubmit((v) => createMutation.mutate(v))}
-            className="grid gap-3 sm:grid-cols-[1fr_180px_auto] sm:items-end"
+            className="grid gap-3 sm:grid-cols-[1fr_150px_180px_auto] sm:items-end"
           >
             <div className="space-y-1.5">
               <Label htmlFor="dept-name">Name</Label>
@@ -155,6 +158,18 @@ function DepartmentsTab() {
               <Label htmlFor="dept-code">Code</Label>
               <Input id="dept-code" placeholder="CSC" maxLength={5} {...register('code', { required: 'Required', pattern: { value: /^[A-Z]{2,5}$/, message: '2-5 uppercase letters' } })} />
               {errors.code ? <p className="text-xs text-destructive">{errors.code.message}</p> : null}
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="dept-maxlevel">Graduation Level</Label>
+              <select
+                id="dept-maxlevel"
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                {...register('maxLevel', { required: 'Required' })}
+              >
+                <option value="L300">3 Years (L300)</option>
+                <option value="L400">4 Years (L400)</option>
+                <option value="L500">5 Years (L500)</option>
+              </select>
             </div>
             <Button type="submit" disabled={isSubmitting || createMutation.isPending} className="gap-1.5">
               {createMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
@@ -189,6 +204,7 @@ function DepartmentsTab() {
                   <tr>
                     <th className="px-3 py-2 font-medium">Name</th>
                     <th className="px-3 py-2 font-medium">Code</th>
+                    <th className="px-3 py-2 text-right font-medium">Graduation Level</th>
                     <th className="px-3 py-2 text-right font-medium">Users</th>
                     <th className="px-3 py-2 text-right font-medium">Created</th>
                     <th className="px-3 py-2 text-right font-medium">Actions</th>
@@ -200,6 +216,9 @@ function DepartmentsTab() {
                       <td className="px-3 py-2 font-medium">{d.name}</td>
                       <td className="px-3 py-2">
                         <Badge variant="secondary" className="font-mono">{d.code}</Badge>
+                      </td>
+                      <td className="px-3 py-2 text-right">
+                        <Badge variant="outline" className="font-mono">{d.maxLevel}</Badge>
                       </td>
                       <td className="px-3 py-2 text-right tabular-nums">{d._count?.users ?? '—'}</td>
                       <td className="px-3 py-2 text-right text-xs text-muted-foreground">
