@@ -18,7 +18,7 @@ notificationRouter.get('/mine', authenticate, async (c) => {
   return ok({ unreadCount, notifications });
 });
 
-notificationRouter.patch('/:id/read', authenticate, async (c) => {
+notificationRouter.on(['POST', 'PATCH'], '/:id/read', authenticate, async (c) => {
   const { id } = c.req.param();
   const { userId } = c.get('user');
 
@@ -33,7 +33,7 @@ notificationRouter.patch('/:id/read', authenticate, async (c) => {
   return ok({ notification: updated });
 });
 
-notificationRouter.patch('/read-all', authenticate, async (c) => {
+notificationRouter.on(['POST', 'PATCH'], '/read-all', authenticate, async (c) => {
   const { userId } = c.get('user');
   const result = await prisma.notification.updateMany({
     where: { userId, isRead: false },
