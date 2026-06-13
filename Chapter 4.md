@@ -85,7 +85,7 @@ eduportal/
 ### 4.5.1 System Landing and Authentication
 The authentication system is a role-based gateway (`STUDENT`, `LECTURER`, `ADMIN`). During registration, students select their department and academic level. The backend performs a crucial validation check: the student's level must not exceed the maximum level configuration (graduation limit) set for their selected department. Additionally, registration is restricted to the specific school domain set by the administrator in the portal settings.
 
-![Landing Page Screenshot](file:///home/themw/DEV/Project_DEV/OPENCODE/Portal-V1/eduportal/apps/web/public/screenshots/landing.png)
+![Landing Page Screenshot](/home/themw/DEV/Project_DEV/OPENCODE/Portal-V1/eduportal/apps/web/public/screenshots/landing.png)
 *Figure 4.1: Web-Based Student Information and Resource Portal Landing Page*
 
 #### Code Snippet 4.1: User Registration Route and Validation Checks (`apps/api/src/routes/auth.routes.ts`)
@@ -151,13 +151,13 @@ authRouter.post('/register', async (c) => {
 ### 4.5.2 Student Level-Specific Communities Safeguard
 Students are restricted to level-specific system communities (e.g., "CSC 200L"). When a student accesses the "Discover" forum tab, the API filters out communities that do not match their level. Furthermore, if a student directly attempts to join or request to join a community of a different level via HTTP POST calls, the API returns a 400 error. The user's memberships are kept synchronized via `syncUserCommunities`.
 
-![Student Dashboard Screenshot](file:///home/themw/DEV/Project_DEV/OPENCODE/Portal-V1/eduportal/apps/web/public/screenshots/student_dashboard.png)
+![Student Dashboard Screenshot](/home/themw/DEV/Project_DEV/OPENCODE/Portal-V1/eduportal/apps/web/public/screenshots/student_dashboard.png)
 *Figure 4.2: Authenticated Student Portal Dashboard Overview*
 
-![Student Forum Screenshot](file:///home/themw/DEV/Project_DEV/OPENCODE/Portal-V1/eduportal/apps/web/public/screenshots/student_forum.png)
+![Student Forum Screenshot](/home/themw/DEV/Project_DEV/OPENCODE/Portal-V1/eduportal/apps/web/public/screenshots/student_forum.png)
 *Figure 4.3: Collaborative Student Discussion Forum and Level-Restricted Communities*
 
-![Student Resources Screenshot](file:///home/themw/DEV/Project_DEV/OPENCODE/Portal-V1/eduportal/apps/web/public/screenshots/student_resources.png)
+![Student Resources Screenshot](/home/themw/DEV/Project_DEV/OPENCODE/Portal-V1/eduportal/apps/web/public/screenshots/student_resources.png)
 *Figure 4.4: Academic Shared Resource Library and File Distribution Center*
 
 #### Code Snippet 4.2: Level Safeguard Filtering in Hono (`apps/api/src/routes/community.routes.ts` & `apps/api/src/lib/community.ts`)
@@ -254,10 +254,10 @@ Admin users specify a department's graduation level (`maxLevel`) as `L300` (3-ye
 1. System level communities are updated (communities for deactivated levels are automatically deleted).
 2. Students in that department whose academic level exceeds the new `maxLevel` are automatically demoted to the new limit, and their level communities are resynced to maintain integrity.
 
-![Admin Dashboard Screenshot](file:///home/themw/DEV/Project_DEV/OPENCODE/Portal-V1/eduportal/apps/web/public/screenshots/admin_dashboard.png)
+![Admin Dashboard Screenshot](/home/themw/DEV/Project_DEV/OPENCODE/Portal-V1/eduportal/apps/web/public/screenshots/admin_dashboard.png)
 *Figure 4.5: Administrator Portal System Control Panel Dashboard*
 
-![Admin Departments Screenshot](file:///home/themw/DEV/Project_DEV/OPENCODE/Portal-V1/eduportal/apps/web/public/screenshots/admin_departments.png)
+![Admin Departments Screenshot](/home/themw/DEV/Project_DEV/OPENCODE/Portal-V1/eduportal/apps/web/public/screenshots/admin_departments.png)
 *Figure 4.6: Academic Units Configuration Panel and Graduation Level Selector*
 
 #### Code Snippet 4.3: Department Level Sync and System Adjustments (`apps/api/src/routes/department.routes.ts`)
@@ -313,7 +313,7 @@ departmentRouter.patch('/:id', authenticate, authorize('ADMIN'), async (c) => {
 ### 4.5.4 Dynamic Portal Branding and Favicon Sync
 The administrator has the authority to configure the portal's branding identity, uploading custom logos and setting the platform name. The frontend queries these public settings using a global React Query hook. A React client component named `BrandingLoader` listens to this query state and dynamically synchronizes the browser favicon and layout logos.
 
-![Admin Settings Screenshot](file:///home/themw/DEV/Project_DEV/OPENCODE/Portal-V1/eduportal/apps/web/public/screenshots/admin_settings.png)
+![Admin Settings Screenshot](/home/themw/DEV/Project_DEV/OPENCODE/Portal-V1/eduportal/apps/web/public/screenshots/admin_settings.png)
 *Figure 4.7: Dynamic Portal Branding Customization Screen and Organization Settings Panel*
 
 #### Code Snippet 4.4: Dynamic Browser Favicon Loader (`apps/web/src/components/layout/branding-loader.tsx`)
