@@ -1109,4 +1109,11 @@ Allowed full customization of portal branding dynamically from the settings pane
 - **Dynamic Portal Name Rendering**: Replaced static "EduPortal" strings inside page headers, sidebar menus, copyright footers, login cards, and registration wizard forms with the dynamically fetched portal name.
 - **Logo Container Styling**: Automatically removes solid container backgrounds and paddings when a custom branding logo is loaded, allowing it to render on transparent elements.
 
+## v1.0.7 — Community Level Restrictions & Department Max Levels
+
+Added database-level and frontend-level validations for community join requests and department creation configurations:
+- **Student Level-Specific Communities**: Enforced backend validation checks on Hono join (`POST /communities/:id/join`), request-join (`POST /communities/:id/request-join`), and approval routes (`POST /communities/:id/join-requests/:requestId/approve`). This restricts student users from joining community discussions that do not match their currently registered level.
+- **Frontend Safeguard Badges**: Exposed community levels in list mappings. Disables the join button for non-matching students, replacing it with an outline "Level Only" constraint badge in the discover sidebar and active community profile sheets.
+- **Department Graduation/Max Level Configurator**: Added `maxLevel` selector validation to creation (`POST /departments`) and patch validation schemas in [department.validator.ts](file:///home/themw/DEV/Project_DEV/OPENCODE/Portal-V1/eduportal/apps/api/src/validators/department.validator.ts). Exposed a Graduation/Max Level selection dropdown (`L300`, `L400`, or `L500`) on the admin departments panel, letting administrators customize maximum durations of study per department.
+
 
