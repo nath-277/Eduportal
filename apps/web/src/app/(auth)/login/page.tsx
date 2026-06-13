@@ -9,6 +9,8 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Eye, EyeOff, Loader2, Lock, Mail, Sparkles, ShieldCheck, Layers } from 'lucide-react';
 import { Logo } from '@/components/ui/logo';
+import { useSettings } from '@/hooks/use-settings';
+import { cn } from '@/lib/utils';
 
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth.store';
@@ -42,6 +44,10 @@ const featureBullets = [
 export default function LoginPage() {
   const router = useRouter();
   const setAuth = useAuthStore((s) => s.setAuth);
+  const { data: settings } = useSettings();
+
+  const hasLogo = !!settings?.portalLogoUrl;
+  const portalName = settings?.portalName || 'EduPortal';
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -83,10 +89,13 @@ export default function LoginPage() {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.18),transparent_55%)]" />
         <div className="relative z-10 flex w-full flex-col justify-between p-10 xl:p-16">
           <Link href="/" className="flex items-center gap-2 text-lg font-semibold">
-            <span className="grid h-9 w-9 place-items-center rounded-xl bg-white/10 backdrop-blur overflow-hidden">
-              <Logo className="h-9 w-9 p-1.5" iconClassName="h-5 w-5" />
+            <span className={cn(
+              "grid h-9 w-9 place-items-center rounded-xl overflow-hidden",
+              hasLogo ? "" : "bg-white/10 backdrop-blur"
+            )}>
+              <Logo className={hasLogo ? "h-9 w-9" : "h-9 w-9 p-1.5"} iconClassName="h-5 w-5" />
             </span>
-            EduPortal
+            {portalName}
           </Link>
           <div className="space-y-8">
             <motion.h2
@@ -98,7 +107,7 @@ export default function LoginPage() {
               Run your department on a single, calm source of truth.
             </motion.h2>
             <p className="max-w-md text-base text-primary-foreground/80">
-              EduPortal brings course management, results, and announcements
+              {portalName} brings course management, results, and announcements
               together so students and lecturers spend less time chasing context
               and more time on the work.
             </p>
@@ -114,7 +123,7 @@ export default function LoginPage() {
             </ul>
           </div>
           <p className="text-xs text-primary-foreground/60">
-            © {new Date().getFullYear()} EduPortal. Built for the Department of
+            © {new Date().getFullYear()} {portalName}. Built for the Department of
             Computer Science.
           </p>
         </div>
@@ -126,10 +135,13 @@ export default function LoginPage() {
             href="/"
             className="mb-8 inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground lg:hidden"
           >
-            <span className="grid h-8 w-8 place-items-center rounded-lg bg-primary text-primary-foreground overflow-hidden">
-              <Logo className="h-8 w-8 p-1.5" iconClassName="h-4 w-4" />
+            <span className={cn(
+              "grid h-8 w-8 place-items-center rounded-lg overflow-hidden",
+              hasLogo ? "" : "bg-primary text-primary-foreground"
+            )}>
+              <Logo className={hasLogo ? "h-8 w-8" : "h-8 w-8 p-1.5"} iconClassName="h-4 w-4" />
             </span>
-            EduPortal
+            {portalName}
           </Link>
 
           <motion.div
@@ -220,7 +232,7 @@ export default function LoginPage() {
               </Button>
 
               <p className="text-center text-sm text-muted-foreground">
-                New to EduPortal?{' '}
+                New to {portalName}?{' '}
                 <Link href="/register" className="font-medium text-primary hover:underline">
                   Create an account
                 </Link>

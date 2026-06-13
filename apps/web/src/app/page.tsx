@@ -16,6 +16,8 @@ import {
   Users,
 } from 'lucide-react';
 import { Logo } from '@/components/ui/logo';
+import { useSettings } from '@/hooks/use-settings';
+import { cn } from '@/lib/utils';
 
 import { useAuthStore } from '@/stores/auth.store';
 import { applyTheme, clearTheme, roleThemes } from '@/lib/themes';
@@ -122,14 +124,21 @@ export default function LandingPage() {
 
 
 function Header({ isAuthenticated }: { isAuthenticated: boolean }) {
+  const { data: settings } = useSettings();
+  const hasLogo = !!settings?.portalLogoUrl;
+  const portalName = settings?.portalName || 'EduPortal';
+
   return (
     <header className="sticky top-0 z-40 border-b border-border/40 bg-background/80 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <Link href="/" className="flex items-center gap-2 text-base font-semibold">
-          <span className="grid h-8 w-8 place-items-center rounded-lg bg-primary text-primary-foreground overflow-hidden">
-            <Logo className="h-8 w-8 p-1.5" iconClassName="h-4 w-4" />
+          <span className={cn(
+            "grid h-8 w-8 place-items-center rounded-lg overflow-hidden",
+            hasLogo ? "" : "bg-primary text-primary-foreground"
+          )}>
+            <Logo className={hasLogo ? "h-8 w-8" : "h-8 w-8 p-1.5"} iconClassName="h-4 w-4" />
           </span>
-          EduPortal
+          {portalName}
         </Link>
         <nav className="hidden items-center gap-6 text-sm text-muted-foreground md:flex">
           <a href="#features" className="transition hover:text-foreground">Features</a>
@@ -158,6 +167,9 @@ function Header({ isAuthenticated }: { isAuthenticated: boolean }) {
 }
 
 function Hero({ getStartedHref }: { getStartedHref: string }) {
+  const { data: settings } = useSettings();
+  const portalName = settings?.portalName || 'EduPortal';
+
   return (
     <section className="relative overflow-hidden">
       <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,rgba(99,102,241,0.18),transparent_60%)]" />
@@ -177,7 +189,7 @@ function Hero({ getStartedHref }: { getStartedHref: string }) {
               The academic portal your department deserves.
             </h1>
             <p className="mt-5 max-w-xl text-base text-muted-foreground sm:text-lg">
-              EduPortal brings course management, results, and announcements into a
+              {portalName} brings course management, results, and announcements into a
               single calm surface — so students, lecturers, and admins stop chasing
               context and start getting work done.
             </p>
@@ -469,15 +481,22 @@ function CTASection() {
 }
 
 function Footer() {
+  const { data: settings } = useSettings();
+  const hasLogo = !!settings?.portalLogoUrl;
+  const portalName = settings?.portalName || 'EduPortal';
+
   return (
     <footer className="border-t bg-background">
       <div className="mx-auto grid max-w-6xl gap-10 px-4 py-12 sm:px-6 md:grid-cols-2 lg:px-8">
         <div>
           <Link href="/" className="flex items-center gap-2 text-base font-semibold">
-            <span className="grid h-8 w-8 place-items-center rounded-lg bg-primary text-primary-foreground overflow-hidden">
-              <Logo className="h-8 w-8 p-1.5" iconClassName="h-4 w-4" />
+            <span className={cn(
+              "grid h-8 w-8 place-items-center rounded-lg overflow-hidden",
+              hasLogo ? "" : "bg-primary text-primary-foreground"
+            )}>
+              <Logo className={hasLogo ? "h-8 w-8" : "h-8 w-8 p-1.5"} iconClassName="h-4 w-4" />
             </span>
-            EduPortal
+            {portalName}
           </Link>
           <p className="mt-3 max-w-sm text-sm text-muted-foreground">
             The academic portal your department deserves. Built for students,

@@ -187,7 +187,10 @@ export default function RegisterPage() {
               exit={{ opacity: 0, x: -24 }}
               transition={{ duration: 0.25 }}
             >
-              <AccountTypeStep onSelect={goToPersonal} />
+              <AccountTypeStep
+                onSelect={goToPersonal}
+                portalName={settingsQuery.data?.portalName || 'EduPortal'}
+              />
             </motion.div>
           )}
 
@@ -223,6 +226,7 @@ export default function RegisterPage() {
                 onBack={() => setStep(1)}
                 onSubmit={submitFinal}
                 submitting={submitting}
+                portalName={settingsQuery.data?.portalName || 'EduPortal'}
               />
             </motion.div>
           )}
@@ -278,12 +282,14 @@ function StepIndicator({ step }: { step: 0 | 1 | 2 }) {
 
 function AccountTypeStep({
   onSelect,
+  portalName = 'EduPortal',
 }: {
   onSelect: (role: AccountType) => void;
+  portalName?: string;
 }) {
   return (
     <div>
-      <h1 className="text-2xl font-semibold tracking-tight">How will you use EduPortal?</h1>
+      <h1 className="text-2xl font-semibold tracking-tight">How will you use {portalName}?</h1>
       <p className="mt-2 text-sm text-muted-foreground">
         Pick the role that best describes you. You can always ask an admin to update it later.
       </p>
@@ -502,10 +508,12 @@ function PasswordStep({
   onBack,
   onSubmit,
   submitting,
+  portalName = 'EduPortal',
 }: {
   onBack: () => void;
   onSubmit: (data: PasswordValues) => void;
   submitting: boolean;
+  portalName?: string;
 }) {
   const {
     register,
@@ -528,7 +536,7 @@ function PasswordStep({
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Secure your account</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Choose a strong password. You will use it to sign in to EduPortal.
+          Choose a strong password. You will use it to sign in to {portalName}.
         </p>
       </div>
 

@@ -175,23 +175,7 @@ function NotificationRow({
     </div>
   );
 
-  if (n.link) {
-    return (
-      <Link href={n.link} className="block" onClick={onClick}>
-        {content}
-      </Link>
-    );
-  }
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="block w-full text-left"
-      disabled={isMarking}
-    >
-      {content}
-    </button>
-  );
+  return content;
 }
 
 interface NotificationsViewProps {

@@ -8,6 +8,8 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { ChevronLeft, Loader2, Mail, Send } from 'lucide-react';
 import { Logo } from '@/components/ui/logo';
+import { useSettings } from '@/hooks/use-settings';
+import { cn } from '@/lib/utils';
 
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
@@ -23,6 +25,9 @@ type Values = z.infer<typeof schema>;
 export default function ForgotPasswordPage() {
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const { data: settings } = useSettings();
+
+  const hasLogo = !!settings?.portalLogoUrl;
 
   const {
     register,
@@ -59,8 +64,11 @@ export default function ForgotPasswordPage() {
         transition={{ duration: 0.3 }}
         className="rounded-2xl border bg-card p-8 shadow-sm"
       >
-        <span className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary overflow-hidden">
-          <Logo className="h-10 w-10 p-1.5" iconClassName="h-5 w-5" />
+        <span className={cn(
+          "grid h-10 w-10 place-items-center rounded-xl overflow-hidden",
+          hasLogo ? "" : "bg-primary/10 text-primary"
+        )}>
+          <Logo className={hasLogo ? "h-10 w-10" : "h-10 w-10 p-1.5"} iconClassName="h-5 w-5" />
         </span>
         <h1 className="mt-6 text-2xl font-semibold tracking-tight">Forgot your password?</h1>
         <p className="mt-1 text-sm text-muted-foreground">

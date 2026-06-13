@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -67,7 +66,6 @@ interface NotificationMenuProps {
 }
 
 export function NotificationMenu({ role, initialUnreadCount }: NotificationMenuProps) {
-  const router = useRouter();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
 
@@ -81,31 +79,6 @@ export function NotificationMenu({ role, initialUnreadCount }: NotificationMenuP
     staleTime: 15_000,
   });
 
-  const markOne = useMutation({
-    mutationFn: async (id: string) =>
-      api.patch<{ notification: Notification }>(`/notifications/${id}/read`, {}),
-    onMutate: async (id) => {
-      await qc.cancelQueries({ queryKey });
-      const prev = qc.getQueryData<NotificationsResponse>(queryKey);
-      if (prev) {
-        qc.setQueryData<NotificationsResponse>(queryKey, {
-          unreadCount: Math.max(0, prev.unreadCount - (prev.notifications.find((n) => n.id === id && !n.isRead) ? 1 : 0)),
-          notifications: prev.notifications.map((n) =>
-            n.id === id ? { ...n, isRead: true } : n,
-          ),
-        });
-      }
-      return { prev };
-    },
-    onError: (_e, _v, ctx) => {
-      if (ctx?.prev) qc.setQueryData(queryKey, ctx.prev);
-      toast.error('Could not mark as read');
-    },
-    onSettled: () => {
-      qc.invalidateQueries({ queryKey });
-      qc.invalidateQueries({ queryKey: ['notifications', 'badge'] });
-    },
-  });
 
   const markAll = useMutation({
     mutationFn: async () =>
@@ -198,13 +171,6 @@ export function NotificationMenu({ role, initialUnreadCount }: NotificationMenuP
     }
   }
 
-  function handleNotificationClick(n: Notification) {
-    if (!n.isRead) markOne.mutate(n.id);
-    if (n.link) {
-      setOpen(false);
-      router.push(n.link);
-    }
-  }
 
   const notificationsHref = `/${role.toLowerCase()}/notifications`;
 
@@ -333,12 +299,9 @@ export function NotificationMenu({ role, initialUnreadCount }: NotificationMenuP
                 const Icon = meta.icon;
                 return (
                   <li key={n.id} className="relative group/item">
-                    <button
-                      type="button"
-                      onClick={() => handleNotificationClick(n)}
+                    <div
                       className={cn(
-                        'group flex w-full items-start gap-2.5 p-3 pr-10 text-left transition-colors',
-                        'hover:bg-muted/40 focus-visible:bg-muted/40 focus-visible:outline-none',
+                        'flex w-full items-start gap-2.5 p-3 pr-10 text-left transition-colors',
                         !n.isRead && 'bg-primary/[0.04]',
                       )}
                     >
@@ -374,7 +337,7 @@ export function NotificationMenu({ role, initialUnreadCount }: NotificationMenuP
                           {formatTime(n.createdAt)} · {meta.label}
                         </p>
                       </div>
-                    </button>
+                    </div>
                     <button
                       type="button"
                       onClick={(e) => {

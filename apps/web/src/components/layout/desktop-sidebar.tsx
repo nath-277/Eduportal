@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth.store';
 import type { User, UserRole } from '@eduportal/shared';
 import { Logo } from '@/components/ui/logo';
+import { useSettings } from '@/hooks/use-settings';
 
 export interface SidebarItem {
   icon: LucideIcon;
@@ -21,7 +22,7 @@ export interface SidebarItem {
 }
 
 interface DesktopSidebarProps {
-  items: SidebarItem[];
+  items: readonly SidebarItem[];
   role: UserRole;
   user: User;
 }
@@ -49,6 +50,10 @@ function initials(fullname: string): string {
 export function DesktopSidebar({ items, role, user }: DesktopSidebarProps) {
   const pathname = usePathname();
   const clearAuth = useAuthStore((s) => s.clearAuth);
+  const { data: settings } = useSettings();
+
+  const hasLogo = !!settings?.portalLogoUrl;
+  const portalName = settings?.portalName || 'EduPortal';
 
   function handleLogout(): void {
     clearAuth();
@@ -58,11 +63,14 @@ export function DesktopSidebar({ items, role, user }: DesktopSidebarProps) {
   return (
     <aside className="hidden w-64 shrink-0 flex-col border-r border-border bg-card md:flex sticky top-0 h-screen">
       <div className="flex h-16 items-center gap-2 border-b border-border px-4">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground overflow-hidden">
-          <Logo className="h-9 w-9 p-1.5" iconClassName="h-5 w-5" />
+        <div className={cn(
+          "flex h-9 w-9 items-center justify-center rounded-lg overflow-hidden",
+          hasLogo ? "" : "bg-primary text-primary-foreground"
+        )}>
+          <Logo className={hasLogo ? "h-9 w-9" : "h-9 w-9 p-1.5"} iconClassName="h-5 w-5" />
         </div>
         <div className="leading-tight">
-          <p className="text-sm font-semibold">EduPortal</p>
+          <p className="text-sm font-semibold">{portalName}</p>
           <p className="text-xs text-muted-foreground">{roleLabel(role)} workspace</p>
         </div>
       </div>
