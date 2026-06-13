@@ -14,6 +14,7 @@ import {
   MessageCircle,
   Settings,
   X,
+  Trash2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -133,6 +134,59 @@ export function NotificationMenu({ role, initialUnreadCount }: NotificationMenuP
     },
   });
 
+  const clearAll = useMutation({
+    mutationFn: async () =>
+      api.delete<{ deleted: number }>('/notifications'),
+    onMutate: async () => {
+      await qc.cancelQueries({ queryKey });
+      const prev = qc.getQueryData<NotificationsResponse>(queryKey);
+      if (prev) {
+        qc.setQueryData<NotificationsResponse>(queryKey, {
+          unreadCount: 0,
+          notifications: [],
+        });
+      }
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(queryKey, ctx.prev);
+      toast.error('Could not clear notifications');
+    },
+    onSuccess: (data) => {
+      toast.success(`${data.deleted} notifications cleared`);
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey });
+      qc.invalidateQueries({ queryKey: ['notifications', 'badge'] });
+    },
+  });
+
+  const deleteOne = useMutation({
+    mutationFn: async (id: string) =>
+      api.delete<{ success: boolean }>(`/notifications/${id}`),
+    onMutate: async (id) => {
+      await qc.cancelQueries({ queryKey });
+      const prev = qc.getQueryData<NotificationsResponse>(queryKey);
+      if (prev) {
+        const target = prev.notifications.find((n) => n.id === id);
+        const unreadDiff = target && !target.isRead ? 1 : 0;
+        qc.setQueryData<NotificationsResponse>(queryKey, {
+          unreadCount: Math.max(0, prev.unreadCount - unreadDiff),
+          notifications: prev.notifications.filter((n) => n.id !== id),
+        });
+      }
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(queryKey, ctx.prev);
+      toast.error('Could not delete notification');
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey });
+      qc.invalidateQueries({ queryKey: ['notifications', 'badge'] });
+    },
+  });
+
   const notifications = notificationsQuery.data?.notifications ?? [];
   const unreadCount = notificationsQuery.data?.unreadCount ?? 0;
   const recent = notifications.slice(0, 6);
@@ -213,6 +267,27 @@ export function NotificationMenu({ role, initialUnreadCount }: NotificationMenuP
                 Mark all
               </Button>
             ) : null}
+            {notifications.length > 0 ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  if (confirm('Clear all notifications?')) {
+                    clearAll.mutate();
+                  }
+                }}
+                disabled={clearAll.isPending}
+                className="h-7 gap-1 px-2 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
+                aria-label="Clear all notifications"
+              >
+                {clearAll.isPending ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Trash2 className="h-3 w-3" />
+                )}
+                Clear all
+              </Button>
+            ) : null}
             <Button
               variant="ghost"
               size="icon"
@@ -257,12 +332,12 @@ export function NotificationMenu({ role, initialUnreadCount }: NotificationMenuP
                 const meta = CATEGORY_META[n.category];
                 const Icon = meta.icon;
                 return (
-                  <li key={n.id}>
+                  <li key={n.id} className="relative group/item">
                     <button
                       type="button"
                       onClick={() => handleNotificationClick(n)}
                       className={cn(
-                        'group flex w-full items-start gap-2.5 p-3 text-left transition-colors',
+                        'group flex w-full items-start gap-2.5 p-3 pr-10 text-left transition-colors',
                         'hover:bg-muted/40 focus-visible:bg-muted/40 focus-visible:outline-none',
                         !n.isRead && 'bg-primary/[0.04]',
                       )}
@@ -299,6 +374,19 @@ export function NotificationMenu({ role, initialUnreadCount }: NotificationMenuP
                           {formatTime(n.createdAt)} · {meta.label}
                         </p>
                       </div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        deleteOne.mutate(n.id);
+                      }}
+                      disabled={deleteOne.isPending}
+                      aria-label="Delete notification"
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 opacity-0 group-hover/item:opacity-100 focus-visible:opacity-100 transition-opacity grid h-7 w-7 place-items-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   </li>
                 );
