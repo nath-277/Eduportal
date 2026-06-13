@@ -6,6 +6,8 @@ export const updateSettingsSchema = z.object({
   maxLoginAttempts: z.coerce.number().int().min(1).max(20),
   sessionExpiry: z.string().min(1, 'Session expiry is required'),
   allowedEmailDomain: z.string().max(100).optional().transform(v => v ? v.trim().toLowerCase() : ''),
+  portalLogo: z.string().optional(),
+  portalLogoUrl: z.string().max(500).nullable().optional(),
 });
 
 export type UpdateSettingsInput = z.infer<typeof updateSettingsSchema>;

@@ -4,6 +4,7 @@ import { authenticate, authorize } from '../middleware/auth.js';
 import { writeAudit } from '../lib/audit.js';
 import { ok } from '../lib/response.js';
 import { updateSettingsSchema } from '../validators/settings.validator.js';
+import { uploadBase64, isCloudinaryConfigured } from '../lib/cloudinary.js';
 
 const settingsRouter = new Hono();
 
@@ -20,6 +21,7 @@ settingsRouter.get('/', async (_c) => {
       maxLoginAttempts: 5,
       sessionExpiry: '24h',
       allowedEmailDomain: 'eduportal.com',
+      portalLogoUrl: null,
     });
   }
 
@@ -29,6 +31,7 @@ settingsRouter.get('/', async (_c) => {
     maxLoginAttempts: settings.maxLoginAttempts,
     sessionExpiry: settings.sessionExpiry,
     allowedEmailDomain: settings.allowedEmailDomain,
+    portalLogoUrl: settings.portalLogoUrl,
   });
 });
 
@@ -43,12 +46,39 @@ settingsRouter.patch('/', authenticate, authorize('ADMIN'), async (c) => {
 
   const current = c.get('user');
 
+  let portalLogoUrl = body.portalLogoUrl;
+
+  if (body.portalLogo) {
+    if (!isCloudinaryConfigured()) {
+      return c.json({
+        success: false,
+        message: 'Cloudinary is not configured. Please set the environment variables.',
+      }, 400);
+    }
+    try {
+      const uploaded = await uploadBase64(body.portalLogo, 'eduportal/branding');
+      portalLogoUrl = uploaded.url;
+    } catch (err) {
+      console.error('Branding logo upload failed:', err);
+      return c.json({
+        success: false,
+        message: 'Failed to upload portal logo to Cloudinary.',
+      }, 500);
+    }
+  }
+
+  const { portalLogo, ...settingsData } = body;
+  const updateData = {
+    ...settingsData,
+    portalLogoUrl,
+  };
+
   const settings = await prisma.systemSettings.upsert({
     where: { id: 'settings' },
-    update: body,
+    update: updateData,
     create: {
       id: 'settings',
-      ...body,
+      ...updateData,
     },
   });
 
@@ -66,6 +96,7 @@ settingsRouter.patch('/', authenticate, authorize('ADMIN'), async (c) => {
     maxLoginAttempts: settings.maxLoginAttempts,
     sessionExpiry: settings.sessionExpiry,
     allowedEmailDomain: settings.allowedEmailDomain,
+    portalLogoUrl: settings.portalLogoUrl,
   });
 });
 
