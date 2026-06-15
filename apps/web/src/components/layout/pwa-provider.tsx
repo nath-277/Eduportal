@@ -66,9 +66,10 @@ export function PwaProvider({ children }: { children: ReactNode }) {
   };
 
   const isDev = process.env.NODE_ENV === 'development';
+  const forceInstall = typeof window !== 'undefined' && window.location.search.includes('force_install=true');
 
   // If the user is on mobile and not running the PWA in standalone mode, block with install instructions
-  if (isMobile && !isStandalone && !isDev) {
+  if (isMobile && !isStandalone && (!isDev || forceInstall)) {
     const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
 
     return (
