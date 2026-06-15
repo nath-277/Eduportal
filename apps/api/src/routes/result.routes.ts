@@ -145,7 +145,7 @@ resultRouter.get(
     const sessionId = c.req.query('sessionId') ?? sessionResult.session.id;
 
     const results = await prisma.result.findMany({
-      where: { sessionId, status: { in: ['SUBMITTED', 'APPROVED'] } },
+      where: { sessionId, status: { in: ['SUBMITTED', 'APPROVED', 'PUBLISHED'] } },
       include: {
         student: { select: { id: true, fullname: true, matricNumber: true } },
         course: { include: { department: true } },
@@ -162,6 +162,7 @@ resultRouter.get(
         session: (typeof results)[number]['session'];
         submitted: number;
         approved: number;
+        published: number;
         results: typeof results;
       }
     >();
@@ -173,6 +174,7 @@ resultRouter.get(
         existing.results.push(r);
         if (r.status === 'SUBMITTED') existing.submitted += 1;
         else if (r.status === 'APPROVED') existing.approved += 1;
+        else if (r.status === 'PUBLISHED') existing.published += 1;
       } else {
         byCourse.set(key, {
           course: r.course,
@@ -180,6 +182,7 @@ resultRouter.get(
           session: r.session,
           submitted: r.status === 'SUBMITTED' ? 1 : 0,
           approved: r.status === 'APPROVED' ? 1 : 0,
+          published: r.status === 'PUBLISHED' ? 1 : 0,
           results: [r],
         });
       }
@@ -191,6 +194,7 @@ resultRouter.get(
       counts: {
         submitted: results.filter((r) => r.status === 'SUBMITTED').length,
         approved: results.filter((r) => r.status === 'APPROVED').length,
+        published: results.filter((r) => r.status === 'PUBLISHED').length,
         total: results.length,
       },
     });
@@ -644,6 +648,50 @@ resultRouter.post(
     });
 
     return ok({ updated: result.count, notified: approved.length });
+  }
+);
+
+resultRouter.post(
+  '/bulk-withdraw',
+  authenticate,
+  authorize('ADMIN'),
+  async (c) => {
+    let body: BulkResultActionInput;
+    try {
+      body = bulkResultActionSchema.parse(await c.req.json());
+    } catch (e) {
+      return c.var.handleZodError(e);
+    }
+
+    const sessionResult = await requireCurrentSession();
+    if (!sessionResult.ok) return sessionResult.response;
+
+    const result = await prisma.result.updateMany({
+      where: {
+        courseId: body.courseId,
+        sessionId: sessionResult.session.id,
+        semester: body.semester,
+        status: { in: ['APPROVED', 'PUBLISHED'] },
+      },
+      data: {
+        status: 'SUBMITTED',
+        isPublished: false,
+        approvedById: null,
+        approvedAt: null,
+        publishedById: null,
+        publishedAt: null,
+      },
+    });
+
+    await writeAudit(c, {
+      userId: c.get('user').userId,
+      action: 'RESULT_BULK_WITHDRAW',
+      entity: 'Course',
+      entityId: body.courseId,
+      metadata: { semester: body.semester, updated: result.count },
+    });
+
+    return ok({ updated: result.count });
   }
 );
 

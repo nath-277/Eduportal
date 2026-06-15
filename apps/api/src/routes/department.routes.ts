@@ -7,9 +7,11 @@ import {
   createDepartmentSchema,
   updateDepartmentSchema,
   createSessionSchema,
+  updateSessionSchema,
   type CreateDepartmentInput,
   type UpdateDepartmentInput,
   type CreateSessionInput,
+  type UpdateSessionInput,
 } from '../validators/department.validator.js';
 
 const departmentRouter = new Hono();
@@ -131,6 +133,7 @@ sessionRouter.post('/', authenticate, authorize('ADMIN'), async (c) => {
       name: body.name,
       startDate: new Date(body.startDate),
       endDate: new Date(body.endDate),
+      currentSemester: body.currentSemester || 'FIRST',
     },
   });
 
@@ -146,10 +149,11 @@ sessionRouter.post('/', authenticate, authorize('ADMIN'), async (c) => {
 
 sessionRouter.patch('/:id/set-current', authenticate, authorize('ADMIN'), async (c) => {
   const { id } = c.req.param();
+  const body = await c.req.json().catch(() => ({}));
+  const semester = body.currentSemester;
 
   const existing = await prisma.academicSession.findUnique({ where: { id } });
   if (!existing) return notFound('Session not found');
-  if (existing.isCurrent) return badRequest('Session is already the current one');
 
   await prisma.$transaction([
     prisma.academicSession.updateMany({
@@ -158,7 +162,10 @@ sessionRouter.patch('/:id/set-current', authenticate, authorize('ADMIN'), async 
     }),
     prisma.academicSession.update({
       where: { id },
-      data: { isCurrent: true },
+      data: {
+        isCurrent: true,
+        currentSemester: semester ? semester : undefined,
+      },
     }),
   ]);
 
@@ -167,9 +174,51 @@ sessionRouter.patch('/:id/set-current', authenticate, authorize('ADMIN'), async 
     action: 'SESSION_SET_CURRENT',
     entity: 'AcademicSession',
     entityId: id,
+    metadata: { currentSemester: semester },
   });
 
   return ok({ message: `${existing.name} is now the current session` });
+});
+
+sessionRouter.patch('/:id', authenticate, authorize('ADMIN'), async (c) => {
+  const { id } = c.req.param();
+  let body: UpdateSessionInput;
+  try {
+    body = updateSessionSchema.parse(await c.req.json());
+  } catch (e) {
+    return c.var.handleZodError(e);
+  }
+
+  const existing = await prisma.academicSession.findUnique({ where: { id } });
+  if (!existing) return notFound('Session not found');
+
+  if (body.isCurrent) {
+    await prisma.academicSession.updateMany({
+      where: { isCurrent: true, id: { not: id } },
+      data: { isCurrent: false },
+    });
+  }
+
+  const session = await prisma.academicSession.update({
+    where: { id },
+    data: {
+      name: body.name,
+      startDate: body.startDate ? new Date(body.startDate) : undefined,
+      endDate: body.endDate ? new Date(body.endDate) : undefined,
+      isCurrent: body.isCurrent,
+      currentSemester: body.currentSemester,
+    },
+  });
+
+  await writeAudit(c, {
+    userId: c.get('user').userId,
+    action: 'SESSION_UPDATE',
+    entity: 'AcademicSession',
+    entityId: id,
+    metadata: body,
+  });
+
+  return ok({ session });
 });
 
 export { departmentRouter, sessionRouter };

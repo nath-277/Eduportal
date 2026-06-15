@@ -47,6 +47,14 @@ enrollmentRouter.post('/', authenticate, authorize('STUDENT'), async (c) => {
 
   const session = await prisma.academicSession.findUnique({ where: { id: body.sessionId } });
   if (!session) return notFound('Session not found');
+  if (!session.isCurrent) {
+    return badRequest('Registration is only allowed for the current active session');
+  }
+  if (body.semester !== session.currentSemester) {
+    return badRequest(
+      `Registration is only allowed for the current active semester (${session.currentSemester})`
+    );
+  }
 
   const student = await prisma.user.findUnique({ where: { id: userId } });
   if (!student) return notFound('Student not found');

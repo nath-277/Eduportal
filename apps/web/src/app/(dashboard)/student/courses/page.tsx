@@ -50,7 +50,7 @@ interface Enrollment {
 }
 
 interface MyEnrollmentsResponse {
-  session: { id: string; name: string; isCurrent: boolean };
+  session: { id: string; name: string; isCurrent: boolean; currentSemester: Semester };
   firstSemester: Enrollment[];
   secondSemester: Enrollment[];
 }
@@ -61,7 +61,7 @@ export default function StudentCoursesPage() {
   const user = useAuthStore((s) => s.user);
   const qc = useQueryClient();
   const studentLevel = user?.level ?? 'L100';
-  const [semester, setSemester] = useState<Semester>('FIRST');
+  const [selectedSemester, setSelectedSemester] = useState<Semester | null>(null);
   const [pending, setPending] = useState<Set<string>>(new Set());
   const [confirmOpen, setConfirmOpen] = useState(false);
 
@@ -69,6 +69,13 @@ export default function StudentCoursesPage() {
     queryKey: ['enrollments', 'mine'],
     queryFn: async () => api.get<MyEnrollmentsResponse>('/enrollments/mine'),
   });
+
+  const activeSessionSemester = enrollmentsQuery.data?.session?.currentSemester ?? 'FIRST';
+  const semester = selectedSemester ?? activeSessionSemester;
+
+  const isActiveSemester = enrollmentsQuery.data
+    ? semester === enrollmentsQuery.data.session.currentSemester
+    : true;
 
   const coursesQuery = useQuery({
     queryKey: ['courses', 'available', studentLevel, semester],
@@ -196,8 +203,13 @@ export default function StudentCoursesPage() {
               {user?.level?.replace('L', '')}L ·{' '}
               {enrollmentsQuery.data?.session.name ?? 'Loading…'}
             </p>
-            <h2 className="mt-1 text-lg font-semibold">
+            <h2 className="mt-1 text-lg font-semibold flex items-center gap-2">
               {user?.level?.replace('L', '')}L {semester === 'FIRST' ? 'First' : 'Second'} Semester
+              {!isActiveSemester && (
+                <Badge variant="destructive" className="text-[10px] py-0.5 px-2 bg-destructive/10 text-destructive hover:bg-destructive/10">
+                  Closed
+                </Badge>
+              )}
             </h2>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -207,7 +219,7 @@ export default function StudentCoursesPage() {
                   key={s}
                   type="button"
                   onClick={() => {
-                    setSemester(s);
+                    setSelectedSemester(s);
                     setPending(new Set());
                   }}
                   className={cn(
@@ -280,7 +292,7 @@ export default function StudentCoursesPage() {
                         size="sm"
                         className="text-destructive hover:bg-destructive/10 hover:text-destructive"
                         onClick={() => dropMutation.mutate(e.courseId)}
-                        disabled={dropMutation.isPending}
+                        disabled={!isActiveSemester || dropMutation.isPending}
                       >
                         <Trash2 className="h-4 w-4" />
                         Drop
@@ -319,14 +331,16 @@ export default function StudentCoursesPage() {
                         key={c.id}
                         type="button"
                         onClick={() => togglePending(c)}
-                        disabled={wouldExceed && !selected}
+                        disabled={!isActiveSemester || (wouldExceed && !selected)}
                         className={cn(
                           'group flex flex-col items-start gap-2 rounded-xl border bg-card p-4 text-left transition',
                           selected
                             ? 'border-primary bg-primary/5 ring-1 ring-primary/40'
-                            : wouldExceed
-                              ? 'cursor-not-allowed border-dashed opacity-60'
-                              : 'hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-sm',
+                            : !isActiveSemester
+                              ? 'cursor-not-allowed opacity-50 border-dashed bg-muted/20'
+                              : wouldExceed
+                                ? 'cursor-not-allowed border-dashed opacity-60'
+                                : 'hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-sm',
                         )}
                       >
                         <div className="flex w-full items-center justify-between">
@@ -350,6 +364,8 @@ export default function StudentCoursesPage() {
                               <CheckCircle2 className="h-3.5 w-3.5" />
                               Added to cart
                             </span>
+                          ) : !isActiveSemester ? (
+                            <span className="text-muted-foreground italic">Registration Closed</span>
                           ) : wouldExceed ? (
                             <span className="inline-flex items-center gap-1 text-destructive">
                               <AlertCircle className="h-3.5 w-3.5" />
@@ -358,7 +374,7 @@ export default function StudentCoursesPage() {
                           ) : (
                             <span className="text-muted-foreground">Tap to add</span>
                           )}
-                          {selected ? null : (
+                          {selected || !isActiveSemester ? null : (
                             <Plus className="h-4 w-4 text-muted-foreground transition group-hover:text-primary" />
                           )}
                         </div>
@@ -432,7 +448,7 @@ export default function StudentCoursesPage() {
 
               <Button
                 className="w-full"
-                disabled={pending.size === 0 || enrollMutation.isPending || overLimit}
+                disabled={!isActiveSemester || pending.size === 0 || enrollMutation.isPending || overLimit}
                 onClick={() => setConfirmOpen(true)}
               >
                 {enrollMutation.isPending ? (
@@ -442,6 +458,11 @@ export default function StudentCoursesPage() {
                 )}
                 Confirm registration
               </Button>
+              {!isActiveSemester && (
+                <p className="text-xs text-destructive text-center font-medium">
+                  Registration is closed for this semester.
+                </p>
+              )}
             </CardContent>
           </Card>
         </div>

@@ -11,6 +11,7 @@ import {
   Clock,
   Loader2,
   Send,
+  RotateCcw,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -68,13 +69,14 @@ interface PendingGroup {
   session: SessionRef;
   submitted: number;
   approved: number;
+  published: number;
   results: PendingResult[];
 }
 
 interface PendingResponse {
   session: SessionRef;
   groups: PendingGroup[];
-  counts: { submitted: number; approved: number; total: number };
+  counts: { submitted: number; approved: number; published: number; total: number };
 }
 
 export default function AdminResultsPage() {
@@ -137,6 +139,26 @@ export default function AdminResultsPage() {
     onError: (err: unknown) => toast.error(err instanceof Error ? err.message : 'Bulk push failed'),
   });
 
+  const withdrawOne = useMutation({
+    mutationFn: async (id: string) =>
+      api.patch<{ result: PendingResult }>(`/results/${id}/withdraw`, {}),
+    onSuccess: () => {
+      toast.success('Result rolled back');
+      qc.invalidateQueries({ queryKey: ['results', 'pending'] });
+    },
+    onError: (err: unknown) => toast.error(err instanceof Error ? err.message : 'Rollback failed'),
+  });
+
+  const withdrawAll = useMutation({
+    mutationFn: async (input: { courseId: string; semester: Semester }) =>
+      api.post<{ updated: number }>('/results/bulk-withdraw', input),
+    onSuccess: (data) => {
+      toast.success(`${data.updated} results rolled back`);
+      qc.invalidateQueries({ queryKey: ['results', 'pending'] });
+    },
+    onError: (err: unknown) => toast.error(err instanceof Error ? err.message : 'Bulk rollback failed'),
+  });
+
   const groups = pendingQuery.data?.groups ?? [];
   const counts = pendingQuery.data?.counts;
   const session = pendingQuery.data?.session;
@@ -165,9 +187,9 @@ export default function AdminResultsPage() {
         />
         <SummaryStat
           icon={CheckCheck}
-          label="Total in queue"
-          value={counts?.total ?? 0}
-          sub={session ? `Session: ${session.name}` : 'awaiting current session'}
+          label="Published to students"
+          value={counts?.published ?? 0}
+          sub="visible in student portal"
           tone="violet"
         />
       </div>
@@ -196,14 +218,18 @@ export default function AdminResultsPage() {
                 onToggle={() => setOpenGroups((s) => ({ ...s, [key]: !(s[key] ?? true) }))}
                 onApproveOne={(id) => approveOne.mutate(id)}
                 onPushOne={(id) => pushOne.mutate(id)}
+                onWithdrawOne={(id) => withdrawOne.mutate(id)}
                 onApproveAll={() =>
                   approveAll.mutate({ courseId: g.course.id, semester: g.semester })
                 }
                 onPushAll={() => pushAll.mutate({ courseId: g.course.id, semester: g.semester })}
+                onWithdrawAll={() => withdrawAll.mutate({ courseId: g.course.id, semester: g.semester })}
                 pendingApproveOne={approveOne.isPending}
                 pendingPushOne={pushOne.isPending}
+                pendingWithdrawOne={withdrawOne.isPending}
                 pendingApproveAll={approveAll.isPending}
                 pendingPushAll={pushAll.isPending}
+                pendingWithdrawAll={withdrawAll.isPending}
               />
             );
           })
@@ -251,24 +277,32 @@ function GroupCard({
   onToggle,
   onApproveOne,
   onPushOne,
+  onWithdrawOne,
   onApproveAll,
   onPushAll,
+  onWithdrawAll,
   pendingApproveOne,
   pendingPushOne,
+  pendingWithdrawOne,
   pendingApproveAll,
   pendingPushAll,
+  pendingWithdrawAll,
 }: {
   group: PendingGroup;
   open: boolean;
   onToggle: () => void;
   onApproveOne: (id: string) => void;
   onPushOne: (id: string) => void;
+  onWithdrawOne: (id: string) => void;
   onApproveAll: () => void;
   onPushAll: () => void;
+  onWithdrawAll: () => void;
   pendingApproveOne: boolean;
   pendingPushOne: boolean;
+  pendingWithdrawOne: boolean;
   pendingApproveAll: boolean;
   pendingPushAll: boolean;
+  pendingWithdrawAll: boolean;
 }) {
   const Chevron = open ? ChevronDown : ChevronRight;
   const semesterTone =
@@ -326,6 +360,19 @@ function GroupCard({
               Push all ({group.approved})
             </Button>
           ) : null}
+          {group.published > 0 || group.approved > 0 ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onWithdrawAll}
+              disabled={pendingWithdrawAll}
+              className="h-7 gap-1 px-2 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
+              aria-label={`Rollback all results in ${group.course.code}`}
+            >
+              {pendingWithdrawAll ? <Loader2 className="h-3 w-3 animate-spin" /> : <RotateCcw className="h-3 w-3" />}
+              Rollback ({group.published + group.approved})
+            </Button>
+          ) : null}
         </div>
       </CardHeader>
       {open ? (
@@ -351,8 +398,10 @@ function GroupCard({
                     r={r}
                     onApproveOne={onApproveOne}
                     onPushOne={onPushOne}
+                    onWithdrawOne={onWithdrawOne}
                     pendingApproveOne={pendingApproveOne}
                     pendingPushOne={pendingPushOne}
+                    pendingWithdrawOne={pendingWithdrawOne}
                   />
                 ))}
               </tbody>
@@ -368,14 +417,18 @@ function RowActions({
   r,
   onApproveOne,
   onPushOne,
+  onWithdrawOne,
   pendingApproveOne,
   pendingPushOne,
+  pendingWithdrawOne,
 }: {
   r: PendingResult;
   onApproveOne: (id: string) => void;
   onPushOne: (id: string) => void;
+  onWithdrawOne: (id: string) => void;
   pendingApproveOne: boolean;
   pendingPushOne: boolean;
+  pendingWithdrawOne: boolean;
 }) {
   return (
     <tr className="hover:bg-muted/20">
@@ -427,6 +480,18 @@ function RowActions({
             >
               {pendingPushOne ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
               Push
+            </Button>
+          ) : r.status === 'PUBLISHED' ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onWithdrawOne(r.id)}
+              disabled={pendingWithdrawOne}
+              className="h-7 gap-1 px-2 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
+              aria-label={`Rollback ${r.student.matricNumber}`}
+            >
+              {pendingWithdrawOne ? <Loader2 className="h-3 w-3 animate-spin" /> : <RotateCcw className="h-3 w-3" />}
+              Rollback
             </Button>
           ) : (
             <span className="text-xs text-muted-foreground">—</span>

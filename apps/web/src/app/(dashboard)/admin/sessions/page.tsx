@@ -25,6 +25,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Checkbox } from '@/components/ui/checkbox';
 import { api } from '@/lib/api';
+import { cn } from '@/lib/utils';
 
 interface Session {
   id: string;
@@ -32,6 +33,7 @@ interface Session {
   startDate: string;
   endDate: string;
   isCurrent: boolean;
+  currentSemester: 'FIRST' | 'SECOND';
   createdAt: string;
 }
 
@@ -40,6 +42,7 @@ interface SessionForm {
   startDate: string;
   endDate: string;
   isCurrent: boolean;
+  currentSemester?: 'FIRST' | 'SECOND';
 }
 
 export default function AdminSessionsPage() {
@@ -90,6 +93,16 @@ export default function AdminSessionsPage() {
     onError: (err: unknown) => toast.error(err instanceof Error ? err.message : 'Failed'),
   });
 
+  const setSemesterMutation = useMutation({
+    mutationFn: async (input: { id: string; semester: 'FIRST' | 'SECOND' }) =>
+      api.patch<{ session: Session }>(`/sessions/${input.id}`, { currentSemester: input.semester }),
+    onSuccess: () => {
+      toast.success('Active semester updated');
+      qc.invalidateQueries({ queryKey: ['sessions'] });
+    },
+    onError: (err: unknown) => toast.error(err instanceof Error ? err.message : 'Update failed'),
+  });
+
   function onSubmit(values: SessionForm) {
     createMutation.mutate(values);
   }
@@ -104,20 +117,46 @@ export default function AdminSessionsPage() {
       <div className="mt-6 space-y-4">
         {current ? (
           <Card className="border-primary/30 bg-primary/5">
-            <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
-              <div className="flex items-center gap-3">
-                <div className="grid h-10 w-10 place-items-center rounded-full bg-primary/20 text-primary">
-                  <Star className="h-5 w-5" />
+            <CardContent className="flex flex-wrap items-center justify-between gap-6 p-4">
+              <div className="flex flex-wrap items-center gap-6">
+                <div className="flex items-center gap-3">
+                  <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary/20 text-primary">
+                    <Star className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-wider text-muted-foreground">Current session</p>
+                    <p className="text-lg font-semibold">{current.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(current.startDate).toLocaleDateString()} → {new Date(current.endDate).toLocaleDateString()}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs uppercase tracking-wider text-muted-foreground">Current session</p>
-                  <p className="text-lg font-semibold">{current.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {new Date(current.startDate).toLocaleDateString()} → {new Date(current.endDate).toLocaleDateString()}
-                  </p>
+
+                <div className="h-8 w-px bg-border hidden sm:block" />
+
+                <div className="space-y-1">
+                  <p className="text-xs uppercase tracking-wider text-muted-foreground">Active Semester</p>
+                  <div className="inline-flex rounded-md border bg-background p-0.5">
+                    {(['FIRST', 'SECOND'] as const).map((sem) => (
+                      <button
+                        key={sem}
+                        type="button"
+                        onClick={() => setSemesterMutation.mutate({ id: current.id, semester: sem })}
+                        disabled={setSemesterMutation.isPending}
+                        className={cn(
+                          'rounded px-2.5 py-1 text-xs font-semibold transition',
+                          current.currentSemester === sem
+                            ? 'bg-primary text-primary-foreground'
+                            : 'text-muted-foreground hover:text-foreground disabled:opacity-50'
+                        )}
+                      >
+                        {sem === 'FIRST' ? 'First Semester' : 'Second Semester'}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
-              <Badge variant="secondary" className="bg-primary/10 text-primary">Active</Badge>
+              <Badge variant="secondary" className="bg-primary/10 text-primary self-center sm:self-auto">Active</Badge>
             </CardContent>
           </Card>
         ) : null}
@@ -205,10 +244,15 @@ export default function AdminSessionsPage() {
                         </td>
                         <td className="px-3 py-2">
                           {s.isCurrent ? (
-                            <Badge variant="secondary" className="gap-1 bg-primary/10 text-primary">
-                              <Check className="h-3 w-3" />
-                              Current
-                            </Badge>
+                            <div className="flex flex-col gap-1 items-start">
+                              <Badge variant="secondary" className="gap-1 bg-primary/10 text-primary">
+                                <Check className="h-3 w-3" />
+                                Current
+                              </Badge>
+                              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+                                {s.currentSemester === 'FIRST' ? '1st Semester' : '2nd Semester'}
+                              </span>
+                            </div>
                           ) : (
                             <Badge variant="outline">Inactive</Badge>
                           )}
