@@ -61,7 +61,7 @@ export function BottomNavDock({
         className={cn(
           'fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background/95 backdrop-blur-md shadow-[0_-4px_20px_rgba(0,0,0,0.08)]',
           'pb-[env(safe-area-inset-bottom)]',
-          hiddenOnDesktop && 'hidden md:hidden'
+          hiddenOnDesktop && 'md:hidden'
         )}
         aria-label="Primary"
       >

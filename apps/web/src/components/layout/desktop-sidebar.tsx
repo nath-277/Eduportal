@@ -1,9 +1,10 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import type { LucideIcon } from 'lucide-react';
-import { LogOut } from 'lucide-react';
+import { LogOut, ChevronLeft } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -51,6 +52,23 @@ export function DesktopSidebar({ items, role, user }: DesktopSidebarProps) {
   const pathname = usePathname();
   const clearAuth = useAuthStore((s) => s.clearAuth);
   const { data: settings } = useSettings();
+  const [isCollapsed, setIsCollapsed] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const collapsed = localStorage.getItem('sidebar-collapsed') === 'true';
+      if (collapsed) {
+        const t = setTimeout(() => setIsCollapsed(true), 0);
+        return () => clearTimeout(t);
+      }
+    }
+  }, []);
+
+  const toggleCollapse = () => {
+    const nextVal = !isCollapsed;
+    setIsCollapsed(nextVal);
+    localStorage.setItem('sidebar-collapsed', String(nextVal));
+  };
 
   const hasLogo = !!settings?.portalLogoUrl;
   const portalName = settings?.portalName || 'EduPortal';
@@ -61,21 +79,58 @@ export function DesktopSidebar({ items, role, user }: DesktopSidebarProps) {
   }
 
   return (
-    <aside className="hidden w-64 shrink-0 flex-col border-r border-border bg-card md:flex sticky top-0 h-screen">
-      <div className="flex h-16 items-center gap-2 border-b border-border px-4">
-        <div className={cn(
-          "flex h-9 w-9 items-center justify-center rounded-lg overflow-hidden",
-          hasLogo ? "" : "bg-primary text-primary-foreground"
-        )}>
-          <Logo className={hasLogo ? "h-9 w-9" : "h-9 w-9 p-1.5"} iconClassName="h-5 w-5" />
-        </div>
-        <div className="leading-tight">
-          <p className="text-sm font-semibold">{portalName}</p>
-          <p className="text-xs text-muted-foreground">{roleLabel(role)} workspace</p>
-        </div>
+    <aside className={cn(
+      "hidden shrink-0 flex-col border-r border-border bg-card md:flex sticky top-0 h-screen transition-all duration-300",
+      isCollapsed ? "w-16" : "w-64"
+    )}>
+      <div className={cn(
+        "flex h-16 items-center border-b border-border px-4",
+        isCollapsed ? "justify-center" : "justify-between gap-2"
+      )}>
+        {!isCollapsed ? (
+          <>
+            <div className="flex items-center gap-2 overflow-hidden">
+              <div className={cn(
+                "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg overflow-hidden",
+                hasLogo ? "" : "bg-primary text-primary-foreground"
+              )}>
+                <Logo className={hasLogo ? "h-9 w-9" : "h-9 w-9 p-1.5"} iconClassName="h-5 w-5" />
+              </div>
+              <div className="leading-tight truncate">
+                <p className="text-sm font-semibold truncate">{portalName}</p>
+                <p className="text-xs text-muted-foreground truncate">{roleLabel(role)} workspace</p>
+              </div>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={toggleCollapse}
+              className="h-8 w-8 text-muted-foreground hover:text-foreground shrink-0"
+              aria-label="Collapse sidebar"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+          </>
+        ) : (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={toggleCollapse}
+            className={cn(
+              "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg overflow-hidden p-0 hover:bg-muted",
+              hasLogo ? "" : "bg-primary text-primary-foreground"
+            )}
+            aria-label="Expand sidebar"
+            title="Expand sidebar"
+          >
+            <Logo className={hasLogo ? "h-9 w-9" : "h-9 w-9 p-1.5"} iconClassName="h-5 w-5" />
+          </Button>
+        )}
       </div>
 
-      <div className="flex-1 px-2 py-3">
+      <div className="flex-1 px-2 py-3 overflow-y-auto">
         <nav className="flex flex-col gap-0.5" aria-label="Sidebar">
           {items.map((item) => {
             const Icon = item.icon;
@@ -85,21 +140,26 @@ export function DesktopSidebar({ items, role, user }: DesktopSidebarProps) {
                 key={item.href}
                 href={item.href}
                 aria-current={active ? 'page' : undefined}
+                title={isCollapsed ? item.label : undefined}
                 className={cn(
-                  'group flex items-center justify-between gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                  'group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200',
                   active
                     ? 'bg-primary/10 text-primary'
-                    : 'text-foreground/80 hover:bg-muted hover:text-foreground'
+                    : 'text-foreground/80 hover:bg-muted hover:text-foreground',
+                  isCollapsed ? 'justify-center' : 'justify-between'
                 )}
               >
                 <span className="flex items-center gap-3">
-                  <Icon className="h-4 w-4" />
-                  {item.label}
+                  <Icon className={cn("h-4 w-4 shrink-0", active ? "text-primary" : "text-muted-foreground group-hover:text-foreground")} />
+                  {!isCollapsed && <span className="truncate">{item.label}</span>}
                 </span>
-                {item.badge && item.badge > 0 ? (
+                {!isCollapsed && item.badge && item.badge > 0 ? (
                   <Badge variant={active ? 'default' : 'secondary'} className="h-5 px-1.5 text-[10px]">
                     {item.badge}
                   </Badge>
+                ) : null}
+                {isCollapsed && item.badge && item.badge > 0 ? (
+                  <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-primary" />
                 ) : null}
               </Link>
             );
@@ -108,26 +168,30 @@ export function DesktopSidebar({ items, role, user }: DesktopSidebarProps) {
       </div>
 
       <Separator />
-      <div className="space-y-3 p-3">
-        <div className="flex items-center gap-3 rounded-lg p-2">
-          <Avatar className="h-9 w-9">
+      <div className={cn("space-y-3 p-3", isCollapsed ? "flex flex-col items-center" : "")}>
+        <div className={cn("flex items-center gap-3 rounded-lg w-full", isCollapsed ? "justify-center p-0" : "p-2")}>
+          <Avatar className="h-9 w-9" title={isCollapsed ? user.fullname : undefined}>
             {user.avatarUrl ? <AvatarImage src={user.avatarUrl} alt={user.fullname} /> : null}
             <AvatarFallback>{initials(user.fullname)}</AvatarFallback>
           </Avatar>
-          <div className="min-w-0 flex-1 leading-tight">
-            <p className="truncate text-sm font-medium">{user.fullname}</p>
-            <p className="truncate text-xs text-muted-foreground">{user.email}</p>
-          </div>
+          {!isCollapsed && (
+            <div className="min-w-0 flex-1 leading-tight">
+              <p className="truncate text-sm font-medium">{user.fullname}</p>
+              <p className="truncate text-xs text-muted-foreground">{user.email}</p>
+            </div>
+          )}
         </div>
         <Button
           type="button"
           variant="outline"
           size="sm"
-          className="w-full justify-start gap-2"
+          className={cn("justify-start gap-2", isCollapsed ? "h-9 w-9 justify-center p-0" : "w-full")}
           onClick={handleLogout}
+          title={isCollapsed ? "Log out" : undefined}
+          aria-label="Log out"
         >
           <LogOut className="h-4 w-4" />
-          Log out
+          {!isCollapsed && <span>Log out</span>}
         </Button>
       </div>
     </aside>
