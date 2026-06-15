@@ -349,7 +349,11 @@ export function BrandingLoader() {
   return null;
 }
 ### 4.5.5 Progressive Web Application (PWA) Integration and Mobilization
-To deliver a native mobile experience, the portal is enclosed in a Progressive Web Application (PWA) wrapper. A manifest file (`manifest.json`) defines app metadata, custom colors, and icons. A client-side service worker (`sw.js`) handles resource caching. To guarantee that mobile users run the system under native standalone viewports rather than standard browser tabs (which can obscure bottom navigation elements), a `PwaProvider` blocks the viewport for uninstalled mobile devices. It displays a highly customized glassmorphic forced-installation overlay with dynamic instructions tailored for Safari on iOS (recommending "Share -> Add to Home Screen") and Chrome/Android (providing a direct one-click installation trigger linked to the `beforeinstallprompt` event).
+To deliver a native mobile experience, the portal is enclosed in a Progressive Web Application (PWA) wrapper. A manifest file (`manifest.json`) defines app metadata, custom colors, and icons. A client-side service worker (`sw.js`) handles resource caching. To guarantee that mobile users run the system under native standalone viewports rather than standard browser tabs (which can obscure bottom navigation elements), a `PwaProvider` blocks the viewport for uninstalled mobile devices. 
+
+It displays a highly customized glassmorphic forced-installation overlay with dynamic instructions tailored for Safari on iOS (recommending "Share -> Add to Home Screen") and Chrome/Android (providing a direct one-click installation trigger linked to the `beforeinstallprompt` event). The overlay features a premium fuchsia/violet-to-pink gradient color scheme for both text and active button elements, providing a modern dark-mode aesthetic. 
+
+Crucially, to prevent developers from getting blocked during testing and layout design, the forced-installation overlay is automatically bypassed in development mode (`process.env.NODE_ENV === 'development'`). However, developers can manually force-render the install block by appending the query parameter `?force_install=true` to any portal URL.
 
 ![PWA Mobile Forced Install Screen](apps/web/public/screenshots/pwa_install_mobile.png)
 *Figure 4.8: PWA Forced Installation Overlay on iOS and Android Devices*
@@ -447,6 +451,64 @@ Once course grades are approved or published, they are locked from lecturer chan
         publishedAt: null,
       },
     });
+```
+
+---
+
+### 4.5.9 Mobile Notifications Slide-Up Drawer Layout
+For users operating on mobile screens, navigating notifications via standard popovers can cause clipping issues or obstruct navigation buttons. To improve usability, the system splits rendering styles responsively. On desktop viewports, clicking the notification bell triggers a standard dropdown popover. On mobile devices, the click event triggers a smooth slide-up bottom drawer overlay that mirrors the style and gestures of the bottom navigation "More" dock. The drawer uses spring-physics transitions, is fully draggable on the Y-axis to dismiss, and is adorned with a central drag handle indicator.
+
+![Mobile Notifications Drawer](apps/web/public/screenshots/mobile_notifications_drawer.png)
+*Figure 4.12: Mobile Notifications Slide-Up bottom sheet drawer overlay*
+
+#### Code Snippet 4.9: Desktop/Mobile Responsive Notifications Render (`apps/web/src/components/layout/notification-menu.tsx`)
+```typescript
+  return (
+    <>
+      {/* Desktop View: Popover */}
+      <div className="hidden md:block">
+        <Popover open={open} onOpenChange={handleOpenChange}>
+          <PopoverTrigger asChild>
+            <Button variant="ghost" size="icon">
+              <Bell className="h-5 w-5" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-[380px] p-0">
+            {notificationsList(false)}
+          </PopoverContent>
+        </Popover>
+      </div>
+
+      {/* Mobile View: Slide Up Bottom Drawer */}
+      <div className="block md:hidden">
+        <Button variant="ghost" size="icon" onClick={() => handleOpenChange(true)}>
+          <Bell className="h-5 w-5" />
+        </Button>
+        <AnimatePresence>
+          {open ? (
+            <motion.div className="fixed inset-0 z-[60] flex items-end justify-center">
+              <button className="absolute inset-0 bg-black/40" onClick={() => handleOpenChange(false)} />
+              <motion.div
+                className="relative w-full max-w-md bg-background rounded-t-3xl border-t shadow-2xl"
+                initial={{ y: '100%' }}
+                animate={{ y: 0 }}
+                exit={{ y: '100%' }}
+                transition={{ type: 'spring', damping: 28, stiffness: 260 }}
+                drag="y"
+                dragConstraints={{ top: 0, bottom: 0 }}
+                dragElastic={0.15}
+              >
+                <div className="flex justify-center pb-2 pt-3">
+                  <div className="h-1.5 w-12 rounded-full bg-muted-foreground/30" />
+                </div>
+                {notificationsList(true)}
+              </motion.div>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+      </div>
+    </>
+  );
 ```
 
 ---
