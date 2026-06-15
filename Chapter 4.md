@@ -151,10 +151,10 @@ authRouter.post('/register', async (c) => {
 ### 4.5.2 Student Level-Specific Communities Safeguard
 Students are restricted to level-specific system communities (e.g., "CSC 200L"). When a student accesses the "Discover" forum tab, the API filters out communities that do not match their level. Furthermore, if a student directly attempts to join or request to join a community of a different level via HTTP POST calls, the API returns a 400 error. The user's memberships are kept synchronized via `syncUserCommunities`.
 
-![Student Dashboard Screenshot]( apps/web/public/screenshots/student_dashboard.png)
+![Student Dashboard Screenshot](apps/web/public/screenshots/student_dashboard.png)
 *Figure 4.2: Authenticated Student Portal Dashboard Overview*
 
-![Student Forum Screenshot]( apps/web/public/screenshots/student_forum.png)
+![Student Forum Screenshot](apps/web/public/screenshots/student_forum.png)
 *Figure 4.3: Collaborative Student Discussion Forum and Level-Restricted Communities*
 
 ![Student Resources Screenshot](apps/web/public/screenshots/student_resources.png)
@@ -313,7 +313,7 @@ departmentRouter.patch('/:id', authenticate, authorize('ADMIN'), async (c) => {
 ### 4.5.4 Dynamic Portal Branding and Favicon Sync
 The administrator has the authority to configure the portal's branding identity, uploading custom logos and setting the platform name. The frontend queries these public settings using a global React Query hook. A React client component named `BrandingLoader` listens to this query state and dynamically synchronizes the browser favicon and layout logos.
 
-![Admin Settings Screenshot]( apps/web/public/screenshots/admin_settings.png)
+![Admin Settings Screenshot](apps/web/public/screenshots/admin_settings.png)
 *Figure 4.7: Dynamic Portal Branding Customization Screen and Organization Settings Panel*
 
 #### Code Snippet 4.4: Dynamic Browser Favicon Loader (`apps/web/src/components/layout/branding-loader.tsx`)
@@ -347,6 +347,105 @@ export function BrandingLoader() {
 
   return null;
 }
+### 4.5.5 Progressive Web Application (PWA) Integration and Mobilization
+To deliver a native mobile experience, the portal is enclosed in a Progressive Web Application (PWA) wrapper. A manifest file (`manifest.json`) defines app metadata, custom colors, and icons. A client-side service worker (`sw.js`) handles resource caching. To guarantee that mobile users run the system under native standalone viewports rather than standard browser tabs (which can obscure bottom navigation elements), a `PwaProvider` blocks the viewport for uninstalled mobile devices. It displays a highly customized glassmorphic forced-installation overlay with dynamic instructions tailored for Safari on iOS (recommending "Share -> Add to Home Screen") and Chrome/Android (providing a direct one-click installation trigger linked to the `beforeinstallprompt` event).
+
+![PWA Mobile Forced Install Screen](apps/web/public/screenshots/pwa_install_mobile.png)
+*Figure 4.8: PWA Forced Installation Overlay on iOS and Android Devices*
+
+#### Code Snippet 4.5: Mobile Agent and Standalone Detection in `PwaProvider` (`apps/web/src/components/layout/pwa-provider.tsx`)
+```typescript
+    // Detect mobile and standalone status
+    const checkMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    
+    // Check standalone mode
+    const checkStandalone = 
+      ('standalone' in window.navigator && (window.navigator as Navigator & { standalone?: boolean }).standalone === true) || 
+      window.matchMedia('(display-mode: standalone)').matches;
+
+    const t = setTimeout(() => {
+      setIsMobile(checkMobile);
+      setIsStandalone(checkStandalone);
+    }, 0);
+```
+
+---
+
+### 4.5.6 Collapsible Sidebar Layout with Persisted State
+To accommodate users who require maximized visual space for viewing large data grids or active forums, the desktop shell layout features a collapsible navigation sidebar. The sidebar transitions smoothly between full width (256px) and collapsed icon-only width (64px) using CSS transform transitions. Crucially, to respect user workflow preferences across browser page refreshes or routing events, the sidebar state is persisted to the client's local storage under the key `sidebar-collapsed`.
+
+![Collapsed Sidebar Layout](apps/web/public/screenshots/sidebar_collapsed.png)
+*Figure 4.9: Collapsed Sidebar UI View and Persisted State Layout*
+
+#### Code Snippet 4.6: Collapsible Sidebar Persistence Hook (`apps/web/src/components/layout/desktop-sidebar.tsx`)
+```typescript
+  const [isCollapsed, setIsCollapsed] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const collapsed = localStorage.getItem('sidebar-collapsed') === 'true';
+      if (collapsed) {
+        const t = setTimeout(() => setIsCollapsed(true), 0);
+        return () => clearTimeout(t);
+      }
+    }
+  }, []);
+
+  const toggleCollapse = () => {
+    const nextVal = !isCollapsed;
+    setIsCollapsed(nextVal);
+    localStorage.setItem('sidebar-collapsed', String(nextVal));
+  };
+```
+
+---
+
+### 4.5.7 Active Semester Registration Safeguard and Locking Controls
+To prevent students from registering for courses outside the active teaching period or registering for multiple semesters simultaneously, the portal enforces active semester registration locks. Administrators toggle the active semester (`FIRST` or `SECOND`) for the currently active academic session. On the student courses dashboard, inactive semester course catalogs and registration actions are deactivated. Simultaneously, backend routes validate the session and semester of incoming course registration payloads, rejecting off-semester enrollments with a `400 Bad Request` HTTP status.
+
+![Admin Sessions Active Semester Controls](apps/web/public/screenshots/admin_sessions.png)
+*Figure 4.10: Admin Academic Session Active Semester Control Toggle and Student Block Indicators*
+
+#### Code Snippet 4.7: Backend Active Semester Enrollment Safeguard (`apps/api/src/routes/enrollment.routes.ts`)
+```typescript
+  const session = await prisma.academicSession.findUnique({ where: { id: body.sessionId } });
+  if (!session) return notFound('Session not found');
+  if (!session.isCurrent) {
+    return badRequest('Registration is only allowed for the current active session');
+  }
+  if (body.semester !== session.currentSemester) {
+    return badRequest(
+      `Registration is only allowed for the current active semester (${session.currentSemester})`
+    );
+  }
+```
+
+---
+
+### 4.5.8 Results Rollback and Marks Entry Correction Mechanism
+Once course grades are approved or published, they are locked from lecturer changes. However, in cases of grade entry mistakes, mixups, or disputes, the system provides a Results Rollback mechanism reserved for administrator roles. Administrators can withdraw published or approved results back to a draft `SUBMITTED` status. This can be executed on a student-by-student basis or in bulk for all grades in a specific course and semester, resetting approval tokens and logging audit footprints.
+
+![Admin Results Rollback Controls](apps/web/public/screenshots/admin_results.png)
+*Figure 4.11: Admin Result Approval and Rollback Control Management Screen*
+
+#### Code Snippet 4.8: Admin Results Bulk Withdrawal Router (`apps/api/src/routes/result.routes.ts`)
+```typescript
+    const result = await prisma.result.updateMany({
+      where: {
+        courseId: body.courseId,
+        sessionId: sessionResult.session.id,
+        semester: body.semester,
+        status: { in: ['APPROVED', 'PUBLISHED'] },
+      },
+      data: {
+        status: 'SUBMITTED',
+        isPublished: false,
+        approvedById: null,
+        approvedAt: null,
+        publishedById: null,
+        publishedAt: null,
+      },
+    });
 ```
 
 ---
@@ -360,12 +459,15 @@ The DeLone and McLean framework evaluates the portal's efficacy across three qua
     *   *Backend Efficiency:* The choice of the Hono API backend provides extremely low response latency, running on lightweight serverless runtimes.
     *   *Type Safety:* The PostgreSQL database layer operates through Prisma ORM, resolving query inconsistencies at compile-time.
     *   *State Management:* React Query (TanStack Query) caches server responses for 5 minutes (staleTime), eliminating redundant API fetches and reducing layout shifts.
+    *   *Mobilization & Offline Capability:* The Progressive Web App (PWA) wrapper registers service workers to cache crucial shell assets and configuration endpoints, permitting immediate load times and native performance on mobile browsers.
 2.  **Information Quality:**
     *   *Level Safeguards:* Filtering the communities list by user level guarantees that student users are presented only with information relevant to their current academic standing.
     *   *Data Integrity:* When an admin demotes a department's graduation level, the database automatically cascades modifications to student levels, maintaining factual reliability.
+    *   *Course Enrollment Integrity:* Active semester registration locks block off-semester or duplicate registrations at the database and routing levels, preventing data contamination.
 3.  **Service Quality:**
     *   *Self-Service Admin Settings:* Administrators modify portal branding elements, domain registries, and session schedules without editing code files.
     *   *Audit Trails:* Every critical modification (creating departments, publishing grades, updating levels) generates a record in the database audit log.
+    *   *Correction and Rollback Safeguard:* Administrators can roll back published or approved course result lists to a `SUBMITTED` status, allowing rapid corrections to grade errors without database intervention.
 
 ### 4.6.2 Technology Acceptance Model (TAM)
 TAM asserts that system adoption is a factor of two user perceptions:
@@ -373,18 +475,20 @@ TAM asserts that system adoption is a factor of two user perceptions:
     *   *Responsive Layout:* The portal uses Tailwind CSS grid structures to adapt the portal layouts seamlessly between mobile viewports and desktop layouts.
     *   *Password Visibility Toggle:* Toggles on forms enable users to verify their input before submission, preventing high friction login loops.
     *   *Form Validation Messages:* Zod validation errors are mapped directly below the respective inputs, guiding the user to complete forms successfully.
+    *   *Zero-Friction Mobile Installation:* When accessed on mobile devices, the forced installation overlay provides clear iOS and Android setup instructions, minimizing friction in installing the web app.
 2.  **Perceived Usefulness (PU):**
     *   *Academic Uploaders:* Lecturers upload student performance grids in standard CSV format, removing manual row-by-row form entries.
     *   *Integrated Communities:* Level-specific communities allow students to easily locate study groups and materials matching their current curriculum.
+    *   *Maximized Screen Space:* The collapsible sidebar enables desktop users to collapse the navigation pane, maximizing workspace area when viewing complex grids, resources, or forum discussions.
 
 ### 4.6.3 Shneiderman's Eight Golden Rules of Interface Design
 The user interface design of the portal is evaluated against Shneiderman’s rules:
 1.  **Strive for Consistency:** A shared CSS color scheme and layout templates ensure that all headers, buttons, form controls, and status cards are uniform across roles.
-2.  **Enable Frequent Users to Use Shortcuts:** Persistent sidebar layouts with clear icons (`LayoutDashboard`, `BookOpen`, `Users`, `Settings`) enable users to jump between features in a single click.
+2.  **Enable Frequent Users to Use Shortcuts:** Persistent sidebar layouts with clear icons (`LayoutDashboard`, `BookOpen`, `Users`, `Settings`) enable users to jump between features in a single click. *The collapsible sidebar preserves its collapsed state in local storage, accommodating power users who prefer minimal navigation headers.*
 3.  **Offer Informative Feedback:** Every data update, from file uploads to profile saves, triggers a visual notification via `Sonner` toasts. Forms show rotating loader icons during mutation cycles.
 4.  **Design Dialogs to Yield Closure:** The registration workflow is organized into distinct form steps with visual validation checks, indicating completion when done.
 5.  **Offer Simple Error Handling:** Form inputs employ pre-validation (e.g. matric number regex checks), preventing invalid inputs from reaching the database.
-6.  **Permit Easy Reversal of Actions:** Modals and side sheets are equipped with explicit "Cancel" triggers. Students can toggle bookmarks or leave public groups.
+6.  **Permit Easy Reversal of Actions:** Modals and side sheets are equipped with explicit "Cancel" triggers. Students can toggle bookmarks or leave public groups. *Crucially, the admin results rollback action enables reversal of grade approvals or publishing actions back to draft/submitted state, offering complete correction recovery.*
 7.  **Support Internal Locus of Control:** Administrators customize their workspaces, change themes (light/dark modes), and customize organization favicons.
 8.  **Reduce Short-Term Memory Load:** Summary counts (courses registered, current CGPA, pending registrations) are calculated and presented directly on dashboard cards.
 
@@ -410,3 +514,7 @@ A series of manual tests were conducted to verify the core safeguards:
 | **TC-04** | Admin modifies the department graduation level from `L200` to `L100`. | Student A (`L200`) is automatically demoted to `L100`, and their community resynced. | Student A level changed to `L100` in database; user is joined to `L100` community. | **PASSED** |
 | **TC-05** | Student A (`L100`) attempts to join community `csc-l200` via backend REST call. | Join attempt is blocked by backend level-check; returns `400 Bad Request`. | API returns `400 Bad Request` with "Students can only join communities that match their level". | **PASSED** |
 | **TC-06** | Admin uploads a custom logo in Settings. | Page headers and favicon dynamically update to the uploaded URL. | Favicon and sidebar logos change immediately without page refresh. | **PASSED** |
+| **TC-07** | Admin changes active semester in settings from `FIRST` to `SECOND`. | Student registration views immediately refresh to show the second semester, and registrations for the first semester are blocked. | Student catalog renders second semester; first semester controls are disabled. | **PASSED** |
+| **TC-08** | Student attempts to register for first semester courses while the active semester is `SECOND` via raw POST request. | Registration is blocked by backend API with `400 Bad Request`. | API rejects request with "Registration is only allowed for the current active semester (SECOND)". | **PASSED** |
+| **TC-09** | Admin withdraws a published student course result list on `/admin/results`. | Result status changes to `SUBMITTED`, `isPublished` changes to `false`, and the result is editable again by lecturers. | Status updated to `SUBMITTED`, and results are marked editable in admin and lecturer portals. | **PASSED** |
+| **TC-10** | User opens the portal on a mobile device browser. | The system detects the mobile user agent and lack of standalone mode, displaying the fullscreen glassmorphic forced PWA install page. | Forced installation screen blocks view and provides iOS/Android setup steps. | **PASSED** |
