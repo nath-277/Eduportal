@@ -86,6 +86,7 @@ eduportal/
 The authentication system is a role-based gateway (`STUDENT`, `LECTURER`, `ADMIN`). During registration, students select their department and academic level. The backend performs a crucial validation check: the student's level must not exceed the maximum level configuration (graduation limit) set for their selected department. Additionally, registration is restricted to the specific school domain set by the administrator in the portal settings.
 
 ![Landing Page Screenshot](apps/web/public/screenshots/landing.png)
+
 *Figure 4.1: Web-Based Student Information and Resource Portal Landing Page*
 
 #### Code Snippet 4.1: User Registration Route and Validation Checks (`apps/api/src/routes/auth.routes.ts`)

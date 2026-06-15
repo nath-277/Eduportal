@@ -65,23 +65,25 @@ export function PwaProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const isDev = process.env.NODE_ENV === 'development';
+
   // If the user is on mobile and not running the PWA in standalone mode, block with install instructions
-  if (isMobile && !isStandalone) {
+  if (isMobile && !isStandalone && !isDev) {
     const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
 
     return (
       <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-slate-950 p-6 text-white overflow-y-auto">
         {/* Subtle decorative background gradient */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(59,130,246,0.15),transparent_50%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(168,85,247,0.15),transparent_50%)]" />
         
         <div className="relative w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900/80 p-6 shadow-2xl backdrop-blur-xl">
           <div className="flex flex-col items-center text-center">
             {/* Pulsing app icon */}
-            <div className="relative mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg shadow-blue-500/20 animate-pulse">
+            <div className="relative mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-600 to-fuchsia-600 shadow-lg shadow-violet-500/20 animate-pulse">
               <Smartphone className="h-10 w-10 text-white" />
             </div>
 
-            <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-blue-400 to-indigo-300 bg-clip-text text-transparent">
+            <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-violet-400 via-fuchsia-300 to-pink-400 bg-clip-text text-transparent">
               Install EduPortal App
             </h1>
             <p className="mt-2 text-sm text-slate-400">
@@ -94,15 +96,15 @@ export function PwaProvider({ children }: { children: ReactNode }) {
           {/* Dynamic Platform-based Instructions */}
           {isIOS ? (
             <div className="space-y-4">
-              <p className="text-xs uppercase tracking-wider text-blue-400 font-semibold">Instructions for Safari on iOS:</p>
+              <p className="text-xs uppercase tracking-wider text-violet-400 font-semibold">Instructions for Safari on iOS:</p>
               <ol className="space-y-3 text-sm text-slate-300">
                 <li className="flex items-start gap-3">
                   <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-slate-800 text-xs font-semibold text-slate-400">1</span>
-                  <span>Tap the <strong className="text-white">Share</strong> button <Share className="inline h-4 w-4 text-blue-400 mx-0.5" /> in Safari&apos;s bottom toolbar.</span>
+                  <span>Tap the <strong className="text-white">Share</strong> button <Share className="inline h-4 w-4 text-violet-400 mx-0.5" /> in Safari&apos;s bottom toolbar.</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-slate-800 text-xs font-semibold text-slate-400">2</span>
-                  <span>Scroll down the options list and tap <strong className="text-white">Add to Home Screen</strong> <ArrowUpRight className="inline h-4 w-4 text-indigo-400 mx-0.5" />.</span>
+                  <span>Scroll down the options list and tap <strong className="text-white">Add to Home Screen</strong> <ArrowUpRight className="inline h-4 w-4 text-fuchsia-400 mx-0.5" />.</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-slate-800 text-xs font-semibold text-slate-400">3</span>
@@ -112,7 +114,7 @@ export function PwaProvider({ children }: { children: ReactNode }) {
             </div>
           ) : (
             <div className="space-y-4">
-              <p className="text-xs uppercase tracking-wider text-blue-400 font-semibold">Instructions for Android:</p>
+              <p className="text-xs uppercase tracking-wider text-violet-400 font-semibold">Instructions for Android:</p>
               
               {deferredPrompt ? (
                 <div className="flex flex-col gap-3">
@@ -122,7 +124,7 @@ export function PwaProvider({ children }: { children: ReactNode }) {
                   <Button
                     type="button"
                     onClick={handleInstallClick}
-                    className="w-full justify-center gap-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/20 py-5 text-base"
+                    className="w-full justify-center gap-2 bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-700 hover:to-fuchsia-700 text-white shadow-lg shadow-violet-500/20 py-5 text-base font-semibold"
                   >
                     <Download className="h-5 w-5" />
                     Install App Now
