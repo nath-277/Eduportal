@@ -81,14 +81,32 @@ interface PendingResponse {
 
 export default function AdminResultsPage() {
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+  const [selectedSessionId, setSelectedSessionId] = useState<string>('');
 
   const qc = useQueryClient();
 
+  const sessionsQuery = useQuery({
+    queryKey: ['sessions'],
+    queryFn: async () => api.get<SessionRef[]>('/sessions'),
+  });
+
+  const currentSessionId = useMemo(() => {
+    const current = sessionsQuery.data?.find((s) => s.isCurrent);
+    return current?.id || sessionsQuery.data?.[0]?.id || '';
+  }, [sessionsQuery.data]);
+
+  const activeSessionId = selectedSessionId || currentSessionId;
+
   const pendingQuery = useQuery({
-    queryKey: ['results', 'pending', 'admin'],
-    queryFn: async () => api.get<PendingResponse>('/results/pending'),
+    queryKey: ['results', 'pending', 'admin', activeSessionId],
+    queryFn: async () =>
+      api.get<PendingResponse>(
+        '/results/pending',
+        activeSessionId ? { sessionId: activeSessionId } : undefined,
+      ),
     refetchInterval: 30_000,
     staleTime: 10_000,
+    enabled: !sessionsQuery.isLoading,
   });
 
   const groupKey = useMemo(
@@ -117,7 +135,7 @@ export default function AdminResultsPage() {
   });
 
   const approveAll = useMutation({
-    mutationFn: async (input: { courseId: string; semester: Semester }) =>
+    mutationFn: async (input: { courseId: string; semester: Semester; sessionId?: string }) =>
       api.post<{ updated: number }>('/results/bulk-approve', input),
     onSuccess: (data, vars) => {
       toast.success(`${data.updated} results approved`);
@@ -128,7 +146,7 @@ export default function AdminResultsPage() {
   });
 
   const pushAll = useMutation({
-    mutationFn: async (input: { courseId: string; semester: Semester }) =>
+    mutationFn: async (input: { courseId: string; semester: Semester; sessionId?: string }) =>
       api.post<{ updated: number; notified: number }>('/results/bulk-push', input),
     onSuccess: (data) => {
       toast.success(
@@ -150,7 +168,7 @@ export default function AdminResultsPage() {
   });
 
   const withdrawAll = useMutation({
-    mutationFn: async (input: { courseId: string; semester: Semester }) =>
+    mutationFn: async (input: { courseId: string; semester: Semester; sessionId?: string }) =>
       api.post<{ updated: number }>('/results/bulk-withdraw', input),
     onSuccess: (data) => {
       toast.success(`${data.updated} results rolled back`);
@@ -168,6 +186,19 @@ export default function AdminResultsPage() {
       <PageHeader
         title="Result approval"
         subtitle="Review submitted scores, approve, then push to students."
+        actions={
+          sessionsQuery.data && sessionsQuery.data.length > 0 ? (
+            <Select
+              value={activeSessionId}
+              onChange={setSelectedSessionId}
+              label="Session"
+              options={sessionsQuery.data.map((s) => ({
+                value: s.id,
+                label: `${s.name}${s.isCurrent ? ' (Active)' : ''}`,
+              }))}
+            />
+          ) : null
+        }
       />
 
       <div className="mt-6 grid gap-3 sm:grid-cols-3">
@@ -220,10 +251,14 @@ export default function AdminResultsPage() {
                 onPushOne={(id) => pushOne.mutate(id)}
                 onWithdrawOne={(id) => withdrawOne.mutate(id)}
                 onApproveAll={() =>
-                  approveAll.mutate({ courseId: g.course.id, semester: g.semester })
+                  approveAll.mutate({ courseId: g.course.id, semester: g.semester, sessionId: activeSessionId })
                 }
-                onPushAll={() => pushAll.mutate({ courseId: g.course.id, semester: g.semester })}
-                onWithdrawAll={() => withdrawAll.mutate({ courseId: g.course.id, semester: g.semester })}
+                onPushAll={() =>
+                  pushAll.mutate({ courseId: g.course.id, semester: g.semester, sessionId: activeSessionId })
+                }
+                onWithdrawAll={() =>
+                  withdrawAll.mutate({ courseId: g.course.id, semester: g.semester, sessionId: activeSessionId })
+                }
                 pendingApproveOne={approveOne.isPending}
                 pendingPushOne={pushOne.isPending}
                 pendingWithdrawOne={withdrawOne.isPending}
@@ -499,5 +534,35 @@ function RowActions({
         </div>
       </td>
     </tr>
+  );
+}
+
+function Select({
+  value,
+  onChange,
+  label,
+  options,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  label: string;
+  options: Array<{ value: string; label: string }>;
+}) {
+  return (
+    <div className="relative">
+      <select
+        aria-label={label}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="h-9 appearance-none rounded-md border bg-card pl-3 pr-8 text-xs font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+      >
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+      <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+    </div>
   );
 }

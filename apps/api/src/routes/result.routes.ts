@@ -564,10 +564,12 @@ resultRouter.post(
     const sessionResult = await requireCurrentSession();
     if (!sessionResult.ok) return sessionResult.response;
 
+    const sessionId = body.sessionId ?? sessionResult.session.id;
+
     const result = await prisma.result.updateMany({
       where: {
         courseId: body.courseId,
-        sessionId: sessionResult.session.id,
+        sessionId,
         semester: body.semester,
         status: 'SUBMITTED',
       },
@@ -605,10 +607,12 @@ resultRouter.post(
     const sessionResult = await requireCurrentSession();
     if (!sessionResult.ok) return sessionResult.response;
 
+    const sessionId = body.sessionId ?? sessionResult.session.id;
+
     const approved = await prisma.result.findMany({
       where: {
         courseId: body.courseId,
-        sessionId: sessionResult.session.id,
+        sessionId,
         semester: body.semester,
         status: 'APPROVED',
       },
@@ -666,10 +670,12 @@ resultRouter.post(
     const sessionResult = await requireCurrentSession();
     if (!sessionResult.ok) return sessionResult.response;
 
+    const sessionId = body.sessionId ?? sessionResult.session.id;
+
     const result = await prisma.result.updateMany({
       where: {
         courseId: body.courseId,
-        sessionId: sessionResult.session.id,
+        sessionId,
         semester: body.semester,
         status: { in: ['APPROVED', 'PUBLISHED'] },
       },
