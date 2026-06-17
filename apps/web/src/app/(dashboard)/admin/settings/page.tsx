@@ -6,6 +6,7 @@ import { Bell, Lock, Save, Shield, UserCog, Building2, Globe, Sparkles, Laptop, 
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { AdminShell } from '@/components/layout/admin-shell';
+import Image from 'next/image';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -331,11 +332,12 @@ export default function AdminSettingsPage() {
                           <div className="flex flex-wrap items-center gap-6">
                             <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl border-2 border-dashed border-border bg-muted/30 overflow-hidden relative group/logo">
                               {logoPreview ? (
-                                // eslint-disable-next-line @next/next/no-img-element
-                                <img
+                                <Image
                                   src={logoPreview}
                                   alt="Branding preview"
-                                  className="h-full w-full object-contain p-1"
+                                  fill
+                                  unoptimized
+                                  className="object-contain p-1"
                                 />
                               ) : (
                                 <Building2 className="h-8 w-8 text-muted-foreground/60" />

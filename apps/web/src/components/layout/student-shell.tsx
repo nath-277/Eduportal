@@ -26,7 +26,7 @@ export function StudentShell({ children }: { children: ReactNode }) {
   const clearAuth = useAuthStore((s) => s.clearAuth);
 
   const notificationsQuery = useQuery({
-    queryKey: ['notifications', 'badge'],
+    queryKey: ['notifications', 'mine', 'student'],
     queryFn: async () => api.get<NotificationsResponse>('/notifications/mine'),
     refetchInterval: 60_000,
     staleTime: 30_000,

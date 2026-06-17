@@ -131,6 +131,7 @@ export function FeedbackSurveyModal() {
                         onClick={() => handleRatingChange(key, star)}
                         onMouseEnter={() => handleHoverChange(key, star)}
                         onMouseLeave={() => handleHoverChange(key, 0)}
+                        aria-label={`Rate ${star} star${star > 1 ? 's' : ''} out of 5 for ${label}`}
                         className="p-0.5 focus:outline-none transition-transform active:scale-95"
                       >
                         <Star
@@ -152,11 +153,13 @@ export function FeedbackSurveyModal() {
 
           {/* Comments Textarea */}
           <div className="flex flex-col gap-2 pt-2 border-t">
-            <div className="flex items-center gap-1.5 text-xs font-semibold">
+            <label htmlFor="survey-comments" className="flex items-center gap-1.5 text-xs font-semibold cursor-pointer">
               <MessageSquare className="h-4 w-4 text-blue-500" />
               <span>Do you have any suggestions or comments?</span>
-            </div>
+            </label>
             <Textarea
+              id="survey-comments"
+              name="comments"
               placeholder="Tell us what you like or how we can improve..."
               className="resize-none h-20 text-xs"
               value={comments}

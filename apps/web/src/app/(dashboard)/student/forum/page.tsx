@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { useForm } from 'react-hook-form';
@@ -353,7 +354,7 @@ function CreatePostSheet({
             <Label>Attach Image</Label>
             {imagePreview ? (
               <div className="relative mt-1 aspect-[16/10] w-full overflow-hidden rounded-xl border border-border bg-muted/30">
-                <img src={imagePreview} alt="Attachment preview" className="h-full w-full object-cover" />
+                <Image src={imagePreview} alt="Attachment preview" fill unoptimized className="object-cover" />
                 <Button
                   type="button"
                   size="icon"
@@ -1059,13 +1060,14 @@ export default function StudentForumPage() {
                               {post.imageUrl ? (
                                 <Link
                                   href={`/student/forum/${post.id}`}
-                                  className="mt-3 block overflow-hidden rounded-xl border border-border/60 bg-muted/10"
+                                  className="relative aspect-[21/9] w-full mt-3 block overflow-hidden rounded-xl border border-border/60 bg-muted/10"
                                 >
-                                  <img
+                                  <Image
                                     src={post.imageUrl}
                                     alt={post.title}
-                                    className="aspect-[21/9] w-full object-cover transition-transform duration-500 hover:scale-[1.02]"
-                                    loading="lazy"
+                                    fill
+                                    sizes="(max-width: 768px) 100vw, 800px"
+                                    className="object-cover transition-transform duration-500 hover:scale-[1.02]"
                                   />
                                 </Link>
                               ) : null}

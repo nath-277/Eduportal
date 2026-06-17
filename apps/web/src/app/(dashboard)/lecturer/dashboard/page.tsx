@@ -140,8 +140,9 @@ export default function LecturerDashboardPage() {
   });
 
   const notificationsQuery = useQuery({
-    queryKey: ['notifications', 'mine'],
+    queryKey: ['notifications', 'mine', 'lecturer'],
     queryFn: async () => api.get<NotificationsResponse>('/notifications/mine'),
+    staleTime: 30_000,
   });
 
   const resourcesQuery = useQuery({

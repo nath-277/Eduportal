@@ -1,4 +1,5 @@
 import { Award, BookOpen, GraduationCap } from 'lucide-react';
+import Image from 'next/image';
 
 import { cn } from '@/lib/utils';
 import { useSettings } from '@/hooks/use-settings';
@@ -216,7 +217,14 @@ function Header({
   return (
     <div className="flex flex-col items-center text-center border-b-2 border-black pb-3 gap-2">
       {portalLogoUrl ? (
-        <img src={portalLogoUrl} alt="Logo" className="h-16 w-auto max-w-[200px] object-contain" />
+        <Image
+          src={portalLogoUrl}
+          alt="Logo"
+          width={150}
+          height={64}
+          unoptimized
+          className="h-16 w-auto max-w-[200px] object-contain"
+        />
       ) : (
         <div className="grid h-12 w-12 place-items-center rounded-full border-2 border-black">
           <GraduationCap className="h-6 w-6" />

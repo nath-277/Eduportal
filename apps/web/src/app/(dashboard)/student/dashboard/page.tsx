@@ -144,11 +144,9 @@ export default function StudentDashboardPage() {
   });
 
   const notificationsQuery = useQuery({
-    queryKey: ['notifications', 'mine'],
-    queryFn: async () => {
-      const data = await api.get<NotificationsResponse>('/notifications/mine?limit=5');
-      return data;
-    },
+    queryKey: ['notifications', 'mine', 'student'],
+    queryFn: async () => api.get<NotificationsResponse>('/notifications/mine'),
+    staleTime: 30_000,
   });
 
   const enrolledCourses = useMemo(() => {

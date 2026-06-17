@@ -3,6 +3,7 @@
 import { use, useEffect, useState } from 'react';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
@@ -385,9 +386,12 @@ function PostDetailView({ postId }: { postId: string }) {
                 </div>
                 {post.imageUrl ? (
                   <div className="my-4 overflow-hidden rounded-xl border border-border bg-muted/10">
-                    <img
+                    <Image
                       src={post.imageUrl}
                       alt={post.title}
+                      width={800}
+                      height={500}
+                      sizes="(max-width: 768px) 100vw, 800px"
                       className="max-h-[500px] w-full object-contain"
                     />
                   </div>

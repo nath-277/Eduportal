@@ -1,4 +1,5 @@
 import { BookOpen, GraduationCap } from 'lucide-react';
+import Image from 'next/image';
 
 import { useSettings } from '@/hooks/use-settings';
 import type { Course, Enrollment, Semester, User } from '@eduportal/shared';
@@ -49,7 +50,14 @@ export function RegForm({
       <div className="mx-auto max-w-3xl space-y-3.5 border-2 border-black bg-white p-6 font-mono text-black text-[11px] leading-tight">
         <div className="flex flex-col items-center text-center border-b-2 border-black pb-2 gap-1.5">
           {portalLogoUrl ? (
-            <img src={portalLogoUrl} alt="Logo" className="h-16 w-auto max-w-[200px] object-contain" />
+            <Image
+              src={portalLogoUrl}
+              alt="Logo"
+              width={150}
+              height={64}
+              unoptimized
+              className="h-16 w-auto max-w-[200px] object-contain"
+            />
           ) : (
             <div className="grid h-10 w-10 place-items-center rounded-full border border-black">
               <GraduationCap className="h-5 w-5" />

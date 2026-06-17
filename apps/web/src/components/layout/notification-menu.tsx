@@ -69,7 +69,7 @@ export function NotificationMenu({ role, initialUnreadCount }: NotificationMenuP
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
 
-  const queryKey = ['notifications', 'menu', role.toLowerCase()];
+  const queryKey = ['notifications', 'mine', role.toLowerCase()];
 
   const notificationsQuery = useQuery({
     queryKey,

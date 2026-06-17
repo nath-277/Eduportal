@@ -4,6 +4,8 @@ import { useSettings } from '@/hooks/use-settings';
 import { GraduationCap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+import Image from 'next/image';
+
 interface LogoProps {
   className?: string;
   iconClassName?: string;
@@ -14,12 +16,16 @@ export function Logo({ className = 'h-5 w-5', iconClassName }: LogoProps) {
 
   if (data?.portalLogoUrl) {
     return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={data.portalLogoUrl}
-        alt={data.portalName || 'Logo'}
-        className={cn('object-contain', className)}
-      />
+      <div className={cn('relative shrink-0', className)}>
+        <Image
+          src={data.portalLogoUrl}
+          alt={data.portalName || 'Logo'}
+          fill
+          sizes="(max-width: 768px) 40px, 40px"
+          priority
+          className="object-contain"
+        />
+      </div>
     );
   }
 
