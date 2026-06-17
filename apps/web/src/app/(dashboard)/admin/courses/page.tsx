@@ -10,8 +10,21 @@ import {
   Loader2,
   Plus,
   UserPlus,
+  Search,
+  Trash2,
+  MoreVertical,
+  X,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { toast } from 'sonner';
+
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 import { AdminShell } from '@/components/layout/admin-shell';
 import { PageHeader } from '@/components/ui/page-header';
@@ -97,19 +110,20 @@ const LEVELS: Level[] = ['L100', 'L200', 'L300', 'L400', 'L500'];
 const SEMESTERS: Semester[] = ['FIRST', 'SECOND'];
 
 export default function AdminCoursesPage() {
-  const [deptFilter, setDeptFilter] = useState<string>('ALL');
+  const [activeLevel, setActiveLevel] = useState<Level>('L100');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [deptFilter, setDeptFilter] = useState('ALL');
+  const [progFilter, setProgFilter] = useState('ALL');
+  const [creditFilter, setCreditFilter] = useState('ALL');
   const [adding, setAdding] = useState(false);
   const [assigning, setAssigning] = useState<Course | null>(null);
+  const [deleting, setDeleting] = useState<Course | null>(null);
 
   const qc = useQueryClient();
 
   const coursesQuery = useQuery({
-    queryKey: ['courses', 'admin', { deptFilter }],
-    queryFn: async () => {
-      const params: Record<string, string> = {};
-      if (deptFilter !== 'ALL') params.departmentId = deptFilter;
-      return api.get<Course[]>('/courses', params);
-    },
+    queryKey: ['courses', 'admin-all'],
+    queryFn: async () => api.get<Course[]>('/courses'),
   });
 
   const deptsQuery = useQuery({
@@ -117,9 +131,59 @@ export default function AdminCoursesPage() {
     queryFn: async () => api.get<Department[]>('/departments'),
   });
 
+  const programmesQuery = useQuery({
+    queryKey: ['programmes', 'by-dept-filter', deptFilter],
+    queryFn: async () => {
+      if (deptFilter === 'ALL') return [];
+      return api.get<Programme[]>(`/departments/${deptFilter}/programmes`);
+    },
+    enabled: deptFilter !== 'ALL',
+  });
+
+
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => api.delete(`/courses/${id}`),
+    onSuccess: () => {
+      toast.success('Course deleted');
+      qc.invalidateQueries({ queryKey: ['courses'] });
+      setDeleting(null);
+    },
+    onError: (err: unknown) => {
+      toast.error(err instanceof Error ? err.message : 'Delete failed');
+    },
+  });
+
+  const filteredCourses = useMemo(() => {
+    let list = coursesQuery.data ?? [];
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      list = list.filter(
+        (c) =>
+          c.code.toLowerCase().includes(q) ||
+          c.title.toLowerCase().includes(q)
+      );
+    }
+
+    if (deptFilter !== 'ALL') {
+      list = list.filter((c) => c.departmentId === deptFilter);
+    }
+
+    if (progFilter !== 'ALL') {
+      list = list.filter((c) => c.programmeId === progFilter);
+    }
+
+    if (creditFilter !== 'ALL') {
+      list = list.filter((c) => c.creditUnits === Number(creditFilter));
+    }
+
+    return list;
+  }, [coursesQuery.data, searchQuery, deptFilter, progFilter, creditFilter]);
+
   const grouped = useMemo(() => {
-    type Bucket = Record<Level, Record<Semester, Course[]>>;
-    const empty = (): Record<Semester, Course[]> => ({ FIRST: [], SECOND: [] });
+    type Bucket = Record<Level, { FIRST: Course[]; SECOND: Course[] }>;
+    const empty = () => ({ FIRST: [], SECOND: [] });
     const out: Bucket = {
       L100: empty(),
       L200: empty(),
@@ -128,18 +192,17 @@ export default function AdminCoursesPage() {
       L500: empty(),
       GRADUATED: empty(),
     };
-    for (const c of coursesQuery.data ?? []) {
-      if (out[c.level] && out[c.level][c.semester]) {
+    for (const c of filteredCourses) {
+      if (out[c.level]) {
         out[c.level][c.semester].push(c);
       }
     }
     for (const lvl of LEVELS) {
-      for (const sem of SEMESTERS) {
-        out[lvl][sem].sort((a, b) => a.code.localeCompare(b.code));
-      }
+      out[lvl].FIRST.sort((a, b) => a.code.localeCompare(b.code));
+      out[lvl].SECOND.sort((a, b) => a.code.localeCompare(b.code));
     }
     return out;
-  }, [coursesQuery.data]);
+  }, [filteredCourses]);
 
   const totalCount = coursesQuery.data?.length ?? 0;
 
@@ -169,57 +232,159 @@ export default function AdminCoursesPage() {
           value={LEVELS.filter((l) => grouped[l].FIRST.length + grouped[l].SECOND.length > 0).length}
           sub={`of ${LEVELS.length} possible`}
         />
-        <Card className="flex items-center gap-3 p-3">
-          <div className="grid h-9 w-9 place-items-center rounded-lg bg-primary/10 text-primary">
-            <Filter className="h-4 w-4" />
+        <SummaryStat
+          icon={Filter}
+          label="Departments"
+          value={deptsQuery.data?.length ?? 0}
+          sub="offering courses"
+        />
+      </div>
+
+      {/* Filter and Search Bar */}
+      <Card className="mt-6 p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="relative flex-1">
+            <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search by course code or title..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 text-sm"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute top-1/2 right-3 -translate-y-1/2 rounded-full p-0.5 hover:bg-muted"
+              >
+                <X className="h-3 w-3 text-muted-foreground" />
+              </button>
+            )}
           </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Department</p>
-            <Select value={deptFilter} onValueChange={setDeptFilter}>
-              <SelectTrigger className="h-7 w-full border-0 bg-transparent p-0 text-sm font-medium shadow-none focus:ring-0">
-                <SelectValue />
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Select value={deptFilter} onValueChange={(v) => {
+              setDeptFilter(v);
+              setProgFilter('ALL');
+            }}>
+              <SelectTrigger className="h-9 w-[150px] text-xs">
+                <SlidersHorizontal className="mr-1.5 h-3.5 w-3.5 text-muted-foreground" />
+                <SelectValue placeholder="Department" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="ALL">All departments</SelectItem>
+                <SelectItem value="ALL">All Departments</SelectItem>
                 {deptsQuery.data?.map((d) => (
-                  <SelectItem key={d.id} value={d.id}>{d.code} — {d.name}</SelectItem>
+                  <SelectItem key={d.id} value={d.id}>
+                    {d.code}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-          </div>
-        </Card>
-      </div>
 
-      <div className="mt-6 space-y-4">
-        {coursesQuery.isLoading ? (
-          Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-32 w-full" />)
-        ) : totalCount === 0 ? (
-          <Card>
-            <EmptyState
-              icon={BookPlus}
-              title="No courses match"
-              description="Try clearing the department filter or creating a new course."
-              className="m-6"
-            />
-          </Card>
-        ) : (
-          LEVELS.map((level) => {
-            const first = grouped[level].FIRST;
-            const second = grouped[level].SECOND;
-            const levelCount = first.length + second.length;
-            if (levelCount === 0) return null;
+            <Select
+              value={progFilter}
+              onValueChange={setProgFilter}
+              disabled={deptFilter === 'ALL'}
+            >
+              <SelectTrigger className="h-9 w-[150px] text-xs">
+                <SelectValue placeholder="Programme" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All Programmes</SelectItem>
+                {programmesQuery.data?.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.code}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={creditFilter} onValueChange={setCreditFilter}>
+              <SelectTrigger className="h-9 w-[110px] text-xs">
+                <SelectValue placeholder="Credits" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All Credits</SelectItem>
+                {['1', '2', '3', '4', '5', '6'].map((unit) => (
+                  <SelectItem key={unit} value={unit}>
+                    {unit} Unit{unit === '1' ? '' : 's'}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {(searchQuery || deptFilter !== 'ALL' || progFilter !== 'ALL' || creditFilter !== 'ALL') && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setSearchQuery('');
+                  setDeptFilter('ALL');
+                  setProgFilter('ALL');
+                  setCreditFilter('ALL');
+                }}
+                className="h-9 text-xs text-destructive hover:bg-destructive/5 hover:text-destructive"
+              >
+                Clear
+              </Button>
+            )}
+          </div>
+        </div>
+      </Card>
+
+      <Tabs value={activeLevel} onValueChange={(v) => setActiveLevel(v as Level)} className="mt-6">
+        <TabsList className="grid w-full grid-cols-5 bg-muted/50 p-1">
+          {LEVELS.map((lvl) => {
+            const first = grouped[lvl].FIRST;
+            const second = grouped[lvl].SECOND;
+            const total = first.length + second.length;
             return (
-              <LevelGroup
-                key={level}
-                level={level}
-                first={first}
-                second={second}
-                onAssign={(c) => setAssigning(c)}
-              />
+              <TabsTrigger key={lvl} value={lvl} className="py-2 text-xs font-semibold sm:text-sm">
+                {lvl}
+                {total > 0 && (
+                  <Badge variant="secondary" className="ml-1.5 hidden h-4 px-1 text-[9px] sm:inline-flex">
+                    {total}
+                  </Badge>
+                )}
+              </TabsTrigger>
             );
-          })
-        )}
-      </div>
+          })}
+        </TabsList>
+
+        {LEVELS.map((lvl) => (
+          <TabsContent key={lvl} value={lvl} className="mt-6 space-y-6">
+            {coursesQuery.isLoading ? (
+              Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-32 w-full" />)
+            ) : grouped[lvl].FIRST.length === 0 && grouped[lvl].SECOND.length === 0 ? (
+              <Card>
+                <EmptyState
+                  icon={BookPlus}
+                  title={`No ${lvl} courses found`}
+                  description="Try adjusting your filters or add a new course."
+                  className="m-6"
+                />
+              </Card>
+            ) : (
+              <>
+                <SemesterTable
+                  label="First semester"
+                  tone="bg-blue-500/10 text-blue-700"
+                  courses={grouped[lvl].FIRST}
+                  onAssign={(c) => setAssigning(c)}
+                  onDelete={(c) => setDeleting(c)}
+                />
+                <SemesterTable
+                  label="Second semester"
+                  tone="bg-violet-500/10 text-violet-700"
+                  courses={grouped[lvl].SECOND}
+                  onAssign={(c) => setAssigning(c)}
+                  onDelete={(c) => setDeleting(c)}
+                />
+              </>
+            )}
+          </TabsContent>
+        ))}
+      </Tabs>
 
       {adding ? (
         <AddCourseDialog
@@ -233,6 +398,44 @@ export default function AdminCoursesPage() {
           course={assigning}
           onClose={() => setAssigning(null)}
         />
+      ) : null}
+
+      {deleting ? (
+        <Dialog open onOpenChange={(o) => { if (!o) setDeleting(null); }}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-destructive">Delete course</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to delete <span className="font-mono font-semibold text-foreground">{deleting.code}</span>? This action cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-2 text-sm">
+              <p className="font-medium">{deleting.title}</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Credits: {deleting.creditUnits} units · Level: {deleting.level} · Semester: {deleting.semester}
+              </p>
+            </div>
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button type="button" variant="ghost" onClick={() => setDeleting(null)}>
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                disabled={deleteMutation.isPending}
+                onClick={() => deleteMutation.mutate(deleting.id)}
+                className="gap-1.5"
+              >
+                {deleteMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Trash2 className="h-4 w-4" />
+                )}
+                Delete
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       ) : null}
     </AdminShell>
   );
@@ -263,74 +466,18 @@ function SummaryStat({
   );
 }
 
-function LevelGroup({
-  level,
-  first,
-  second,
-  onAssign,
-}: {
-  level: Level;
-  first: Course[];
-  second: Course[];
-  onAssign: (c: Course) => void;
-}) {
-  const [open, setOpen] = useState(true);
-  const totalUnits = [...first, ...second].reduce((acc, c) => acc + c.creditUnits, 0);
-
-  return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 gap-3">
-        <button
-          type="button"
-          onClick={() => setOpen((o) => !o)}
-          className="flex flex-1 items-center gap-3 text-left"
-          aria-expanded={open}
-        >
-          <div className="grid h-9 w-9 place-items-center rounded-lg bg-primary/10 font-mono text-xs font-semibold text-primary">
-            {level}
-          </div>
-          <div>
-            <CardTitle className="text-base">{level} courses</CardTitle>
-            <p className="text-xs text-muted-foreground">
-              {first.length + second.length} course{first.length + second.length === 1 ? '' : 's'} ·{' '}
-              {totalUnits} unit{totalUnits === 1 ? '' : 's'} total
-            </p>
-          </div>
-        </button>
-        <Badge variant="secondary" className="text-[10px]">
-          {first.length} first · {second.length} second
-        </Badge>
-      </CardHeader>
-      {open ? (
-        <CardContent className="space-y-3 pt-0">
-          <SemesterTable
-            label="First semester"
-            tone="bg-blue-500/10 text-blue-700"
-            courses={first}
-            onAssign={onAssign}
-          />
-          <SemesterTable
-            label="Second semester"
-            tone="bg-violet-500/10 text-violet-700"
-            courses={second}
-            onAssign={onAssign}
-          />
-        </CardContent>
-      ) : null}
-    </Card>
-  );
-}
-
 function SemesterTable({
   label,
   tone,
   courses,
   onAssign,
+  onDelete,
 }: {
   label: string;
   tone: string;
   courses: Course[];
   onAssign: (c: Course) => void;
+  onDelete: (c: Course) => void;
 }) {
   if (courses.length === 0) {
     return (
@@ -379,16 +526,28 @@ function SemesterTable({
                   {c.department?.code ?? '—'}
                   {c.programme?.code ? ` / ${c.programme.code}` : ''}
                 </td>
-                <td className="px-3 py-1.5 text-right">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => onAssign(c)}
-                    className="h-7 gap-1 px-2 text-xs"
-                  >
-                    <UserPlus className="h-3 w-3" />
-                    Assign
-                  </Button>
+                <td className="px-3 py-2 text-right">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                        <MoreVertical className="h-4 w-4" />
+                        <span className="sr-only">Open menu</span>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => onAssign(c)} className="gap-1.5 text-xs cursor-pointer">
+                        <UserPlus className="h-3.5 w-3.5 text-muted-foreground" />
+                        Assign Lecturer
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => onDelete(c)}
+                        className="gap-1.5 text-xs text-destructive focus:bg-destructive/5 focus:text-destructive cursor-pointer"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        Delete Course
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </td>
               </tr>
             ))}
@@ -425,9 +584,7 @@ function AddCourseDialog({ departments, onClose }: { departments: Department[]; 
     enabled: !!departmentId && departmentId !== 'NONE',
   });
 
-  useEffect(() => {
-    setValue('programmeId', 'NONE');
-  }, [departmentId, setValue]);
+
 
   const createMutation = useMutation({
     mutationFn: async (input: CourseForm) =>
@@ -496,7 +653,10 @@ function AddCourseDialog({ departments, onClose }: { departments: Department[]; 
           </div>
           <div className="space-y-1.5">
             <Label>Department</Label>
-            <Select value={watch('departmentId')} onValueChange={(v) => setValue('departmentId', v)}>
+            <Select value={watch('departmentId')} onValueChange={(v) => {
+              setValue('departmentId', v);
+              setValue('programmeId', 'NONE');
+            }}>
               <SelectTrigger><SelectValue placeholder="Select department" /></SelectTrigger>
               <SelectContent>
                 {departments.map((d) => (
