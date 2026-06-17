@@ -99,6 +99,7 @@ model User {
   supportTickets      SupportTicket[]     @relation("UserTickets")
   ticketComments      TicketComment[]     @relation("UserComments")
   promotions          PromotionHistory[]  @relation("UserPromotions")
+  feedbacks           PlatformFeedback[]  @relation("UserFeedbacks")
   createdAt           DateTime            @default(now())
   updatedAt           DateTime            @updatedAt
 
@@ -483,5 +484,21 @@ model PromotionHistory {
   createdAt   DateTime @default(now())
 
   @@index([studentId])
+}
+
+model PlatformFeedback {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation("UserFeedbacks", fields: [userId], references: [id], onDelete: Cascade)
+  userRole        UserRole
+  easeOfUse       Int      // 1 to 5 rating
+  interfaceDesign Int      // 1 to 5 rating
+  reliability     Int      // 1 to 5 rating
+  functionality   Int      // 1 to 5 rating
+  performance     Int      // 1 to 5 rating
+  comments        String?  @db.Text
+  createdAt       DateTime @default(now())
+
+  @@index([userId])
 }
 

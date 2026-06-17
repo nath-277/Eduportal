@@ -1,6 +1,6 @@
 export type UserRole = 'STUDENT' | 'LECTURER' | 'ADMIN';
 
-export type Level = 'L100' | 'L200' | 'L300' | 'L400' | 'L500';
+export type Level = 'L100' | 'L200' | 'L300' | 'L400' | 'L500' | 'GRADUATED';
 
 export type Semester = 'FIRST' | 'SECOND';
 
@@ -205,3 +205,18 @@ export interface PaginatedResponse<T> {
   limit: number;
   totalPages: number;
 }
+
+export interface PlatformFeedback {
+  id: string;
+  userId: string;
+  user?: User;
+  userRole: UserRole;
+  easeOfUse: number;
+  interfaceDesign: number;
+  reliability: number;
+  functionality: number;
+  performance: number;
+  comments?: string;
+  createdAt: string;
+}
+

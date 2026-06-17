@@ -116,6 +116,7 @@ export default function AdminCoursesPage() {
       L300: empty(),
       L400: empty(),
       L500: empty(),
+      GRADUATED: empty(),
     };
     for (const c of coursesQuery.data ?? []) {
       if (out[c.level] && out[c.level][c.semester]) {

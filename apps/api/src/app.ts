@@ -18,6 +18,8 @@ import { departmentRouter, sessionRouter } from './routes/department.routes.js';
 import communityRouter from './routes/community.routes.js';
 import settingsRouter from './routes/settings.routes.js';
 import supportRouter from './routes/support.routes.js';
+import promotionRouter from './routes/promotion.routes.js';
+import feedbackRouter from './routes/feedback.routes.js';
 
 export const app = new Hono();
 
@@ -86,6 +88,8 @@ app.route('/api/sessions', sessionRouter);
 app.route('/api/communities', communityRouter);
 app.route('/api/settings', settingsRouter);
 app.route('/api/support', supportRouter);
+app.route('/api/promotions', promotionRouter);
+app.route('/api/feedback', feedbackRouter);
 
 app.notFound((c) => {
   const response: ApiResponse<null> = {

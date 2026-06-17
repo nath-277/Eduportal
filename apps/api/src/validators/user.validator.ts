@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 export const listUsersSchema = z.object({
   role: z.enum(['STUDENT', 'LECTURER', 'ADMIN']).optional(),
-  level: z.enum(['L100', 'L200', 'L300', 'L400', 'L500']).optional(),
+  level: z.enum(['L100', 'L200', 'L300', 'L400', 'L500', 'GRADUATED']).optional(),
   departmentId: z.string().optional(),
   search: z.string().optional(),
   page: z.coerce.number().int().min(1).optional(),
@@ -14,7 +14,7 @@ export type ListUsersQuery = z.infer<typeof listUsersSchema>;
 export const updateUserSchema = z
   .object({
     fullname: z.string().min(3).max(100).optional(),
-    level: z.enum(['L100', 'L200', 'L300', 'L400', 'L500']).nullable().optional(),
+    level: z.enum(['L100', 'L200', 'L300', 'L400', 'L500', 'GRADUATED']).nullable().optional(),
     semester: z.enum(['FIRST', 'SECOND']).nullable().optional(),
     avatarUrl: z.url().nullable().optional(),
     isActive: z.boolean().optional(),
