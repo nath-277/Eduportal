@@ -74,7 +74,12 @@ export function ResultSlip({
         </div>
 
         <div className="relative z-10 space-y-6">
-          <Header universityName={universityName} portalLogoUrl={portalLogoUrl} />
+          <Header
+            universityName={universityName}
+            portalLogoUrl={portalLogoUrl}
+            facultyName={settings?.facultyName}
+            departmentName={departmentName}
+          />
 
           <div className="text-center">
             <h1 className="text-2xl font-bold tracking-wide">STATEMENT OF RESULT</h1>
@@ -197,25 +202,32 @@ export function ResultSlip({
   );
 }
 
-function Header({ universityName, portalLogoUrl }: { universityName: string; portalLogoUrl?: string | null }) {
+function Header({
+  universityName,
+  portalLogoUrl,
+  facultyName,
+  departmentName,
+}: {
+  universityName: string;
+  portalLogoUrl?: string | null;
+  facultyName?: string;
+  departmentName?: string;
+}) {
   return (
-    <div className="flex items-center gap-4 border-b-2 border-black pb-3">
-      <div className="grid h-14 w-14 place-items-center rounded-full border-2 border-black overflow-hidden bg-white">
-        {portalLogoUrl ? (
-          <img src={portalLogoUrl} alt="Logo" className="h-full w-full object-contain p-1" />
-        ) : (
-          <GraduationCap className="h-8 w-8" />
-        )}
-      </div>
-      <div className="flex-1 text-center">
+    <div className="flex flex-col items-center text-center border-b-2 border-black pb-3 gap-2">
+      {portalLogoUrl ? (
+        <img src={portalLogoUrl} alt="Logo" className="h-16 w-auto max-w-[200px] object-contain" />
+      ) : (
+        <div className="grid h-12 w-12 place-items-center rounded-full border-2 border-black">
+          <GraduationCap className="h-6 w-6" />
+        </div>
+      )}
+      <div>
         <p className="text-[10px] uppercase tracking-widest font-bold">{universityName}</p>
         <h2 className="text-base font-bold uppercase tracking-wide">
-          Faculty of Computing &amp; Information Sciences
+          Faculty of {facultyName || 'Computing & Information Sciences'}, Department of {departmentName || '—'}
         </h2>
         <p className="text-[10px] uppercase tracking-widest font-semibold">Departmental Examination Board</p>
-      </div>
-      <div className="grid h-14 w-14 place-items-center rounded-full border border-black/40 text-[7px] font-bold text-center leading-tight uppercase p-1">
-        OFFICIAL SEAL
       </div>
     </div>
   );

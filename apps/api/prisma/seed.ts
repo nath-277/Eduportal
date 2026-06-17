@@ -78,6 +78,7 @@ async function main(): Promise<void> {
       id: 'settings',
       portalName: 'EduPortal',
       displayName: 'EduPortal — University Companion',
+      facultyName: 'Computing & Information Sciences',
       maxLoginAttempts: 5,
       sessionExpiry: '24h',
       allowedEmailDomain: 'eduportal.com',

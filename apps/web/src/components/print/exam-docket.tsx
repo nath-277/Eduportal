@@ -41,26 +41,21 @@ export function ExamDocket({
   return (
     <div className="print-only print-page hidden">
       <div className="mx-auto max-w-3xl space-y-3.5 border-2 border-black bg-white p-6 font-mono text-black text-[11px] leading-tight">
-        <div className="flex items-center gap-4 border-b-2 border-black pb-2">
-          <div className="grid h-12 w-12 place-items-center rounded-full border-2 border-black">
-            <GraduationCap className="h-6 w-6" />
-          </div>
-          <div className="flex-1 text-center">
-            <p className="text-[9px] uppercase tracking-widest font-bold">{universityName}</p>
+        <div className="flex flex-col items-center text-center border-b-2 border-black pb-2 gap-1.5">
+          {portalLogoUrl ? (
+            <img src={portalLogoUrl} alt="Logo" className="h-16 w-auto max-w-[200px] object-contain" />
+          ) : (
+            <div className="grid h-10 w-10 place-items-center rounded-full border border-black">
+              <GraduationCap className="h-5 w-5" />
+            </div>
+          )}
+          <div>
+            <p className="text-[10px] uppercase tracking-widest font-bold">{universityName}</p>
             <h2 className="text-xs font-bold uppercase tracking-wide">
-              Faculty of Computing &amp; Information Sciences
+              Faculty of {settings?.facultyName || 'Computing & Information Sciences'}, Department of {departmentName || '—'}
             </h2>
             <p className="text-[9px] uppercase tracking-widest font-semibold">Examinations Office</p>
           </div>
-          {portalLogoUrl ? (
-            <div className="grid h-12 w-12 place-items-center rounded-full border border-black overflow-hidden bg-white">
-              <img src={portalLogoUrl} alt="Logo" className="h-full w-full object-contain p-1" />
-            </div>
-          ) : (
-            <div className="grid h-12 w-12 place-items-center rounded-full border-2 border-dashed border-black/40 text-[8px] uppercase">
-              Logo
-            </div>
-          )}
         </div>
 
         <div className="text-center">
@@ -70,8 +65,8 @@ export function ExamDocket({
           </p>
         </div>
 
-        <div className="flex items-start gap-4 border-2 border-black p-3">
-          <div className="grid h-20 w-16 place-items-center rounded border-2 border-dashed border-black/50 text-[8px] uppercase">
+        <div className="flex items-start gap-4 border border-black p-2.5">
+          <div className="grid h-20 w-16 place-items-center rounded border border-dashed border-black/50 text-[8px] uppercase">
             Passport<br />Photo
           </div>
           <div className="flex-1 text-xs">
@@ -84,39 +79,39 @@ export function ExamDocket({
         </div>
 
         <div>
-          <h2 className="mb-1 flex items-center gap-2 border-b-2 border-black pb-0.5 text-xs font-bold uppercase tracking-wider">
+          <h2 className="mb-1 flex items-center gap-2 border-b border-black pb-0.5 text-xs font-bold uppercase tracking-wider">
             <BookOpen className="h-3.5 w-3.5" />
             Registered Courses
           </h2>
-          <table className="w-full border-collapse text-[10px]">
+          <table className="w-full border border-black border-collapse text-[10px]">
             <thead>
-              <tr className="border-b border-black text-left">
-                <th className="w-8 py-1 text-center">S/N</th>
-                <th className="py-1">Code</th>
-                <th className="py-1">Course Title</th>
-                <th className="py-1 text-right">Units</th>
-                <th className="py-1">Lecturer</th>
-                <th className="py-1 text-center">Date</th>
-                <th className="py-1 text-center">Venue</th>
+              <tr className="bg-black/5 border-b border-black text-left">
+                <th className="w-8 py-1 text-center border-r border-black font-semibold">S/N</th>
+                <th className="w-16 py-1 px-1.5 border-r border-black font-semibold">Code</th>
+                <th className="py-1 px-1.5 border-r border-black font-semibold">Course Title</th>
+                <th className="w-12 py-1 px-1.5 text-right border-r border-black font-semibold">Units</th>
+                <th className="w-20 py-1 px-1.5 text-center border-r border-black font-semibold">Date</th>
+                <th className="w-16 py-1 px-1.5 text-center border-r border-black font-semibold">Venue</th>
+                <th className="w-32 py-1 px-1.5 text-center font-semibold">Invigilator Sign</th>
               </tr>
             </thead>
             <tbody>
               {courses.map((c, i) => (
-                <tr key={c.id} className="border-b border-black/30">
-                  <td className="py-1 text-center">{i + 1}</td>
-                  <td className="py-1 font-semibold">{c.code}</td>
-                  <td className="py-1">{c.title}</td>
-                  <td className="py-1 text-right tabular-nums">{c.creditUnits}</td>
-                  <td className="py-1 italic text-black/60">TBA</td>
-                  <td className="py-1 text-center italic text-black/60">— —</td>
-                  <td className="py-1 text-center italic text-black/60">—</td>
+                <tr key={c.id} className="border-b border-black">
+                  <td className="py-1.5 text-center border-r border-black">{i + 1}</td>
+                  <td className="py-1.5 px-1.5 font-semibold border-r border-black">{c.code}</td>
+                  <td className="py-1.5 px-1.5 border-r border-black">{c.title}</td>
+                  <td className="py-1.5 px-1.5 text-right tabular-nums border-r border-black">{c.creditUnits}</td>
+                  <td className="py-1.5 px-1.5 text-center italic text-black/60 border-r border-black">— —</td>
+                  <td className="py-1.5 px-1.5 text-center italic text-black/60 border-r border-black">—</td>
+                  <td className="py-1.5 px-1.5"></td>
                 </tr>
               ))}
-              <tr className="border-t border-black font-semibold">
-                <td colSpan={3} className="py-1 text-right uppercase">
+              <tr className="font-semibold">
+                <td colSpan={3} className="py-1.5 px-1.5 text-right uppercase border-r border-black">
                   Total credit units:
                 </td>
-                <td className="py-1 text-right tabular-nums">{totalUnits}</td>
+                <td className="py-1.5 px-1.5 text-right tabular-nums border-r border-black">{totalUnits}</td>
                 <td colSpan={3} />
               </tr>
             </tbody>

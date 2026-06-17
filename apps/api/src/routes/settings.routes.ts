@@ -18,6 +18,7 @@ settingsRouter.get('/', async (_c) => {
     return ok({
       portalName: 'EduPortal',
       displayName: 'EduPortal — University Companion',
+      facultyName: 'Computing & Information Sciences',
       maxLoginAttempts: 5,
       sessionExpiry: '24h',
       allowedEmailDomain: 'eduportal.com',
@@ -28,6 +29,7 @@ settingsRouter.get('/', async (_c) => {
   return ok({
     portalName: settings.portalName,
     displayName: settings.displayName,
+    facultyName: settings.facultyName,
     maxLoginAttempts: settings.maxLoginAttempts,
     sessionExpiry: settings.sessionExpiry,
     allowedEmailDomain: settings.allowedEmailDomain,
@@ -93,6 +95,7 @@ settingsRouter.patch('/', authenticate, authorize('ADMIN'), async (c) => {
   return ok({
     portalName: settings.portalName,
     displayName: settings.displayName,
+    facultyName: settings.facultyName,
     maxLoginAttempts: settings.maxLoginAttempts,
     sessionExpiry: settings.sessionExpiry,
     allowedEmailDomain: settings.allowedEmailDomain,

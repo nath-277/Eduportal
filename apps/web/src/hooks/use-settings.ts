@@ -8,6 +8,7 @@ export function useSettings() {
       api.get<{
         portalName: string;
         displayName: string;
+        facultyName: string;
         maxLoginAttempts: number;
         sessionExpiry: string;
         allowedEmailDomain: string;

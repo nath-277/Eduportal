@@ -411,6 +411,7 @@ model SystemSettings {
   id                 String   @id @default("settings")
   portalName         String   @default("EduPortal")
   displayName        String   @default("EduPortal — University Companion")
+  facultyName        String   @default("Computing & Information Sciences")
   maxLoginAttempts   Int      @default(5)
   sessionExpiry      String   @default("24h")
   allowedEmailDomain String   @default("eduportal.com")

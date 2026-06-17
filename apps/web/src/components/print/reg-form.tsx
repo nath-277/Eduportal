@@ -47,28 +47,23 @@ export function RegForm({
   return (
     <div className="print-only print-page hidden">
       <div className="mx-auto max-w-3xl space-y-6 border-2 border-black bg-white p-10 font-mono text-black">
-        <div className="flex items-center gap-4 border-b-2 border-black pb-3">
-          <div className="grid h-14 w-14 place-items-center rounded-full border-2 border-black">
-            <GraduationCap className="h-8 w-8" />
-          </div>
-          <div className="flex-1 text-center">
+        <div className="flex flex-col items-center text-center border-b-2 border-black pb-3 gap-2">
+          {portalLogoUrl ? (
+            <img src={portalLogoUrl} alt="Logo" className="h-16 w-auto max-w-[200px] object-contain" />
+          ) : (
+            <div className="grid h-12 w-12 place-items-center rounded-full border-2 border-black">
+              <GraduationCap className="h-6 w-6" />
+            </div>
+          )}
+          <div>
             <p className="text-[10px] uppercase tracking-widest font-bold">{universityName}</p>
             <h2 className="text-base font-bold uppercase tracking-wide">
-              Faculty of Computing &amp; Information Sciences
+              Faculty of {settings?.facultyName || 'Computing & Information Sciences'}, Department of {departmentName || '—'}
             </h2>
             <p className="text-[10px] uppercase tracking-widest font-semibold">
               Course Registration &amp; Advisement Office
             </p>
           </div>
-          {portalLogoUrl ? (
-            <div className="grid h-14 w-14 place-items-center rounded-full border border-black overflow-hidden bg-white">
-              <img src={portalLogoUrl} alt="Logo" className="h-full w-full object-contain p-1" />
-            </div>
-          ) : (
-            <div className="grid h-14 w-14 place-items-center rounded-full border-2 border-dashed border-black/40 text-[8px] uppercase">
-              Logo
-            </div>
-          )}
         </div>
 
         <div className="text-center">

@@ -43,6 +43,7 @@ export default function AdminSettingsPage() {
   // Portal/Settings states
   const [portalName, setPortalName] = useState('');
   const [displayName, setDisplayName] = useState('');
+  const [facultyName, setFacultyName] = useState('');
   const [maxLoginAttempts, setMaxLoginAttempts] = useState('5');
   const [sessionExpiry, setSessionExpiry] = useState('24h');
   const [allowedEmailDomain, setAllowedEmailDomain] = useState('');
@@ -70,6 +71,7 @@ export default function AdminSettingsPage() {
     queryFn: async () => api.get<{
       portalName: string;
       displayName: string;
+      facultyName: string;
       maxLoginAttempts: number;
       sessionExpiry: string;
       allowedEmailDomain: string;
@@ -82,6 +84,7 @@ export default function AdminSettingsPage() {
     if (settingsQuery.data) {
       setPortalName(settingsQuery.data.portalName || '');
       setDisplayName(settingsQuery.data.displayName || '');
+      setFacultyName(settingsQuery.data.facultyName || 'Computing & Information Sciences');
       setMaxLoginAttempts(String(settingsQuery.data.maxLoginAttempts ?? '5'));
       setSessionExpiry(settingsQuery.data.sessionExpiry || '24h');
       setAllowedEmailDomain(settingsQuery.data.allowedEmailDomain || '');
@@ -111,6 +114,7 @@ export default function AdminSettingsPage() {
     mutationFn: async (payload: {
       portalName: string;
       displayName: string;
+      facultyName: string;
       maxLoginAttempts: number;
       sessionExpiry: string;
       allowedEmailDomain: string;
@@ -168,6 +172,7 @@ export default function AdminSettingsPage() {
     settingsMutation.mutate({
       portalName,
       displayName,
+      facultyName,
       maxLoginAttempts: Number.parseInt(maxLoginAttempts, 10) || 5,
       sessionExpiry,
       allowedEmailDomain,
@@ -308,6 +313,16 @@ export default function AdminSettingsPage() {
                               placeholder="e.g. EduPortal — University Companion"
                             />
                             <p className="text-[11px] text-muted-foreground">Used on login pages and emails.</p>
+                          </div>
+                          <div className="space-y-2 sm:col-span-2">
+                            <Label htmlFor="faculty-name">Default Faculty Name</Label>
+                            <Input
+                              id="faculty-name"
+                              value={facultyName}
+                              onChange={(e) => setFacultyName(e.target.value)}
+                              placeholder="e.g. Computing &amp; Information Sciences"
+                            />
+                            <p className="text-[11px] text-muted-foreground">Default faculty name displayed in headers of printed documents.</p>
                           </div>
                         </div>
 
