@@ -511,6 +511,160 @@ For users operating on mobile screens, navigating notifications via standard pop
   );
 ```
 
+### 4.5.10 Student Academic Promotion System
+The academic promotion system facilitates the automated, batch-processed advancement of student levels based on cumulative academic performance (CGPA) and department level caps. Upon completion of a session, administrators preview candidates for promotion. The system automatically computes student CGPA scores and determines outcomes:
+*   **PROMOTED**: If the student's CGPA is greater than or equal to `1.50` and their current level is below their department's maximum graduation level.
+*   **GRADUATED**: If the student's CGPA is greater than or equal to `1.50` and they have reached the department's maximum graduation level.
+*   **REPEATED** (Probation): If the student's CGPA falls below `1.50`, they remain in their current level for the next session.
+
+Every executed promotion advances the student's profile and writes a detailed log to the `PromotionHistory` table in a secure database transaction, keeping audit trails.
+
+#### Code Snippet 4.10: Student Promotion Transaction Execution (`apps/api/src/routes/promotion.routes.ts`)
+```typescript
+  await prisma.$transaction(async (tx) => {
+    for (const student of students) {
+      const cgpa = computeGpa(
+        student.results.map((r) => ({
+          totalScore: r.totalScore,
+          gradePoint: r.gradePoint,
+          course: { creditUnits: r.course.creditUnits },
+        }))
+      );
+
+      let toLevel = student.level as string;
+      let status = 'REPEATED';
+
+      if (cgpa >= 1.50) {
+        if (student.level === student.department.maxLevel) {
+          toLevel = 'GRADUATED';
+          status = 'GRADUATED';
+        } else {
+          toLevel = getNextLevel(student.level);
+          status = 'PROMOTED';
+        }
+      }
+
+      await tx.user.update({
+        where: { id: student.id },
+        data: { level: toLevel as any },
+      });
+
+      await tx.promotionHistory.create({
+        data: {
+          studentId: student.id,
+          sessionId,
+          fromLevel: student.level,
+          toLevel: toLevel as any,
+          cgpa,
+          status: status as any,
+        },
+      });
+    }
+  });
+```
+
+### 4.5.11 Platform Usability Feedback System
+To measure technology acceptance and gather data for portal improvements, a Platform Usability Feedback system was implemented. Students and lecturers are prompted via a non-intrusive dashboard modal to rate their portal experience. Users evaluate the portal across five core criteria from Davis's (1989) TAM model and DeLone & McLean's (2003) IS Success Model, using a Likert rating scale (1-5 stars):
+1.  **Ease of Use** (User experience simplicity)
+2.  **Interface Design** (Visual layout and responsiveness)
+3.  **Reliability** (Uptime and crash resilience)
+4.  **Functionality** (Features coverage)
+5.  **Performance** (Latency and speed)
+
+Administrators view real-time feedback aggregates, average ratings for each category, and download raw results in CSV format for analysis.
+
+#### Code Snippet 4.11: Zod Schema and Feedback Registration Route (`apps/api/src/routes/feedback.routes.ts`)
+```typescript
+const feedbackSubmitSchema = z.object({
+  easeOfUse: z.number().int().min(1).max(5),
+  interfaceDesign: z.number().int().min(1).max(5),
+  reliability: z.number().int().min(1).max(5),
+  functionality: z.number().int().min(1).max(5),
+  performance: z.number().int().min(1).max(5),
+  comments: z.string().max(2000).optional().nullable(),
+});
+
+feedbackRouter.post('/submit', authenticate, async (c) => {
+  const user = c.get('user');
+  let body = feedbackSubmitSchema.parse(await c.req.json());
+
+  const existing = await prisma.platformFeedback.findFirst({
+    where: { userId: user.userId },
+  });
+  if (existing) {
+    return badRequest('You have already submitted feedback for this platform.');
+  }
+
+  const feedback = await prisma.platformFeedback.create({
+    data: {
+      userId: user.userId,
+      userRole: user.role,
+      easeOfUse: body.easeOfUse,
+      interfaceDesign: body.interfaceDesign,
+      reliability: body.reliability,
+      functionality: body.functionality,
+      performance: body.performance,
+      comments: body.comments,
+    },
+  });
+
+  return ok({ feedback });
+});
+```
+
+---
+
+### 4.5.12 Performance and Database Connection Resilience Optimizations
+To ensure high availability under high network latency and minimize performance penalties on student dashboards, the portal incorporates a series of database-level and frontend-level optimizations:
+1.  **Prisma connection resilience retries**: The database client wraps all operations in an extension helper. If a query encounters transient failures (such as PostgreSQL connection pooler timeouts or neon connection drops), it intercepts the error and executes up to three retries with exponential backoff.
+2.  **Next.js Image component optimization**: Legacy `<img>` elements were migrated to the Next.js `Image` component. This serves modern WebP/AVIF formats, generates dynamic responsive sizes, and preloads critical page assets (such as main logos) using the `priority` prop. This reduces Largest Contentful Paint (LCP) times and prevents layout shifts (CLS).
+3.  **Authentication hydration guard**: Component mount state and Zustand local storage hydration status are checked in `useAuthGuard` before performing client-side route redirection. This prevents incorrect routing loops back to `/login` when a user refreshes their page on a deep subpath (e.g. `/admin/promotions`).
+4.  **Dynamic component lazy loading**: Large dialog overlays such as the `FeedbackSurveyModal` are imported dynamically (`dynamic(() => import(...), { ssr: false })`) to defer initial main thread compilation costs, optimizing Total Blocking Time (TBT) and LCP.
+
+#### Code Snippet 4.12: Extended Prisma Client Query Retry Handler (`apps/api/src/lib/prisma.ts`)
+```typescript
+const extendedPrisma = basePrisma.$extends({
+  query: {
+    $allOperations({ model, operation, args, query }) {
+      const maxRetries = 3;
+      let delay = 500;
+
+      const execute = async (attempt: number): Promise<unknown> => {
+        try {
+          return await query(args);
+        } catch (error) {
+          const err = error as Record<string, unknown> & { code?: string };
+          const errorMessage = String(err?.message || '');
+          const errorCode = String(err?.code || '');
+
+          const isTransient =
+            errorMessage.includes('timeout') ||
+            errorMessage.includes('connection') ||
+            errorMessage.includes('pool') ||
+            errorCode === 'P2024' || // Connection timeout
+            errorCode === 'P2028' || // Transaction timeout
+            errorCode === 'P2010';   // Raw query failed (e.g. connection closed)
+
+          if (isTransient && attempt < maxRetries) {
+            console.warn(
+              `[Prisma] Transient DB error in ${
+                model || 'operation'
+              }.${operation} (attempt ${attempt}/${maxRetries}): ${errorMessage}. Retrying in ${delay}ms...`
+            );
+            await new Promise((resolve) => setTimeout(resolve, delay));
+            delay *= 2;
+            return execute(attempt + 1);
+          }
+          throw error;
+        }
+      };
+
+      return execute(1);
+    },
+  },
+});
+```
+
 ---
 
 ## 4.6 Alignment with Theoretical Frameworks (System Evaluation)
@@ -521,7 +675,9 @@ The DeLone and McLean framework evaluates the portal's efficacy across three qua
 1.  **System Quality:**
     *   *Backend Efficiency:* The choice of the Hono API backend provides extremely low response latency, running on lightweight serverless runtimes.
     *   *Type Safety:* The PostgreSQL database layer operates through Prisma ORM, resolving query inconsistencies at compile-time.
-    *   *State Management:* React Query (TanStack Query) caches server responses for 5 minutes (staleTime), eliminating redundant API fetches and reducing layout shifts.
+    *   *State Management & Cache Sharing:* React Query (TanStack Query) caches server responses for 5 minutes (staleTime), eliminating redundant API fetches and reducing layout shifts. Standardized query keys (`['notifications', 'mine', role]`) ensure that shell overlays, pages, and menus share cached data, eliminating duplicate network traffic.
+    *   *Preloading and Image Optimization:* Dynamically preloading critical assets (using Next.js `Image` with the `priority` prop on page logos) prevents layout shifts (CLS) and reduces Largest Contentful Paint (LCP) times. Deferring non-critical dialog components via dynamic imports decreases main-thread execution blocking.
+    *   *Database Connection Resilience:* Extended Prisma clients utilize automated transaction retry logic with exponential backoff to recover from transient PostgreSQL/Neon connection drops and pooler timeouts.
     *   *Mobilization & Offline Capability:* The Progressive Web App (PWA) wrapper registers service workers to cache crucial shell assets and configuration endpoints, permitting immediate load times and native performance on mobile browsers.
 2.  **Information Quality:**
     *   *Level Safeguards:* Filtering the communities list by user level guarantees that student users are presented only with information relevant to their current academic standing.
@@ -531,6 +687,7 @@ The DeLone and McLean framework evaluates the portal's efficacy across three qua
     *   *Self-Service Admin Settings:* Administrators modify portal branding elements, domain registries, and session schedules without editing code files.
     *   *Audit Trails:* Every critical modification (creating departments, publishing grades, updating levels) generates a record in the database audit log.
     *   *Correction and Rollback Safeguard:* Administrators can roll back published or approved course result lists to a `SUBMITTED` status, allowing rapid corrections to grade errors without database intervention.
+    *   *Usability Surveys:* Feedback questionnaires gather direct ratings and comments regarding the portal's system and information quality for further enhancements.
 
 ### 4.6.2 Technology Acceptance Model (TAM)
 TAM asserts that system adoption is a factor of two user perceptions:
@@ -543,6 +700,7 @@ TAM asserts that system adoption is a factor of two user perceptions:
     *   *Academic Uploaders:* Lecturers upload student performance grids in standard CSV format, removing manual row-by-row form entries.
     *   *Integrated Communities:* Level-specific communities allow students to easily locate study groups and materials matching their current curriculum.
     *   *Maximized Screen Space:* The collapsible sidebar enables desktop users to collapse the navigation pane, maximizing workspace area when viewing complex grids, resources, or forum discussions.
+    *   *Usability Acceptance Prompts:* Non-intrusive survey dialogs collect Likert feedback (1-5 stars) across PEOU and PU metrics (Ease of Use, Interface Design, Reliability, Functionality, Performance) to evaluate adoption statistics.
 
 ### 4.6.3 Shneiderman's Eight Golden Rules of Interface Design
 The user interface design of the portal is evaluated against Shneiderman’s rules:
@@ -581,3 +739,8 @@ A series of manual tests were conducted to verify the core safeguards:
 | **TC-08** | Student attempts to register for first semester courses while the active semester is `SECOND` via raw POST request. | Registration is blocked by backend API with `400 Bad Request`. | API rejects request with "Registration is only allowed for the current active semester (SECOND)". | **PASSED** |
 | **TC-09** | Admin withdraws a published student course result list on `/admin/results`. | Result status changes to `SUBMITTED`, `isPublished` changes to `false`, and the result is editable again by lecturers. | Status updated to `SUBMITTED`, and results are marked editable in admin and lecturer portals. | **PASSED** |
 | **TC-10** | User opens the portal on a mobile device browser. | The system detects the mobile user agent and lack of standalone mode, displaying the fullscreen glassmorphic forced PWA install page. | Forced installation screen blocks view and provides iOS/Android setup steps. | **PASSED** |
+| **TC-11** | Admin executes promotions for Student A (`L300`, `CGPA = 2.84`, `maxLevel = L400`). | Student level is updated to `L400`, and promotion log recorded in database. | Student level advances to `L400`; PromotionHistory log generated. | **PASSED** |
+| **TC-12** | Admin executes promotions for Student B (`L300`, `CGPA = 1.15`, `maxLevel = L400`). | Student B level remains at `L300` (status `REPEATED`), and log records repetition. | Student B remains at `L300`; database log correctly indicates repeated status. | **PASSED** |
+| **TC-13** | Student A submits ratings/comments via dashboard usability survey modal. | Modal closes, answers are saved in database, and subsequent page loads do not display the modal. | Feedback successfully created; survey modal does not reappear on refresh. | **PASSED** |
+| **TC-14** | Admin navigates to `/admin/promotions` or `/admin/feedback` and hits reload. | Page reloads successfully, remaining on the same path, and **does not** redirect to `/admin/dashboard`. | Page remains on the same path after reload; no unexpected redirection. | **PASSED** |
+| **TC-15** | Database query encounters a transient connection drop/timeout. | The extended Prisma client intercepts the error, retries the query, and completes successfully. | Query succeeds after automatic retry recovery. | **PASSED** |
