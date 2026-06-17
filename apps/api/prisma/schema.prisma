@@ -19,6 +19,7 @@ enum Level {
   L300
   L400
   L500
+  GRADUATED
 }
 
 enum Semester {
@@ -97,6 +98,7 @@ model User {
   creationRequests    CommunityCreationRequest[]
   supportTickets      SupportTicket[]     @relation("UserTickets")
   ticketComments      TicketComment[]     @relation("UserComments")
+  promotions          PromotionHistory[]  @relation("UserPromotions")
   createdAt           DateTime            @default(now())
   updatedAt           DateTime            @updatedAt
 
@@ -467,5 +469,19 @@ model TicketComment {
   createdAt DateTime      @default(now())
 
   @@index([ticketId])
+}
+
+model PromotionHistory {
+  id          String   @id @default(cuid())
+  studentId   String
+  student     User     @relation("UserPromotions", fields: [studentId], references: [id], onDelete: Cascade)
+  fromLevel   Level
+  toLevel     Level
+  cgpa        Float
+  sessionName String
+  status      String   // PROMOTED, REPEATED, GRADUATED
+  createdAt   DateTime @default(now())
+
+  @@index([studentId])
 }
 
