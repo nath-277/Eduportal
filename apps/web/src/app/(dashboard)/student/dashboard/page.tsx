@@ -27,7 +27,12 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Sparkline } from '@/components/ui/charts';
 import { EmptyState } from '@/components/ui/empty-state';
-import { FeedbackSurveyModal } from '@/components/feedback-survey-modal';
+import dynamic from 'next/dynamic';
+
+const FeedbackSurveyModal = dynamic(
+  () => import('@/components/feedback-survey-modal').then((mod) => mod.FeedbackSurveyModal),
+  { ssr: false }
+);
 import { useAuthStore } from '@/stores/auth.store';
 import { api } from '@/lib/api';
 
