@@ -26,6 +26,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ChartSkeleton } from '@/components/ui/skeletons';
 import { BarChart } from '@/components/ui/charts';
 import { EmptyState } from '@/components/ui/empty-state';
+import { FeedbackSurveyModal } from '@/components/feedback-survey-modal';
 import { useAuthStore } from '@/stores/auth.store';
 import { api } from '@/lib/api';
 
@@ -417,6 +418,7 @@ export default function LecturerDashboardPage() {
           <Link href={`/lecturer/forum`}>Forum</Link>
         </Button>
       </div>
+      <FeedbackSurveyModal />
     </LecturerShell>
   );
 }

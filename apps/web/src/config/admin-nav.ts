@@ -12,6 +12,8 @@ import {
   Settings,
   ShieldAlert,
   Users,
+  ArrowUpCircle,
+  Star,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -39,6 +41,8 @@ export const adminSidebarItems: SidebarItem[] = [
   { icon: CalendarRange, label: 'Sessions', href: '/admin/sessions' },
   { icon: BookOpen, label: 'Courses', href: '/admin/courses' },
   { icon: ClipboardCheck, label: 'Results', href: '/admin/results' },
+  { icon: ArrowUpCircle, label: 'Promotions', href: '/admin/promotions' },
+  { icon: Star, label: 'Platform Feedback', href: '/admin/feedback' },
   { icon: Megaphone, label: 'Announcements', href: '/admin/announcements' },
   { icon: BarChart3, label: 'Analytics', href: '/admin/analytics' },
   { icon: ShieldAlert, label: 'Audit Logs', href: '/admin/logs' },
@@ -58,6 +62,8 @@ export const adminDockExpanded: NavItem[] = [
   { icon: CalendarRange, label: 'Sessions', href: '/admin/sessions' },
   { icon: BookOpen, label: 'Courses', href: '/admin/courses' },
   { icon: ClipboardCheck, label: 'Results', href: '/admin/results' },
+  { icon: ArrowUpCircle, label: 'Promotions', href: '/admin/promotions' },
+  { icon: Star, label: 'Feedback', href: '/admin/feedback' },
   { icon: BarChart3, label: 'Analytics', href: '/admin/analytics' },
   { icon: Settings, label: 'Settings', href: '/admin/settings' },
   { icon: LogOut, label: 'Logout', onClick: 'logout' },

@@ -63,7 +63,7 @@ feedbackRouter.post('/submit', authenticate, async (c) => {
 });
 
 // GET /api/feedback/stats - Get aggregated statistics of feedback ratings (Admin only)
-feedbackRouter.get('/stats', authenticate, authorize('ADMIN'), async (c) => {
+feedbackRouter.get('/stats', authenticate, authorize('ADMIN'), async (_c) => {
   const aggregations = await prisma.platformFeedback.aggregate({
     _avg: {
       easeOfUse: true,
@@ -120,7 +120,7 @@ feedbackRouter.get('/export', authenticate, authorize('ADMIN'), async (c) => {
     },
   });
 
-  function escapeCsv(val: any): string {
+  function escapeCsv(val: unknown): string {
     if (val === null || val === undefined) return '';
     const str = String(val);
     if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {

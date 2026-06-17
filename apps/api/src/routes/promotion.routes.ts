@@ -4,6 +4,7 @@ import { authenticate, authorize } from '../middleware/auth.js';
 import { ok, badRequest } from '../lib/response.js';
 import { computeGpa } from '../lib/grading.js';
 import { syncUserCommunities } from '../lib/community.js';
+import { Level } from '@prisma/client';
 
 const promotionRouter = new Hono();
 
@@ -146,14 +147,14 @@ promotionRouter.post('/execute', authenticate, authorize('ADMIN'), async (c) => 
 
       await tx.user.update({
         where: { id: student.id },
-        data: { level: toLevel as any },
+        data: { level: toLevel as Level },
       });
 
       await tx.promotionHistory.create({
         data: {
           studentId: student.id,
-          fromLevel: fromLevel as any,
-          toLevel: toLevel as any,
+          fromLevel: fromLevel as Level,
+          toLevel: toLevel as Level,
           cgpa,
           sessionName: session.name,
           status,

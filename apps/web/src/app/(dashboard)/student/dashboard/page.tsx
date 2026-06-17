@@ -27,6 +27,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Sparkline } from '@/components/ui/charts';
 import { EmptyState } from '@/components/ui/empty-state';
+import { FeedbackSurveyModal } from '@/components/feedback-survey-modal';
 import { useAuthStore } from '@/stores/auth.store';
 import { api } from '@/lib/api';
 
@@ -493,6 +494,7 @@ export default function StudentDashboardPage() {
           </Card>
         </div>
       </div>
+      <FeedbackSurveyModal />
     </StudentShell>
   );
 }
