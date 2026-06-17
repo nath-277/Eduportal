@@ -303,6 +303,11 @@ export default function StudentProfilePage() {
                   </div>
 
                   <div className="space-y-2">
+                    <Label>Programme</Label>
+                    <Input value={liveUser?.programme?.name ?? '—'} readOnly />
+                  </div>
+
+                  <div className="space-y-2">
                     <Label>Role</Label>
                     <div className="flex h-9 items-center gap-2 rounded-md border bg-muted/30 px-3 text-sm">
                       <GraduationCap className="h-4 w-4 text-muted-foreground" />

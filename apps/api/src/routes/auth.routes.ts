@@ -221,7 +221,13 @@ authRouter.post('/reset-password', async (c) => {
 authRouter.get('/me', authenticate, async (c) => {
   const { userId } = c.get('user');
 
-  const user = await prisma.user.findUnique({ where: { id: userId } });
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: {
+      department: true,
+      programme: true,
+    },
+  });
   if (!user) {
     return notFound('User not found');
   }

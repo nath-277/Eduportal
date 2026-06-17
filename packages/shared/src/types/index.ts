@@ -53,6 +53,8 @@ export interface User {
   isEmailVerified: boolean;
   departmentId?: string;
   programmeId?: string;
+  department?: Department;
+  programme?: Programme;
   createdAt: string;
   updatedAt: string;
 }

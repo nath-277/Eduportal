@@ -98,6 +98,7 @@ userRouter.get('/:id', authenticate, async (c) => {
     where: { id },
     include: {
       department: true,
+      programme: true,
       _count: {
         select: {
           enrollments: true,
@@ -113,6 +114,7 @@ userRouter.get('/:id', authenticate, async (c) => {
   return ok({
     ...sanitizeUser(user),
     department: user.department,
+    programme: user.programme,
     counts: user._count,
   });
 });

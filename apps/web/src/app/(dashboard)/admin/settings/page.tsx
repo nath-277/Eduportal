@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Bell, Lock, Save, Shield, UserCog, Building2, Globe, Sparkles, Laptop, ShieldCheck } from 'lucide-react';
+import { Bell, Lock, Save, Shield, UserCog, Building2, Globe, Sparkles, Laptop, ShieldCheck, Camera, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { AdminShell } from '@/components/layout/admin-shell';
@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuthStore } from '@/stores/auth.store';
 import { api } from '@/lib/api';
@@ -60,6 +60,8 @@ export default function AdminSettingsPage() {
   const [profilePhone, setProfilePhone] = useState('');
   const [profileBio, setProfileBio] = useState('');
   const [savingProfile, setSavingProfile] = useState(false);
+  const adminAvatarInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingAdminAvatar, setUploadingAdminAvatar] = useState(false);
 
   // Password states
   const [currentPwd, setCurrentPwd] = useState('');
@@ -110,6 +112,42 @@ export default function AdminSettingsPage() {
     }
   }, [profileQuery.data]);
   /* eslint-enable react-hooks/set-state-in-effect */
+
+  const handleAdminAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !profileQuery.data?.user) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('Pick an image file');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image must be under 5 MB');
+      return;
+    }
+    setUploadingAdminAvatar(true);
+    try {
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = () => reject(new Error('Failed to read file'));
+        reader.readAsDataURL(file);
+      });
+      const result = await api.patch<{ user: User; avatarUrl: string }>(
+        `/users/${profileQuery.data.user.id}/avatar`,
+        { image: dataUrl },
+      );
+      setAuth(result.user, token ?? '');
+      toast.success('Profile picture updated successfully');
+      qc.invalidateQueries({ queryKey: ['me'] });
+      qc.invalidateQueries({ queryKey: ['me', 'admin'] });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Avatar upload failed';
+      toast.error(message);
+    } finally {
+      setUploadingAdminAvatar(false);
+      if (adminAvatarInputRef.current) adminAvatarInputRef.current.value = '';
+    }
+  };
 
   const settingsMutation = useMutation({
     mutationFn: async (payload: {
@@ -495,11 +533,36 @@ export default function AdminSettingsPage() {
                       {profileQuery.isLoading ? (
                         <Skeleton className="h-16 w-16 rounded-full" />
                       ) : (
-                        <Avatar className="h-16 w-16 ring-2 ring-primary/20">
-                          <AvatarFallback className="bg-primary/10 text-lg font-semibold text-primary">
-                            {initials(profileName || user?.fullname || 'Admin')}
-                          </AvatarFallback>
-                        </Avatar>
+                        <div className="relative">
+                          <Avatar className="h-16 w-16 ring-2 ring-primary/20">
+                            {profileQuery.data?.user?.avatarUrl && (
+                              <AvatarImage src={profileQuery.data.user.avatarUrl} alt={profileName || 'Admin'} />
+                            )}
+                            <AvatarFallback className="bg-primary/10 text-lg font-semibold text-primary">
+                              {initials(profileName || user?.fullname || 'Admin')}
+                            </AvatarFallback>
+                          </Avatar>
+                          <button
+                            type="button"
+                            onClick={() => adminAvatarInputRef.current?.click()}
+                            disabled={uploadingAdminAvatar}
+                            className="absolute bottom-0 right-0 grid h-6 w-6 place-items-center rounded-full bg-primary text-primary-foreground shadow-md transition hover:scale-105 disabled:opacity-60 cursor-pointer"
+                            aria-label="Change avatar"
+                          >
+                            {uploadingAdminAvatar ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <Camera className="h-3 w-3" />
+                            )}
+                          </button>
+                          <input
+                            ref={adminAvatarInputRef}
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={handleAdminAvatarChange}
+                          />
+                        </div>
                       )}
                       <div>
                         <h4 className="font-semibold text-base">{profileName || 'Administrator'}</h4>
