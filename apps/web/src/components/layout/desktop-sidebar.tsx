@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import type { LucideIcon } from 'lucide-react';
-import { LogOut, ChevronLeft } from 'lucide-react';
+import { LogOut, ChevronLeft, BookOpen, HelpCircle } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -26,6 +26,7 @@ interface DesktopSidebarProps {
   items: readonly SidebarItem[];
   role: UserRole;
   user: User;
+  onOpenUserGuide?: () => void;
 }
 
 function isItemActive(pathname: string, href: string): boolean {
@@ -48,7 +49,7 @@ function initials(fullname: string): string {
     .join('');
 }
 
-export function DesktopSidebar({ items, role, user }: DesktopSidebarProps) {
+export function DesktopSidebar({ items, role, user, onOpenUserGuide }: DesktopSidebarProps) {
   const pathname = usePathname();
   const clearAuth = useAuthStore((s) => s.clearAuth);
   const { data: settings } = useSettings();
@@ -165,6 +166,37 @@ export function DesktopSidebar({ items, role, user }: DesktopSidebarProps) {
             );
           })}
         </nav>
+      </div>
+
+      <div className="mt-auto px-2 pb-2 space-y-0.5">
+        {!isCollapsed && (
+          <p className="px-3 py-1 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Help</p>
+        )}
+        <button
+          type="button"
+          onClick={onOpenUserGuide}
+          className={cn(
+            'group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 text-foreground/80 hover:bg-muted hover:text-foreground',
+            isCollapsed ? 'justify-center' : 'justify-start'
+          )}
+          title={isCollapsed ? "User Guide" : undefined}
+          aria-label="User Guide"
+        >
+          <BookOpen className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-foreground" />
+          {!isCollapsed && <span className="truncate">User Guide</span>}
+        </button>
+        <Link
+          href="/support"
+          className={cn(
+            'group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 text-foreground/80 hover:bg-muted hover:text-foreground',
+            isCollapsed ? 'justify-center' : 'justify-start'
+          )}
+          title={isCollapsed ? "Support" : undefined}
+          aria-label="Support"
+        >
+          <HelpCircle className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-foreground" />
+          {!isCollapsed && <span className="truncate">Support</span>}
+        </Link>
       </div>
 
       <Separator />

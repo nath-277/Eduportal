@@ -1,8 +1,9 @@
 'use client';
 
-import type { ReactNode } from 'react';
-import { Bell, LogOut } from 'lucide-react';
+import { type ReactNode, useState } from 'react';
+import { Bell, LogOut, BookOpen, HelpCircle } from 'lucide-react';
 import { DesktopSidebar, type SidebarItem } from './desktop-sidebar';
+import { UserGuideDrawer } from './user-guide-drawer';
 import { BottomNavDock, type NavItem } from './bottom-nav-dock';
 import { NotificationMenu } from './notification-menu';
 import { Button } from '@/components/ui/button';
@@ -42,6 +43,7 @@ export function DashboardShell({
   showDock = true,
 }: DashboardShellProps) {
   useRoleTheme();
+  const [isUserGuideOpen, setIsUserGuideOpen] = useState(false);
   const clearAuth = useAuthStore((s) => s.clearAuth);
 
   const logoutItem: NavItem = {
@@ -59,6 +61,16 @@ export function DashboardShell({
 
   const finalExpanded: NavItem[] = [
     ...(expandedDockItems ?? []),
+    {
+      icon: BookOpen,
+      label: 'User Guide',
+      onClick: () => setIsUserGuideOpen(true),
+    },
+    {
+      icon: HelpCircle,
+      label: 'Support',
+      href: '/support',
+    },
     ...(notificationCount > 0
       ? [
           {
@@ -85,7 +97,12 @@ export function DashboardShell({
 
   return (
     <div className="flex min-h-screen bg-background">
-      <DesktopSidebar items={sidebarItems} role={role} user={user} />
+      <DesktopSidebar
+        items={sidebarItems}
+        role={role}
+        user={user}
+        onOpenUserGuide={() => setIsUserGuideOpen(true)}
+      />
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-40 flex h-16 items-center justify-between gap-3 border-b border-border bg-background/80 px-4 backdrop-blur-md md:px-6">
@@ -123,6 +140,8 @@ export function DashboardShell({
         expandedItems={finalExpanded}
         hiddenOnDesktop={!showDock}
       />
+
+      <UserGuideDrawer open={isUserGuideOpen} onOpenChange={setIsUserGuideOpen} role={role} />
     </div>
   );
 }

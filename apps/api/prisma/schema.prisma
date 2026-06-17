@@ -95,6 +95,8 @@ model User {
   communityMemberships CommunityMember[]
   joinRequests        CommunityJoinRequest[]
   creationRequests    CommunityCreationRequest[]
+  supportTickets      SupportTicket[]     @relation("UserTickets")
+  ticketComments      TicketComment[]     @relation("UserComments")
   createdAt           DateTime            @default(now())
   updatedAt           DateTime            @updatedAt
 
@@ -415,5 +417,54 @@ model SystemSettings {
   portalLogoUrl      String?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum TicketCategory {
+  REGISTRATION
+  RESULTS
+  BUG
+  OTHER
+}
+
+model SupportTicket {
+  id          String         @id @default(cuid())
+  userId      String
+  user        User           @relation("UserTickets", fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  description String
+  status      TicketStatus   @default(OPEN)
+  priority    TicketPriority @default(LOW)
+  category    TicketCategory @default(OTHER)
+  metadata    Json?
+  comments    TicketComment[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([userId])
+  @@index([status])
+}
+
+model TicketComment {
+  id        String        @id @default(cuid())
+  ticketId  String
+  ticket    SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User          @relation("UserComments", fields: [userId], references: [id], onDelete: Cascade)
+  content   String
+  createdAt DateTime      @default(now())
+
+  @@index([ticketId])
 }
 
