@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 
 import { api } from '@/lib/api';
-import type { Department, UserRole } from '@eduportal/shared';
+import type { Department, Programme, UserRole } from '@eduportal/shared';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -62,6 +62,7 @@ const personalSchema = z.object({
   fullname: z.string().min(2, 'Full name is required'),
   email: z.string().email('Enter a valid email'),
   departmentId: z.string().min(1, 'Department is required'),
+  programmeId: z.string().optional(),
   level: z.string().min(1, 'Level is required'),
   matricNumber: z.string().min(3, 'Matric number is required'),
   staffId: z.string().optional(),
@@ -146,6 +147,7 @@ export default function RegisterPage() {
       if (data.role === 'STUDENT') {
         payload.level = `L${data.level}`;
         payload.matricNumber = data.matricNumber;
+        payload.programmeId = data.programmeId;
       } else {
         payload.staffId = data.staffId ?? null;
       }
@@ -347,9 +349,16 @@ function PersonalStep({
         message: allowedEmailDomain ? `Email must end with @${allowedEmailDomain}` : 'Invalid email domain',
       }),
       departmentId: z.string().min(1, 'Department is required'),
+      programmeId: z.string().optional(),
       level: z.string(),
       matricNumber: z.string(),
       staffId: z.string().optional(),
+    }).refine((data) => {
+      if (isStudent && !data.programmeId) return false;
+      return true;
+    }, {
+      path: ['programmeId'],
+      message: 'Programme is required',
     }).refine((data) => {
       if (isStudent && !data.level) return false;
       return true;
@@ -378,6 +387,7 @@ function PersonalStep({
       fullname: defaults.fullname ?? '',
       email: defaults.email ?? '',
       departmentId: defaults.departmentId ?? '',
+      programmeId: defaults.programmeId ?? '',
       level: defaults.level ?? '',
       matricNumber: defaults.matricNumber ?? '',
       staffId: defaults.staffId ?? '',
@@ -385,7 +395,17 @@ function PersonalStep({
   });
 
   const departmentId = watch('departmentId');
+  const programmeId = watch('programmeId') ?? '';
   const level = watch('level') ?? '';
+
+  const programmesQuery = useQuery({
+    queryKey: ['programmes', 'by-department', departmentId],
+    queryFn: async () => {
+      if (!departmentId) return [];
+      return api.get<Programme[]>(`/departments/${departmentId}/programmes`);
+    },
+    enabled: !!departmentId,
+  });
 
   return (
     <form onSubmit={handleSubmit(onContinue)} className="space-y-6">
@@ -428,7 +448,10 @@ function PersonalStep({
           <Label>Department</Label>
           <Select
             value={departmentId}
-            onValueChange={(v) => setValue('departmentId', v, { shouldValidate: true })}
+            onValueChange={(v) => {
+              setValue('departmentId', v, { shouldValidate: true });
+              setValue('programmeId', '', { shouldValidate: false });
+            }}
           >
             <SelectTrigger>
               <SelectValue
@@ -447,6 +470,39 @@ function PersonalStep({
             <p className="text-xs text-destructive">{errors.departmentId.message}</p>
           )}
         </div>
+
+        {isStudent && (
+          <div className="space-y-2 sm:col-span-2">
+            <Label>Programme</Label>
+            <Select
+              value={programmeId}
+              onValueChange={(v) => setValue('programmeId', v, { shouldValidate: true })}
+              disabled={!departmentId || programmesQuery.isLoading}
+            >
+              <SelectTrigger>
+                <SelectValue
+                  placeholder={
+                    !departmentId
+                      ? 'Select department first'
+                      : programmesQuery.isLoading
+                      ? 'Loading programmes…'
+                      : 'Select your programme'
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {(programmesQuery.data ?? []).map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.name} ({p.code})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {errors.programmeId && (
+              <p className="text-xs text-destructive">{errors.programmeId.message}</p>
+            )}
+          </div>
+        )}
 
         {isStudent ? (
           <>

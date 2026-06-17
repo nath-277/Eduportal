@@ -63,6 +63,8 @@ interface User {
   isEmailVerified: boolean;
   departmentId?: string | null;
   department?: { id: string; name: string; code: string } | null;
+  programmeId?: string | null;
+  programme?: { id: string; name: string; code: string } | null;
   createdAt: string;
 }
 
@@ -70,6 +72,13 @@ interface Department {
   id: string;
   name: string;
   code: string;
+}
+
+interface Programme {
+  id: string;
+  name: string;
+  code: string;
+  departmentId: string;
 }
 
 interface PaginatedResponse<T> {
@@ -85,6 +94,7 @@ interface EditForm {
   role: UserRole;
   level: Level | 'NONE';
   departmentId: string;
+  programmeId: string;
   isActive: boolean;
 }
 
@@ -97,6 +107,7 @@ interface AddForm {
   staffId: string;
   level: Level | '';
   departmentId: string;
+  programmeId: string;
 }
 
 const ROLES: Array<{ value: UserRole; label: string; tone: string }> = [
@@ -583,12 +594,24 @@ function EditUserDialog({
       role: user.role,
       level: user.level ?? 'NONE',
       departmentId: user.departmentId ?? 'NONE',
+      programmeId: user.programmeId ?? 'NONE',
       isActive: user.isActive,
     },
   });
 
   const role = watch('role');
   const isActive = watch('isActive');
+  const departmentId = watch('departmentId');
+  const programmeId = watch('programmeId');
+
+  const programmesQuery = useQuery({
+    queryKey: ['programmes', 'by-department', departmentId],
+    queryFn: async () => {
+      if (!departmentId || departmentId === 'NONE') return [];
+      return api.get<Programme[]>(`/departments/${departmentId}/programmes`);
+    },
+    enabled: departmentId !== 'NONE',
+  });
 
   const updateMutation = useMutation({
     mutationFn: async (input: EditForm) => {
@@ -601,6 +624,10 @@ function EditUserDialog({
       else if (input.role === 'STUDENT') payload.level = null;
       if (input.departmentId !== 'NONE') payload.departmentId = input.departmentId;
       else payload.departmentId = null;
+
+      if (input.role === 'STUDENT' && input.programmeId !== 'NONE') payload.programmeId = input.programmeId;
+      else payload.programmeId = null;
+
       return api.patch<{ user: User }>(`/users/${user.id}`, payload);
     },
     onSuccess: () => {
@@ -662,8 +689,11 @@ function EditUserDialog({
           <div className="space-y-1.5">
             <Label>Department</Label>
             <Select
-              value={watch('departmentId')}
-              onValueChange={(v) => setValue('departmentId', v, { shouldDirty: true })}
+              value={departmentId}
+              onValueChange={(v) => {
+                setValue('departmentId', v, { shouldDirty: true });
+                setValue('programmeId', 'NONE', { shouldDirty: true });
+              }}
             >
               <SelectTrigger><SelectValue placeholder="Select department" /></SelectTrigger>
               <SelectContent>
@@ -676,6 +706,33 @@ function EditUserDialog({
               </SelectContent>
             </Select>
           </div>
+
+          {role === 'STUDENT' && departmentId !== 'NONE' && (
+            <div className="space-y-1.5">
+              <Label>Programme</Label>
+              <Select
+                value={programmeId}
+                onValueChange={(v) => setValue('programmeId', v, { shouldDirty: true })}
+                disabled={programmesQuery.isLoading}
+              >
+                <SelectTrigger>
+                  <SelectValue
+                    placeholder={
+                      programmesQuery.isLoading ? 'Loading programmes…' : 'Select programme'
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="NONE">— None —</SelectItem>
+                  {(programmesQuery.data ?? []).map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.code} — {p.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <label className="flex items-center gap-2">
             <Checkbox
@@ -718,10 +775,22 @@ function AddUserDialog({
       staffId: '',
       level: '',
       departmentId: '',
+      programmeId: '',
     },
   });
 
   const role = watch('role');
+  const departmentId = watch('departmentId');
+  const programmeId = watch('programmeId');
+
+  const programmesQuery = useQuery({
+    queryKey: ['programmes', 'by-department', departmentId],
+    queryFn: async () => {
+      if (!departmentId) return [];
+      return api.get<Programme[]>(`/departments/${departmentId}/programmes`);
+    },
+    enabled: !!departmentId,
+  });
 
   const createMutation = useMutation({
     mutationFn: async (input: AddForm) => {
@@ -735,6 +804,9 @@ function AddUserDialog({
       if (input.role === 'STUDENT' && input.matricNumber) payload.matricNumber = input.matricNumber;
       if (input.role === 'LECTURER' && input.staffId) payload.staffId = input.staffId;
       if (input.role === 'STUDENT' && input.level) payload.level = input.level;
+
+      if (input.role === 'STUDENT' && input.programmeId) payload.programmeId = input.programmeId;
+
       return api.post<{ user: User }>('/auth/register', payload);
     },
     onSuccess: () => {
@@ -812,7 +884,13 @@ function AddUserDialog({
             ) : null}
             <div className="space-y-1.5">
               <Label>Department</Label>
-              <Select value={watch('departmentId')} onValueChange={(v) => setValue('departmentId', v)}>
+              <Select
+                value={departmentId}
+                onValueChange={(v) => {
+                  setValue('departmentId', v);
+                  setValue('programmeId', '');
+                }}
+              >
                 <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
                 <SelectContent>
                   {departments.map((d) => (
@@ -822,6 +900,29 @@ function AddUserDialog({
               </Select>
             </div>
           </div>
+
+          {role === 'STUDENT' && departmentId && (
+            <div className="space-y-1.5">
+              <Label>Programme</Label>
+              <Select value={programmeId} onValueChange={(v) => setValue('programmeId', v)}>
+                <SelectTrigger>
+                  <SelectValue
+                    placeholder={
+                      programmesQuery.isLoading ? 'Loading programmes…' : 'Select programme'
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {(programmesQuery.data ?? []).map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.code} — {p.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={onClose}>
               Cancel
@@ -869,6 +970,12 @@ function ViewUserDialog({ user, onClose }: { user: User; onClose: () => void }) 
             <dd className="font-mono text-xs">{user.matricNumber ?? user.staffId ?? '—'}</dd>
             <dt className="text-muted-foreground">Department</dt>
             <dd>{user.department ? `${user.department.code} — ${user.department.name}` : '—'}</dd>
+            {user.role === 'STUDENT' && user.programme && (
+              <>
+                <dt className="text-muted-foreground">Programme</dt>
+                <dd>{user.programme.code} — {user.programme.name}</dd>
+              </>
+            )}
             <dt className="text-muted-foreground">Email verified</dt>
             <dd>{user.isEmailVerified ? 'Yes' : 'No'}</dd>
             <dt className="text-muted-foreground">Joined</dt>

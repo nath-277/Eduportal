@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -45,6 +45,8 @@ interface Course {
   description?: string | null;
   departmentId: string;
   department?: { id: string; name: string; code: string };
+  programmeId?: string | null;
+  programme?: { id: string; name: string; code: string } | null;
   lecturers?: Array<{ id: string; fullname: string; email: string }>;
 }
 
@@ -52,6 +54,13 @@ interface Department {
   id: string;
   name: string;
   code: string;
+}
+
+interface Programme {
+  id: string;
+  name: string;
+  code: string;
+  departmentId: string;
 }
 
 interface User {
@@ -76,6 +85,7 @@ interface CourseForm {
   level: Level;
   semester: Semester;
   departmentId: string;
+  programmeId: string;
 }
 
 interface AssignForm {
@@ -345,7 +355,7 @@ function SemesterTable({
               <th className="px-3 py-1.5 font-medium">Title</th>
               <th className="px-3 py-1.5 text-right font-medium">Credits</th>
               <th className="px-3 py-1.5 font-medium">Lecturer</th>
-              <th className="px-3 py-1.5 font-medium">Dept</th>
+              <th className="px-3 py-1.5 font-medium">Dept/Prog</th>
               <th className="px-3 py-1.5 text-right font-medium">Actions</th>
             </tr>
           </thead>
@@ -365,7 +375,10 @@ function SemesterTable({
                     <span className="text-xs text-muted-foreground">Unassigned</span>
                   )}
                 </td>
-                <td className="px-3 py-1.5 text-xs">{c.department?.code ?? '—'}</td>
+                <td className="px-3 py-1.5 text-xs">
+                  {c.department?.code ?? '—'}
+                  {c.programme?.code ? ` / ${c.programme.code}` : ''}
+                </td>
                 <td className="px-3 py-1.5 text-right">
                   <Button
                     variant="ghost"
@@ -396,8 +409,25 @@ function AddCourseDialog({ departments, onClose }: { departments: Department[]; 
       level: 'L100',
       semester: 'FIRST',
       departmentId: '',
+      programmeId: 'NONE',
     },
   });
+
+  const departmentId = watch('departmentId');
+  const programmeId = watch('programmeId');
+
+  const programmesQuery = useQuery({
+    queryKey: ['programmes', 'by-department', departmentId],
+    queryFn: async () => {
+      if (!departmentId || departmentId === 'NONE') return [];
+      return api.get<Programme[]>(`/departments/${departmentId}/programmes`);
+    },
+    enabled: !!departmentId && departmentId !== 'NONE',
+  });
+
+  useEffect(() => {
+    setValue('programmeId', 'NONE');
+  }, [departmentId, setValue]);
 
   const createMutation = useMutation({
     mutationFn: async (input: CourseForm) =>
@@ -408,6 +438,7 @@ function AddCourseDialog({ departments, onClose }: { departments: Department[]; 
         level: input.level,
         semester: input.semester,
         departmentId: input.departmentId,
+        programmeId: input.programmeId && input.programmeId !== 'NONE' ? input.programmeId : null,
       }),
     onSuccess: () => {
       toast.success('Course created');
@@ -474,6 +505,32 @@ function AddCourseDialog({ departments, onClose }: { departments: Department[]; 
               </SelectContent>
             </Select>
           </div>
+          {departmentId && departmentId !== 'NONE' && (
+            <div className="space-y-1.5">
+              <Label>Programme (Optional)</Label>
+              <Select
+                value={programmeId}
+                onValueChange={(v) => setValue('programmeId', v)}
+                disabled={programmesQuery.isLoading}
+              >
+                <SelectTrigger>
+                  <SelectValue
+                    placeholder={
+                      programmesQuery.isLoading ? 'Loading programmes…' : 'All programmes (General)'
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="NONE">All programmes (General)</SelectItem>
+                  {(programmesQuery.data ?? []).map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.code} — {p.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
             <Button type="submit" disabled={createMutation.isPending} className="gap-1.5">

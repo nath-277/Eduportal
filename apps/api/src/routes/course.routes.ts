@@ -24,6 +24,7 @@ courseRouter.get('/', async (c) => {
       level: c.req.query('level'),
       semester: c.req.query('semester'),
       departmentId: c.req.query('departmentId'),
+      programmeId: c.req.query('programmeId'),
     });
   } catch (e) {
     return c.var.handleZodError(e);
@@ -34,11 +35,19 @@ courseRouter.get('/', async (c) => {
   if (query.semester) where.semester = query.semester;
   if (query.departmentId) where.departmentId = query.departmentId;
 
+  if (query.programmeId) {
+    where.OR = [
+      { programmeId: null },
+      { programmeId: query.programmeId },
+    ];
+  }
+
   const courses = await prisma.course.findMany({
     where,
     orderBy: [{ level: 'asc' }, { code: 'asc' }],
     include: {
       department: true,
+      programme: true,
       assignments: {
         include: { lecturer: { select: { id: true, fullname: true, email: true } } },
       },
@@ -68,6 +77,14 @@ courseRouter.post('/', authenticate, authorize('ADMIN'), async (c) => {
   const dept = await prisma.department.findUnique({ where: { id: body.departmentId } });
   if (!dept) return badRequest('Invalid departmentId');
 
+  if (body.programmeId) {
+    const prog = await prisma.programme.findUnique({ where: { id: body.programmeId } });
+    if (!prog) return badRequest('Invalid programmeId');
+    if (prog.departmentId !== body.departmentId) {
+      return badRequest('Selected programme does not belong to the selected department');
+    }
+  }
+
   const course = await prisma.course.create({
     data: {
       code: body.code.toUpperCase(),
@@ -77,6 +94,7 @@ courseRouter.post('/', authenticate, authorize('ADMIN'), async (c) => {
       semester: body.semester,
       description: body.description,
       departmentId: body.departmentId,
+      programmeId: body.programmeId || null,
     },
   });
 
@@ -105,6 +123,15 @@ courseRouter.patch('/:id', authenticate, authorize('ADMIN'), async (c) => {
   if (body.departmentId) {
     const dept = await prisma.department.findUnique({ where: { id: body.departmentId } });
     if (!dept) return badRequest('Invalid departmentId');
+  }
+
+  if (body.programmeId !== undefined && body.programmeId !== null) {
+    const prog = await prisma.programme.findUnique({ where: { id: body.programmeId } });
+    if (!prog) return badRequest('Invalid programmeId');
+    const deptId = body.departmentId || existing.departmentId;
+    if (deptId && prog.departmentId !== deptId) {
+      return badRequest('Selected programme does not belong to the selected department');
+    }
   }
 
   const course = await prisma.course.update({ where: { id }, data: body });

@@ -4,6 +4,7 @@ export const listUsersSchema = z.object({
   role: z.enum(['STUDENT', 'LECTURER', 'ADMIN']).optional(),
   level: z.enum(['L100', 'L200', 'L300', 'L400', 'L500', 'GRADUATED']).optional(),
   departmentId: z.string().optional(),
+  programmeId: z.string().optional(),
   search: z.string().optional(),
   page: z.coerce.number().int().min(1).optional(),
   limit: z.coerce.number().int().min(1).max(100).optional(),
@@ -20,6 +21,7 @@ export const updateUserSchema = z
     isActive: z.boolean().optional(),
     role: z.enum(['STUDENT', 'LECTURER', 'ADMIN']).optional(),
     departmentId: z.string().min(1).optional(),
+    programmeId: z.string().min(1).nullable().optional(),
   })
   .refine((data) => Object.keys(data).length > 0, { message: 'No fields to update' });
 

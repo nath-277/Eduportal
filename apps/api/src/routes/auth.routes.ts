@@ -73,6 +73,21 @@ authRouter.post('/register', async (c) => {
     return badRequest('Invalid department');
   }
 
+  if (body.role === 'STUDENT') {
+    if (!body.programmeId) {
+      return badRequest('Programme is required for student registration');
+    }
+    const programme = await prisma.programme.findUnique({
+      where: { id: body.programmeId },
+    });
+    if (!programme) {
+      return badRequest('Invalid programme');
+    }
+    if (programme.departmentId !== body.departmentId) {
+      return badRequest('Selected programme does not belong to the selected department');
+    }
+  }
+
   const passwordHash = await hashPassword(body.password);
 
   const user = await prisma.user.create({
@@ -85,6 +100,7 @@ authRouter.post('/register', async (c) => {
       staffId: body.staffId,
       level: body.level,
       departmentId: body.departmentId,
+      programmeId: body.role === 'STUDENT' ? body.programmeId : undefined,
     },
   });
 

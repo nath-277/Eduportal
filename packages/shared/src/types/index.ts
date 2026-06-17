@@ -29,6 +29,16 @@ export interface Department {
   updatedAt: string;
 }
 
+export interface Programme {
+  id: string;
+  name: string;
+  code: string;
+  description?: string;
+  departmentId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface User {
   id: string;
   fullname: string;
@@ -42,6 +52,7 @@ export interface User {
   isActive: boolean;
   isEmailVerified: boolean;
   departmentId?: string;
+  programmeId?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -65,6 +76,7 @@ export interface Course {
   semester: Semester;
   description?: string;
   departmentId: string;
+  programmeId?: string;
   createdAt: string;
   updatedAt: string;
 }

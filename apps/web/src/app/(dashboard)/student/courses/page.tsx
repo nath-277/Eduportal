@@ -78,10 +78,15 @@ export default function StudentCoursesPage() {
     : true;
 
   const coursesQuery = useQuery({
-    queryKey: ['courses', 'available', studentLevel, semester],
+    queryKey: ['courses', 'available', studentLevel, semester, user?.departmentId, user?.programmeId],
     queryFn: async () => {
-      const data = await api.get<Course[]>(`/courses?level=${studentLevel}&semester=${semester}`);
-      return data;
+      const params: Record<string, string> = {
+        level: studentLevel,
+        semester,
+      };
+      if (user?.departmentId) params.departmentId = user.departmentId;
+      if (user?.programmeId) params.programmeId = user.programmeId;
+      return api.get<Course[]>('/courses', params);
     },
   });
 

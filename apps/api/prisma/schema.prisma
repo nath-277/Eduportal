@@ -58,6 +58,7 @@ model Department {
   users       User[]
   courses     Course[]
   communities Community[]
+  programmes  Programme[]
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
 }
@@ -80,6 +81,8 @@ model User {
   passwordResetExpiry DateTime?
   department          Department?         @relation(fields: [departmentId], references: [id])
   departmentId        String?
+  programme           Programme?          @relation(fields: [programmeId], references: [id])
+  programmeId         String?
   enrollments         Enrollment[]
   results             Result[]
   uploadedResources   Resource[]
@@ -106,6 +109,7 @@ model User {
   @@index([email])
   @@index([matricNumber])
   @@index([role])
+  @@index([programmeId])
 }
 
 model AcademicSession {
@@ -131,6 +135,8 @@ model Course {
   description  String?
   department   Department          @relation(fields: [departmentId], references: [id])
   departmentId String
+  programme    Programme?          @relation(fields: [programmeId], references: [id])
+  programmeId  String?
   assignments  CourseAssignment[]
   enrollments  Enrollment[]
   results      Result[]
@@ -140,6 +146,7 @@ model Course {
 
   @@index([level, semester])
   @@index([departmentId])
+  @@index([programmeId])
 }
 
 model CourseAssignment {
@@ -500,5 +507,20 @@ model PlatformFeedback {
   createdAt       DateTime @default(now())
 
   @@index([userId])
+}
+
+model Programme {
+  id           String      @id @default(cuid())
+  name         String      @unique
+  code         String      @unique
+  description  String?
+  department   Department  @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  departmentId String
+  users        User[]
+  courses      Course[]
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@index([departmentId])
 }
 

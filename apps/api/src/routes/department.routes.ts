@@ -23,6 +23,15 @@ departmentRouter.get('/', async (_c) => {
   return ok(departments);
 });
 
+departmentRouter.get('/:departmentId/programmes', async (c) => {
+  const { departmentId } = c.req.param();
+  const programmes = await prisma.programme.findMany({
+    where: { departmentId },
+    orderBy: { name: 'asc' },
+  });
+  return ok(programmes);
+});
+
 departmentRouter.post('/', authenticate, authorize('ADMIN'), async (c) => {
   let body: CreateDepartmentInput;
   try {

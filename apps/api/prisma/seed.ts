@@ -98,6 +98,42 @@ async function main(): Promise<void> {
   });
   console.log(`[Department] ${department.code} - ${department.name} (${department.id})`);
 
+  const compSciProg = await prisma.programme.upsert({
+    where: { code: 'CS' },
+    update: {},
+    create: {
+      name: 'Computer Science',
+      code: 'CS',
+      description: 'Bachelor of Science in Computer Science',
+      departmentId: department.id,
+    },
+  });
+  console.log(`[Programme] ${compSciProg.code} - ${compSciProg.name} (${compSciProg.id})`);
+
+  const infoTechProg = await prisma.programme.upsert({
+    where: { code: 'IT' },
+    update: {},
+    create: {
+      name: 'Information Technology',
+      code: 'IT',
+      description: 'Bachelor of Science in Information Technology',
+      departmentId: department.id,
+    },
+  });
+  console.log(`[Programme] ${infoTechProg.code} - ${infoTechProg.name} (${infoTechProg.id})`);
+
+  const softEngProg = await prisma.programme.upsert({
+    where: { code: 'SE' },
+    update: {},
+    create: {
+      name: 'Software Engineering',
+      code: 'SE',
+      description: 'Bachelor of Science in Software Engineering',
+      departmentId: department.id,
+    },
+  });
+  console.log(`[Programme] ${softEngProg.code} - ${softEngProg.name} (${softEngProg.id})`);
+
   const academicSession = await prisma.academicSession.upsert({
     where: { name: SESSION_NAME },
     update: {
@@ -168,6 +204,7 @@ async function main(): Promise<void> {
       passwordHash: studentHash,
       role: UserRole.STUDENT,
       isActive: true,
+      programmeId: compSciProg.id,
     },
     create: {
       fullname: 'John Doe',
@@ -179,6 +216,7 @@ async function main(): Promise<void> {
       isActive: true,
       isEmailVerified: true,
       departmentId: department.id,
+      programmeId: compSciProg.id,
     },
   });
   console.log(
@@ -195,6 +233,7 @@ async function main(): Promise<void> {
         semester: courseData.semester,
         description: courseData.description,
         departmentId: department.id,
+        programmeId: compSciProg.id,
       },
       create: {
         code: courseData.code,
@@ -204,6 +243,7 @@ async function main(): Promise<void> {
         semester: courseData.semester,
         description: courseData.description,
         departmentId: department.id,
+        programmeId: compSciProg.id,
       },
     });
     console.log(

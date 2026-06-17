@@ -20,6 +20,7 @@ import settingsRouter from './routes/settings.routes.js';
 import supportRouter from './routes/support.routes.js';
 import promotionRouter from './routes/promotion.routes.js';
 import feedbackRouter from './routes/feedback.routes.js';
+import programmeRouter from './routes/programme.routes.js';
 
 export const app = new Hono();
 
@@ -90,6 +91,7 @@ app.route('/api/settings', settingsRouter);
 app.route('/api/support', supportRouter);
 app.route('/api/promotions', promotionRouter);
 app.route('/api/feedback', feedbackRouter);
+app.route('/api/programmes', programmeRouter);
 
 app.notFound((c) => {
   const response: ApiResponse<null> = {

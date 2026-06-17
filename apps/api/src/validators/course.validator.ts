@@ -4,6 +4,7 @@ export const listCoursesSchema = z.object({
   level: z.enum(['L100', 'L200', 'L300', 'L400', 'L500']).optional(),
   semester: z.enum(['FIRST', 'SECOND']).optional(),
   departmentId: z.string().optional(),
+  programmeId: z.string().optional(),
 });
 
 export type ListCoursesQuery = z.infer<typeof listCoursesSchema>;
@@ -16,6 +17,7 @@ export const createCourseSchema = z.object({
   semester: z.enum(['FIRST', 'SECOND']),
   description: z.string().max(2000).optional(),
   departmentId: z.string().min(1),
+  programmeId: z.string().optional(),
 });
 
 export type CreateCourseInput = z.infer<typeof createCourseSchema>;
@@ -28,6 +30,7 @@ export const updateCourseSchema = z
     semester: z.enum(['FIRST', 'SECOND']).optional(),
     description: z.string().max(2000).nullable().optional(),
     departmentId: z.string().min(1).optional(),
+    programmeId: z.string().min(1).nullable().optional(),
   })
   .refine((data) => Object.keys(data).length > 0, { message: 'No fields to update' });
 

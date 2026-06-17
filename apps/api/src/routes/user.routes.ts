@@ -35,6 +35,7 @@ userRouter.get('/', authenticate, authorize('ADMIN'), async (c) => {
       role: c.req.query('role'),
       level: c.req.query('level'),
       departmentId: c.req.query('departmentId'),
+      programmeId: c.req.query('programmeId'),
       search: c.req.query('search'),
       page: c.req.query('page'),
       limit: c.req.query('limit'),
@@ -52,6 +53,7 @@ userRouter.get('/', authenticate, authorize('ADMIN'), async (c) => {
   if (query.role) where.role = query.role;
   if (query.level) where.level = query.level;
   if (query.departmentId) where.departmentId = query.departmentId;
+  if (query.programmeId) where.programmeId = query.programmeId;
   if (query.search) {
     where.OR = [
       { fullname: { contains: query.search, mode: 'insensitive' } },
@@ -67,7 +69,7 @@ userRouter.get('/', authenticate, authorize('ADMIN'), async (c) => {
       skip,
       take: limit,
       orderBy: { createdAt: 'desc' },
-      include: { department: true },
+      include: { department: true, programme: true },
     }),
   ]);
 
@@ -148,12 +150,21 @@ userRouter.patch('/:id', authenticate, async (c) => {
     if (!dept) return badRequest('Invalid departmentId');
   }
 
+  if (body.programmeId !== undefined && body.programmeId !== null) {
+    const prog = await prisma.programme.findUnique({ where: { id: body.programmeId } });
+    if (!prog) return badRequest('Invalid programmeId');
+    const deptId = body.departmentId || existing.departmentId;
+    if (deptId && prog.departmentId !== deptId) {
+      return badRequest('Selected programme does not belong to the selected department');
+    }
+  }
+
   const user = await prisma.user.update({
     where: { id },
     data: body,
   });
 
-  if (body.level !== undefined || body.departmentId !== undefined) {
+  if (body.level !== undefined || body.departmentId !== undefined || body.programmeId !== undefined) {
     await syncUserCommunities(user.id);
   }
 

@@ -14,6 +14,7 @@ export const registerSchema = z.object({
   role: z.enum(['STUDENT', 'LECTURER']).default('STUDENT'),
   level: z.enum(['L100', 'L200', 'L300', 'L400', 'L500', 'GRADUATED']).optional(),
   departmentId: z.string().min(1, 'Department is required'),
+  programmeId: z.string().optional(),
 });
 
 export type RegisterInput = z.infer<typeof registerSchema>;
