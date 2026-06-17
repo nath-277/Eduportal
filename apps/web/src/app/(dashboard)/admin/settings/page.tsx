@@ -19,6 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useAuthStore } from '@/stores/auth.store';
 import { api } from '@/lib/api';
 import { toast } from 'sonner';
+import type { User } from '@eduportal/shared';
 
 const SESSION_OPTIONS = [
   { value: '1h', label: '1 hour' },
