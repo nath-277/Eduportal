@@ -138,6 +138,7 @@ export default function AdminUsersPage() {
   const [roleFilter, setRoleFilter] = useState<UserRole | 'ALL'>('ALL');
   const [levelFilter, setLevelFilter] = useState<Level | 'ALL'>('ALL');
   const [deptFilter, setDeptFilter] = useState<string>('ALL');
+  const [progFilter, setProgFilter] = useState<string>('ALL');
   const [page, setPage] = useState(1);
   const [editing, setEditing] = useState<User | null>(null);
   const [adding, setAdding] = useState(false);
@@ -150,7 +151,7 @@ export default function AdminUsersPage() {
   });
 
   const usersQuery = useQuery({
-    queryKey: ['users', 'admin', { debouncedSearch, roleFilter, levelFilter, deptFilter, page }],
+    queryKey: ['users', 'admin', { debouncedSearch, roleFilter, levelFilter, deptFilter, progFilter, page }],
     queryFn: async () => {
       const params: Record<string, string> = {
         page: String(page),
@@ -160,6 +161,7 @@ export default function AdminUsersPage() {
       if (roleFilter !== 'ALL') params.role = roleFilter;
       if (levelFilter !== 'ALL') params.level = levelFilter;
       if (deptFilter !== 'ALL') params.departmentId = deptFilter;
+      if (progFilter !== 'ALL') params.programmeId = progFilter;
       return api.get<PaginatedResponse<User>>('/users', params);
     },
   });
@@ -185,6 +187,15 @@ export default function AdminUsersPage() {
   const deptsQuery = useQuery({
     queryKey: ['departments', 'all'],
     queryFn: async () => api.get<Department[]>('/departments'),
+  });
+
+  const progsQuery = useQuery({
+    queryKey: ['programmes', 'all', deptFilter],
+    queryFn: async () => {
+      const params: Record<string, string> = {};
+      if (deptFilter !== 'ALL') params.departmentId = deptFilter;
+      return api.get<Programme[]>('/programmes', params);
+    },
   });
 
   const toggleMutation = useMutation({
@@ -245,6 +256,15 @@ export default function AdminUsersPage() {
         cell: (u) => (
           <span className="text-xs">
             {u.department?.code ?? <span className="text-muted-foreground">—</span>}
+          </span>
+        ),
+      },
+      {
+        key: 'programme',
+        header: 'Programme',
+        cell: (u) => (
+          <span className="text-xs">
+            {u.programme?.code ?? <span className="text-muted-foreground">—</span>}
           </span>
         ),
       },
@@ -387,7 +407,14 @@ export default function AdminUsersPage() {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={deptFilter} onValueChange={(v) => { setDeptFilter(v); setPage(1); }}>
+            <Select
+              value={deptFilter}
+              onValueChange={(v) => {
+                setDeptFilter(v);
+                setProgFilter('ALL');
+                setPage(1);
+              }}
+            >
               <SelectTrigger className="h-9 w-40">
                 <SelectValue />
               </SelectTrigger>
@@ -396,6 +423,19 @@ export default function AdminUsersPage() {
                 {deptsQuery.data?.map((d) => (
                   <SelectItem key={d.id} value={d.id}>
                     {d.code} — {d.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={progFilter} onValueChange={(v) => { setProgFilter(v); setPage(1); }}>
+              <SelectTrigger className="h-9 w-40">
+                <SelectValue placeholder="All programmes" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All programmes</SelectItem>
+                {progsQuery.data?.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.code} — {p.name}
                   </SelectItem>
                 ))}
               </SelectContent>
