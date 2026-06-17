@@ -1,5 +1,6 @@
 import { BookOpen, GraduationCap } from 'lucide-react';
 
+import { useSettings } from '@/hooks/use-settings';
 import type { Course, Enrollment, Semester, User } from '@eduportal/shared';
 
 export interface RegFormProps {
@@ -19,6 +20,11 @@ export function RegForm({
   semester,
   departmentName,
 }: RegFormProps) {
+  const { data: settings } = useSettings();
+  const universityName = settings?.displayName || 'University of EduPortal';
+  const portalShortName = settings?.portalName || 'EduPortal';
+  const portalLogoUrl = settings?.portalLogoUrl;
+
   const expanded = enrollments
     .map((e) => courses.find((c) => c.id === e.courseId))
     .filter((c): c is Course => Boolean(c));
@@ -46,17 +52,23 @@ export function RegForm({
             <GraduationCap className="h-8 w-8" />
           </div>
           <div className="flex-1 text-center">
-            <p className="text-[10px] uppercase tracking-widest">University of EduPortal</p>
+            <p className="text-[10px] uppercase tracking-widest font-bold">{universityName}</p>
             <h2 className="text-base font-bold uppercase tracking-wide">
               Faculty of Computing &amp; Information Sciences
             </h2>
-            <p className="text-[10px] uppercase tracking-widest">
+            <p className="text-[10px] uppercase tracking-widest font-semibold">
               Course Registration &amp; Advisement Office
             </p>
           </div>
-          <div className="grid h-14 w-14 place-items-center rounded-full border-2 border-dashed border-black/40 text-[8px] uppercase">
-            Logo
-          </div>
+          {portalLogoUrl ? (
+            <div className="grid h-14 w-14 place-items-center rounded-full border border-black overflow-hidden bg-white">
+              <img src={portalLogoUrl} alt="Logo" className="h-full w-full object-contain p-1" />
+            </div>
+          ) : (
+            <div className="grid h-14 w-14 place-items-center rounded-full border-2 border-dashed border-black/40 text-[8px] uppercase">
+              Logo
+            </div>
+          )}
         </div>
 
         <div className="text-center">
@@ -162,7 +174,7 @@ export function RegForm({
         </div>
 
         <footer className="border-t border-black/40 pt-2 text-center text-[10px] uppercase tracking-widest text-black/60">
-          This is a computer-generated document · EduPortal
+          This is a computer-generated document · {portalShortName}
         </footer>
       </div>
     </div>

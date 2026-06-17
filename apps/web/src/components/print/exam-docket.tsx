@@ -1,5 +1,6 @@
 import { BookOpen, GraduationCap } from 'lucide-react';
 
+import { useSettings } from '@/hooks/use-settings';
 import type { Course, Semester, User } from '@eduportal/shared';
 
 export interface ExamDocketProps {
@@ -17,12 +18,17 @@ export function ExamDocket({
   semester,
   departmentName,
 }: ExamDocketProps) {
+  const { data: settings } = useSettings();
+  const universityName = settings?.displayName || 'University of EduPortal';
+  const portalShortName = settings?.portalName || 'EduPortal';
+  const portalLogoUrl = settings?.portalLogoUrl;
+
   if (courses.length === 0) {
     return (
       <div className="print-only print-page hidden">
-        <div className="mx-auto max-w-3xl border-2 border-black p-10 font-mono text-black">
-          <h1 className="text-center text-2xl font-bold">EXAMINATION DOCKET</h1>
-          <p className="mt-12 text-center text-sm">
+        <div className="mx-auto max-w-3xl border-2 border-black p-6 font-mono text-black">
+          <h1 className="text-center text-xl font-bold">EXAMINATION DOCKET</h1>
+          <p className="mt-8 text-center text-sm">
             You have no courses registered for {semester} semester, {session}.
           </p>
         </div>
@@ -34,35 +40,41 @@ export function ExamDocket({
 
   return (
     <div className="print-only print-page hidden">
-      <div className="mx-auto max-w-3xl space-y-6 border-2 border-black bg-white p-10 font-mono text-black">
-        <div className="flex items-center gap-4 border-b-2 border-black pb-3">
-          <div className="grid h-14 w-14 place-items-center rounded-full border-2 border-black">
-            <GraduationCap className="h-8 w-8" />
+      <div className="mx-auto max-w-3xl space-y-3.5 border-2 border-black bg-white p-6 font-mono text-black text-[11px] leading-tight">
+        <div className="flex items-center gap-4 border-b-2 border-black pb-2">
+          <div className="grid h-12 w-12 place-items-center rounded-full border-2 border-black">
+            <GraduationCap className="h-6 w-6" />
           </div>
           <div className="flex-1 text-center">
-            <p className="text-[10px] uppercase tracking-widest">University of EduPortal</p>
-            <h2 className="text-base font-bold uppercase tracking-wide">
+            <p className="text-[9px] uppercase tracking-widest font-bold">{universityName}</p>
+            <h2 className="text-xs font-bold uppercase tracking-wide">
               Faculty of Computing &amp; Information Sciences
             </h2>
-            <p className="text-[10px] uppercase tracking-widest">Examinations Office</p>
+            <p className="text-[9px] uppercase tracking-widest font-semibold">Examinations Office</p>
           </div>
-          <div className="grid h-14 w-14 place-items-center rounded-full border-2 border-dashed border-black/40 text-[8px] uppercase">
-            Logo
-          </div>
+          {portalLogoUrl ? (
+            <div className="grid h-12 w-12 place-items-center rounded-full border border-black overflow-hidden bg-white">
+              <img src={portalLogoUrl} alt="Logo" className="h-full w-full object-contain p-1" />
+            </div>
+          ) : (
+            <div className="grid h-12 w-12 place-items-center rounded-full border-2 border-dashed border-black/40 text-[8px] uppercase">
+              Logo
+            </div>
+          )}
         </div>
 
         <div className="text-center">
-          <h1 className="text-3xl font-extrabold uppercase tracking-widest">Examination Docket</h1>
-          <p className="mt-1 text-xs uppercase tracking-wider">
+          <h1 className="text-lg font-bold uppercase tracking-widest">Examination Docket</h1>
+          <p className="mt-0.5 text-[10px] uppercase tracking-wider">
             {student.level?.replace('L', '')}L {session} · {semester === 'FIRST' ? 'First' : 'Second'} Semester
           </p>
         </div>
 
-        <div className="flex items-start gap-4 border-2 border-black p-4">
-          <div className="grid h-24 w-20 place-items-center rounded border-2 border-dashed border-black/50 text-[8px] uppercase">
+        <div className="flex items-start gap-4 border-2 border-black p-3">
+          <div className="grid h-20 w-16 place-items-center rounded border-2 border-dashed border-black/50 text-[8px] uppercase">
             Passport<br />Photo
           </div>
-          <div className="flex-1 text-sm">
+          <div className="flex-1 text-xs">
             <DetailRow label="Name" value={student.fullname} />
             <DetailRow label="Matric number" value={student.matricNumber ?? '—'} />
             <DetailRow label="Level" value={student.level?.replace('L', 'Level ') ?? '—'} />
@@ -72,79 +84,79 @@ export function ExamDocket({
         </div>
 
         <div>
-          <h2 className="mb-2 flex items-center gap-2 border-b-2 border-black pb-1 text-sm font-bold uppercase tracking-wider">
-            <BookOpen className="h-4 w-4" />
+          <h2 className="mb-1 flex items-center gap-2 border-b-2 border-black pb-0.5 text-xs font-bold uppercase tracking-wider">
+            <BookOpen className="h-3.5 w-3.5" />
             Registered Courses
           </h2>
-          <table className="w-full border-collapse text-xs">
+          <table className="w-full border-collapse text-[10px]">
             <thead>
-              <tr className="border-b-2 border-black text-left">
-                <th className="w-10 py-1.5 text-center">S/N</th>
-                <th className="py-1.5">Code</th>
-                <th className="py-1.5">Course Title</th>
-                <th className="py-1.5 text-right">Units</th>
-                <th className="py-1.5">Lecturer</th>
-                <th className="py-1.5 text-center">Date</th>
-                <th className="py-1.5 text-center">Venue</th>
+              <tr className="border-b border-black text-left">
+                <th className="w-8 py-1 text-center">S/N</th>
+                <th className="py-1">Code</th>
+                <th className="py-1">Course Title</th>
+                <th className="py-1 text-right">Units</th>
+                <th className="py-1">Lecturer</th>
+                <th className="py-1 text-center">Date</th>
+                <th className="py-1 text-center">Venue</th>
               </tr>
             </thead>
             <tbody>
               {courses.map((c, i) => (
                 <tr key={c.id} className="border-b border-black/30">
-                  <td className="py-2 text-center">{i + 1}</td>
-                  <td className="py-2 font-semibold">{c.code}</td>
-                  <td className="py-2">{c.title}</td>
-                  <td className="py-2 text-right tabular-nums">{c.creditUnits}</td>
-                  <td className="py-2 italic text-black/60">TBA</td>
-                  <td className="py-2 text-center italic text-black/60">— —</td>
-                  <td className="py-2 text-center italic text-black/60">—</td>
+                  <td className="py-1 text-center">{i + 1}</td>
+                  <td className="py-1 font-semibold">{c.code}</td>
+                  <td className="py-1">{c.title}</td>
+                  <td className="py-1 text-right tabular-nums">{c.creditUnits}</td>
+                  <td className="py-1 italic text-black/60">TBA</td>
+                  <td className="py-1 text-center italic text-black/60">— —</td>
+                  <td className="py-1 text-center italic text-black/60">—</td>
                 </tr>
               ))}
-              <tr className="border-t-2 border-black">
-                <td colSpan={3} className="py-2 text-right font-bold uppercase">
+              <tr className="border-t border-black font-semibold">
+                <td colSpan={3} className="py-1 text-right uppercase">
                   Total credit units:
                 </td>
-                <td className="py-2 text-right font-bold tabular-nums">{totalUnits}</td>
+                <td className="py-1 text-right tabular-nums">{totalUnits}</td>
                 <td colSpan={3} />
               </tr>
             </tbody>
           </table>
         </div>
 
-        <div className="rounded border-2 border-black p-3 text-xs italic">
+        <div className="rounded border border-black p-2 text-[10px] italic">
           I, <span className="font-semibold not-italic">{student.fullname}</span> (
           {student.matricNumber ?? '—'}), certify that I have paid all required fees and am
           eligible to sit the examinations listed above. I understand that any breach of the
           examination regulations will be treated as a disciplinary matter.
         </div>
 
-        <div className="mt-8 grid grid-cols-2 gap-12 text-sm">
+        <div className="grid grid-cols-2 gap-8 text-xs pt-1">
           <div>
-            <div className="h-12 border-b border-black" />
-            <div className="pt-1">Student signature &amp; date</div>
+            <div className="h-8 border-b border-black" />
+            <div className="pt-0.5">Student signature &amp; date</div>
           </div>
           <div>
-            <div className="h-12 border-b border-black" />
-            <div className="pt-1">Date submitted</div>
+            <div className="h-8 border-b border-black" />
+            <div className="pt-0.5">Date submitted</div>
           </div>
         </div>
 
-        <div className="mt-8 border-t-2 border-dashed border-black/40 pt-3 text-center text-[10px] uppercase tracking-widest text-black/60">
+        <div className="border-t border-dashed border-black/40 pt-1 text-center text-[9px] uppercase tracking-widest text-black/60">
           Invigilator&apos;s use only
         </div>
-        <div className="grid grid-cols-2 gap-8 text-xs">
+        <div className="grid grid-cols-2 gap-8 text-[11px]">
           <div>
-            <div className="h-10 border-b border-black" />
-            <div className="pt-1">Invigilator signature</div>
+            <div className="h-8 border-b border-black" />
+            <div className="pt-0.5">Invigilator signature</div>
           </div>
           <div>
-            <div className="h-10 border-b border-black" />
-            <div className="pt-1">Chief invigilator stamp</div>
+            <div className="h-8 border-b border-black" />
+            <div className="pt-0.5">Chief invigilator stamp</div>
           </div>
         </div>
 
-        <footer className="border-t border-black/40 pt-2 text-center text-[10px] uppercase tracking-widest text-black/60">
-          This docket must be presented at every examination venue · EduPortal
+        <footer className="border-t border-black/40 pt-1 text-center text-[9px] uppercase tracking-widest text-black/60">
+          This docket must be presented at every examination venue · {portalShortName}
         </footer>
       </div>
     </div>
@@ -153,7 +165,7 @@ export function ExamDocket({
 
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="grid grid-cols-[8rem_1fr] gap-2 border-b border-black/20 py-1 last:border-b-0">
+    <div className="grid grid-cols-[8rem_1fr] gap-2 border-b border-black/10 py-0.5 last:border-b-0">
       <span className="font-semibold">{label}:</span>
       <span>{value}</span>
     </div>

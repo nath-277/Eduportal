@@ -1,6 +1,7 @@
 import { Award, BookOpen, GraduationCap } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
+import { useSettings } from '@/hooks/use-settings';
 import type { Course, Result, User } from '@eduportal/shared';
 
 export interface ResultSlipProps {
@@ -31,6 +32,11 @@ export function ResultSlip({
   courses,
   departmentName,
 }: ResultSlipProps) {
+  const { data: settings } = useSettings();
+  const universityName = settings?.displayName || 'University of EduPortal';
+  const portalShortName = settings?.portalName || 'EduPortal';
+  const portalLogoUrl = settings?.portalLogoUrl;
+
   if (results.length === 0) {
     return (
       <div className="print-only print-page hidden">
@@ -68,7 +74,7 @@ export function ResultSlip({
         </div>
 
         <div className="relative z-10 space-y-6">
-          <Header />
+          <Header universityName={universityName} portalLogoUrl={portalLogoUrl} />
 
           <div className="text-center">
             <h1 className="text-2xl font-bold tracking-wide">STATEMENT OF RESULT</h1>
@@ -180,7 +186,7 @@ export function ResultSlip({
           </div>
 
           <footer className="border-t border-black/45 pt-2 text-center text-[10px] uppercase tracking-widest text-black/60">
-            This is a computer-generated document · EduPortal
+            This is a computer-generated document · {portalShortName}
             <span className="ml-2 inline-flex items-center gap-1 font-semibold text-emerald-700">
               <Award className="h-3 w-3" /> Verified
             </span>
@@ -191,14 +197,18 @@ export function ResultSlip({
   );
 }
 
-function Header() {
+function Header({ universityName, portalLogoUrl }: { universityName: string; portalLogoUrl?: string | null }) {
   return (
     <div className="flex items-center gap-4 border-b-2 border-black pb-3">
-      <div className="grid h-14 w-14 place-items-center rounded-full border-2 border-black">
-        <GraduationCap className="h-8 w-8" />
+      <div className="grid h-14 w-14 place-items-center rounded-full border-2 border-black overflow-hidden bg-white">
+        {portalLogoUrl ? (
+          <img src={portalLogoUrl} alt="Logo" className="h-full w-full object-contain p-1" />
+        ) : (
+          <GraduationCap className="h-8 w-8" />
+        )}
       </div>
       <div className="flex-1 text-center">
-        <p className="text-[10px] uppercase tracking-widest font-bold">University of EduPortal</p>
+        <p className="text-[10px] uppercase tracking-widest font-bold">{universityName}</p>
         <h2 className="text-base font-bold uppercase tracking-wide">
           Faculty of Computing &amp; Information Sciences
         </h2>

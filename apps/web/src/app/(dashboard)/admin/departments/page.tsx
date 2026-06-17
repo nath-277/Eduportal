@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -7,6 +8,7 @@ import {
   Loader2,
   Plus,
   Trash2,
+  Pencil,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -20,6 +22,14 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
 import { api } from '@/lib/api';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 interface Department {
   id: string;
@@ -57,6 +67,8 @@ export default function AdminDepartmentsPage() {
 
 function DepartmentsTab() {
   const qc = useQueryClient();
+  const [editingDept, setEditingDept] = useState<Department | null>(null);
+
   const deptsQuery = useQuery({
     queryKey: ['departments', 'admin'],
     queryFn: async () => {
@@ -122,7 +134,7 @@ function DepartmentsTab() {
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="dept-code">Code</Label>
-              <Input id="dept-code" placeholder="CSC" maxLength={5} {...register('code', { required: 'Required', pattern: { value: /^[A-Z]{2,5}$/, message: '2-5 uppercase letters' } })} />
+              <Input id="dept-code" placeholder="CSC" maxLength={5} {...register('code', { required: 'Required', pattern: { value: /^[A-Z]{2,5}$/i, message: '2-5 letters' } })} />
               {errors.code ? <p className="text-xs text-destructive">{errors.code.message}</p> : null}
             </div>
             <div className="space-y-1.5">
@@ -191,17 +203,27 @@ function DepartmentsTab() {
                         {new Date(d.createdAt).toLocaleDateString()}
                       </td>
                       <td className="px-3 py-2 text-right">
-                        <button
-                          type="button"
-                          aria-label="Delete"
-                          onClick={() => {
-                            if (confirm(`Delete department "${d.name}"?`)) deleteMutation.mutate(d.id);
-                          }}
-                          disabled={deleteMutation.isPending}
-                          className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            type="button"
+                            aria-label="Edit"
+                            onClick={() => setEditingDept(d)}
+                            className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground transition hover:bg-primary/10 hover:text-primary"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            aria-label="Delete"
+                            onClick={() => {
+                              if (confirm(`Delete department "${d.name}"?`)) deleteMutation.mutate(d.id);
+                            }}
+                            disabled={deleteMutation.isPending}
+                            className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -211,6 +233,106 @@ function DepartmentsTab() {
           )}
         </CardContent>
       </Card>
+
+      {editingDept && (
+        <EditDepartmentDialog
+          department={editingDept}
+          onClose={() => setEditingDept(null)}
+        />
+      )}
     </div>
+  );
+}
+
+function EditDepartmentDialog({
+  department,
+  onClose,
+}: {
+  department: Department;
+  onClose: () => void;
+}) {
+  const qc = useQueryClient();
+  const { register, handleSubmit, formState: { errors } } = useForm<DeptForm>({
+    defaultValues: {
+      name: department.name,
+      code: department.code,
+      description: department.description || '',
+      maxLevel: department.maxLevel,
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async (input: DeptForm) =>
+      api.patch<{ department: Department }>(`/departments/${department.id}`, {
+        name: input.name,
+        code: input.code.toUpperCase(),
+        description: input.description || null,
+        maxLevel: input.maxLevel,
+      }),
+    onSuccess: () => {
+      toast.success('Department updated successfully');
+      qc.invalidateQueries({ queryKey: ['departments'] });
+      onClose();
+    },
+    onError: (err: unknown) => toast.error(err instanceof Error ? err.message : 'Update failed'),
+  });
+
+  return (
+    <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Edit department</DialogTitle>
+          <DialogDescription>
+            Modify details for department {department.name}.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit((v) => updateMutation.mutate(v))} className="space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="edit-dept-name">Name</Label>
+            <Input
+              id="edit-dept-name"
+              {...register('name', {
+                required: 'Required',
+                minLength: { value: 2, message: 'At least 2 chars' },
+              })}
+            />
+            {errors.name ? <p className="text-xs text-destructive">{errors.name.message}</p> : null}
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="edit-dept-code">Code</Label>
+            <Input
+              id="edit-dept-code"
+              maxLength={5}
+              {...register('code', {
+                required: 'Required',
+                pattern: { value: /^[A-Z]{2,5}$/i, message: '2-5 letters' },
+              })}
+            />
+            {errors.code ? <p className="text-xs text-destructive">{errors.code.message}</p> : null}
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="edit-dept-maxlevel">Graduation Level</Label>
+            <select
+              id="edit-dept-maxlevel"
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              {...register('maxLevel', { required: 'Required' })}
+            >
+              <option value="L300">3 Years (L300)</option>
+              <option value="L400">4 Years (L400)</option>
+              <option value="L500">5 Years (L500)</option>
+            </select>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="ghost" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={updateMutation.isPending}>
+              {updateMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              Save changes
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -177,10 +177,35 @@ export default function StudentCoursesPage() {
     (c) => !enrolledIds.has(c.id),
   );
 
-  const handlePrint = () => {
-    if (typeof window !== 'undefined') {
-      window.print();
+  const [activePrint, setActivePrint] = useState<'none' | 'reg' | 'docket'>('none');
+
+  useEffect(() => {
+    if (activePrint !== 'none') {
+      const timer = setTimeout(() => {
+        if (typeof window !== 'undefined') {
+          window.print();
+        }
+      }, 150);
+      return () => clearTimeout(timer);
     }
+  }, [activePrint]);
+
+  useEffect(() => {
+    const handleAfterPrint = () => {
+      setActivePrint('none');
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('afterprint', handleAfterPrint);
+      return () => window.removeEventListener('afterprint', handleAfterPrint);
+    }
+  }, []);
+
+  const handlePrintReg = () => {
+    setActivePrint('reg');
+  };
+
+  const handlePrintDocket = () => {
+    setActivePrint('docket');
   };
 
   const docketCourses: Course[] = currentEnrollments
@@ -234,11 +259,11 @@ export default function StudentCoursesPage() {
               ))}
             </div>
             <UnitTracker current={currentUnits} pending={pendingUnits} />
-            <Button variant="outline" size="sm" onClick={handlePrint}>
+            <Button variant="outline" size="sm" onClick={handlePrintReg}>
               <Printer className="h-4 w-4" />
               Print registration
             </Button>
-            <Button variant="outline" size="sm" onClick={handlePrint} disabled={currentEnrollments.length === 0}>
+            <Button variant="outline" size="sm" onClick={handlePrintDocket} disabled={currentEnrollments.length === 0}>
               <Printer className="h-4 w-4" />
               Print exam docket
             </Button>
@@ -527,24 +552,24 @@ export default function StudentCoursesPage() {
         ) : null}
       </AnimatePresence>
 
-      {user ? (
-        <>
-          <RegForm
-            student={user}
-            enrollments={currentEnrollments as unknown as import('@eduportal/shared').Enrollment[]}
-            courses={docketCourses as unknown as import('@eduportal/shared').Course[]}
-            session={enrollmentsQuery.data?.session.name ?? ''}
-            semester={semester}
-            departmentName={departmentName}
-          />
-          <ExamDocket
-            student={user}
-            courses={docketCourses as unknown as import('@eduportal/shared').Course[]}
-            session={enrollmentsQuery.data?.session.name ?? ''}
-            semester={semester}
-            departmentName={departmentName}
-          />
-        </>
+      {user && activePrint === 'reg' ? (
+        <RegForm
+          student={user}
+          enrollments={currentEnrollments as unknown as import('@eduportal/shared').Enrollment[]}
+          courses={docketCourses as unknown as import('@eduportal/shared').Course[]}
+          session={enrollmentsQuery.data?.session.name ?? ''}
+          semester={semester}
+          departmentName={departmentName}
+        />
+      ) : null}
+      {user && activePrint === 'docket' ? (
+        <ExamDocket
+          student={user}
+          courses={docketCourses as unknown as import('@eduportal/shared').Course[]}
+          session={enrollmentsQuery.data?.session.name ?? ''}
+          semester={semester}
+          departmentName={departmentName}
+        />
       ) : null}
     </StudentShell>
   );
