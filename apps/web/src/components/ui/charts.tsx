@@ -19,7 +19,7 @@ export function BarChart({ data, height = 160, className, unit = '' }: BarChartP
         {data.map((d, i) => {
           const pct = (d.value / max) * 100;
           return (
-            <div key={d.label} className="flex flex-1 flex-col items-center gap-1.5">
+            <div key={d.label} className="flex flex-1 flex-col items-center gap-1.5 h-full">
               <span className="text-xs font-medium tabular-nums text-muted-foreground">
                 {d.value}
                 {unit}
