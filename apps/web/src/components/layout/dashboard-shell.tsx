@@ -44,6 +44,7 @@ export function DashboardShell({
 }: DashboardShellProps) {
   useRoleTheme();
   const [isUserGuideOpen, setIsUserGuideOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const clearAuth = useAuthStore((s) => s.clearAuth);
 
   const logoutItem: NavItem = {
@@ -76,7 +77,7 @@ export function DashboardShell({
           {
             icon: Bell,
             label: 'Notifications',
-            href: `/${role.toLowerCase()}/notifications`,
+            onClick: () => setIsNotificationsOpen(true),
           } satisfies NavItem,
         ]
       : []),
@@ -84,8 +85,13 @@ export function DashboardShell({
   ];
 
   const finalDock: NavItem[] = dockItems.slice(0, 5).map((item) => {
-    if (item.href && item.href.endsWith('/notifications') && notificationCount > 0) {
-      return { ...item, badge: notificationCount };
+    if (item.href && item.href.endsWith('/notifications')) {
+      return {
+        ...item,
+        badge: notificationCount,
+        href: undefined,
+        onClick: () => setIsNotificationsOpen(true),
+      };
     }
     return item;
   });
@@ -115,7 +121,12 @@ export function DashboardShell({
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <NotificationMenu role={role} initialUnreadCount={notificationCount} />
+            <NotificationMenu
+              role={role}
+              initialUnreadCount={notificationCount}
+              open={isNotificationsOpen}
+              onOpenChange={setIsNotificationsOpen}
+            />
             <Avatar className="h-9 w-9">
               {user.avatarUrl ? <AvatarImage src={user.avatarUrl} alt={user.fullname} /> : null}
               <AvatarFallback>{initials(user.fullname)}</AvatarFallback>

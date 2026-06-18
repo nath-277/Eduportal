@@ -63,11 +63,20 @@ function formatTime(d: string): string {
 interface NotificationMenuProps {
   role: UserRole;
   initialUnreadCount: number;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export function NotificationMenu({ role, initialUnreadCount }: NotificationMenuProps) {
+export function NotificationMenu({
+  role,
+  initialUnreadCount,
+  open: controlledOpen,
+  onOpenChange: controlledOnOpenChange,
+}: NotificationMenuProps) {
   const qc = useQueryClient();
-  const [open, setOpen] = useState(false);
+  const [localOpen, setLocalOpen] = useState(false);
+  const open = controlledOpen !== undefined ? controlledOpen : localOpen;
+  const setOpen = controlledOnOpenChange !== undefined ? controlledOnOpenChange : setLocalOpen;
 
   const queryKey = ['notifications', 'mine', role.toLowerCase()];
 
