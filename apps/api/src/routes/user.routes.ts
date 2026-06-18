@@ -191,18 +191,17 @@ userRouter.delete('/:id', authenticate, authorize('ADMIN'), async (c) => {
 
   const existing = await prisma.user.findUnique({ where: { id } });
   if (!existing) return notFound('User not found');
-  if (!existing.isActive) {
-    return badRequest('User is already inactive');
-  }
+
+  const newActive = !existing.isActive;
 
   const user = await prisma.user.update({
     where: { id },
-    data: { isActive: false },
+    data: { isActive: newActive },
   });
 
   await writeAudit(c, {
     userId: current.userId,
-    action: 'USER_DEACTIVATE',
+    action: newActive ? 'USER_REACTIVATE' : 'USER_DEACTIVATE',
     entity: 'User',
     entityId: id,
   });
