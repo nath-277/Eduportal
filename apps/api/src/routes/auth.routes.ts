@@ -41,10 +41,48 @@ authRouter.post('/register', async (c) => {
   });
 
   if (settings && settings.allowedEmailDomain) {
-    const domain = settings.allowedEmailDomain.trim().toLowerCase();
-    const emailLower = body.email.trim().toLowerCase();
-    if (domain.length > 0 && !emailLower.endsWith(`@${domain}`)) {
-      return badRequest(`Only emails with the domain @${domain} are allowed for registration.`);
+    const domains = settings.allowedEmailDomain
+      .split(',')
+      .map((d) => d.trim().toLowerCase())
+      .filter(Boolean);
+
+    if (domains.length > 0) {
+      const emailLower = body.email.trim().toLowerCase();
+      const matchedDomain = domains.find(
+        (d) => emailLower.endsWith(`@${d}`) || emailLower.endsWith(`.${d}`)
+      );
+      if (!matchedDomain) {
+        return badRequest(
+          `Email domain is not allowed. Allowed domains are: ${domains.join(', ')}`
+        );
+      }
+
+      const studentDomains = domains.filter((d) => d.includes('student') || d.includes('std.'));
+      const staffDomains = domains.filter((d) => !d.includes('student') && !d.includes('std.'));
+
+      if (body.role === 'STUDENT') {
+        if (studentDomains.length > 0) {
+          const matchesStudent = studentDomains.some(
+            (d) => emailLower.endsWith(`@${d}`) || emailLower.endsWith(`.${d}`)
+          );
+          if (!matchesStudent) {
+            return badRequest(
+              `Students must register with a student email domain (e.g. ${studentDomains.join(', ')}).`
+            );
+          }
+        }
+      } else {
+        if (staffDomains.length > 0) {
+          const matchesStaff = staffDomains.some(
+            (d) => emailLower.endsWith(`@${d}`) || emailLower.endsWith(`.${d}`)
+          );
+          if (!matchesStaff) {
+            return badRequest(
+              `Staff members must register with a staff email domain (e.g. ${staffDomains.join(', ')}).`
+            );
+          }
+        }
+      }
     }
   }
 
