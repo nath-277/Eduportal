@@ -1,7 +1,6 @@
 import type { Semester, User } from '@eduportal/shared';
 import { useSettings } from '@/hooks/use-settings';
 import { GraduationCap } from 'lucide-react';
-import Image from 'next/image';
 
 export interface ResultRow {
   id: string;
@@ -158,12 +157,9 @@ export function ResultSlip({
             {universityName}
           </h1>
           {portalLogoUrl ? (
-            <Image
+            <img
               src={portalLogoUrl}
               alt="University Logo"
-              width={160}
-              height={70}
-              unoptimized
               className="h-16 w-auto object-contain mx-auto"
             />
           ) : (
@@ -244,7 +240,7 @@ export function ResultSlip({
         </table>
 
         {/* Bottom Performance Blocks */}
-        <div className="grid grid-cols-3 gap-6 text-[10px]">
+        <div className="grid grid-cols-3 gap-6 text-[10px] mb-12">
           {/* CURRENT stats */}
           <table className="w-full border-collapse border border-gray-300 font-semibold">
             <thead>
@@ -325,6 +321,20 @@ export function ResultSlip({
               </tr>
             </tbody>
           </table>
+        </div>
+
+        {/* Signature & Stamp for Officials (Registrar) */}
+        <div className="mt-16 grid grid-cols-2 gap-16 text-[10px] font-bold">
+          <div className="flex flex-col items-start">
+            <div className="border-t border-black border-dashed pt-2 w-48 text-center uppercase">
+              Registrar Sign & Stamp
+            </div>
+          </div>
+          <div className="flex flex-col items-end">
+            <div className="border-t border-black border-dashed pt-2 w-48 text-center uppercase">
+              Date Issued
+            </div>
+          </div>
         </div>
       </div>
     </div>
