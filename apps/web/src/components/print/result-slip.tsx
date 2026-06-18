@@ -1,5 +1,7 @@
 import type { Semester, User } from '@eduportal/shared';
 import { useSettings } from '@/hooks/use-settings';
+import { GraduationCap } from 'lucide-react';
+import Image from 'next/image';
 
 export interface ResultRow {
   id: string;
@@ -144,10 +146,36 @@ export function ResultSlip({
   const facultyName = settings?.facultyName || 'Science';
   const departmentNameVal = departmentName || student.department?.name || 'Computing';
   const programmeName = student.programme?.name || 'B.Sc. Computer Science';
+  const universityName = settings?.displayName || 'ANCHOR UNIVERSITY, LAGOS';
+  const portalLogoUrl = settings?.portalLogoUrl;
 
   return (
     <div className="print-only print-page hidden">
       <div className="mx-auto max-w-4xl bg-white p-6 font-sans text-black text-[11px] leading-normal">
+        {/* Top Box: University Identity & Logo Header */}
+        <div className="w-full border border-gray-300 p-4 mb-4 flex flex-col items-center justify-center text-center gap-3">
+          <h1 className="text-2xl font-extrabold uppercase tracking-wide text-foreground/90">
+            {universityName}
+          </h1>
+          {portalLogoUrl ? (
+            <Image
+              src={portalLogoUrl}
+              alt="University Logo"
+              width={160}
+              height={70}
+              unoptimized
+              className="h-16 w-auto object-contain mx-auto"
+            />
+          ) : (
+            <div className="grid h-12 w-12 place-items-center rounded-full border border-gray-400">
+              <GraduationCap className="h-6 w-6 text-foreground" />
+            </div>
+          )}
+          <h2 className="text-xs font-bold uppercase tracking-widest underline underline-offset-4 mt-1">
+            STATEMENT OF RESULT
+          </h2>
+        </div>
+
         {/* Box 1: Academic & Faculty Information */}
         <table className="w-full border-collapse border border-gray-300 text-[10px] mb-4">
           <tbody>
@@ -184,31 +212,31 @@ export function ResultSlip({
           </tbody>
         </table>
 
-        {/* Main Results Table */}
-        <table className="w-full border-collapse text-[10px] mb-8">
+        {/* Main Results Table (Full Grid styling matching screenshot) */}
+        <table className="w-full border-collapse border border-gray-300 text-[10px] mb-8">
           <thead>
-            <tr className="border-y border-black font-extrabold text-left">
-              <th className="py-2.5 px-1.5 w-[5%]">S/N</th>
-              <th className="py-2.5 px-1.5 w-[15%]">COURSE CODE</th>
-              <th className="py-2.5 px-1.5 w-[43%]">COURSE TITLE</th>
-              <th className="py-2.5 px-1.5 w-[8%] text-center">UNIT</th>
-              <th className="py-2.5 px-1.5 w-[8%] text-center">SCORE</th>
-              <th className="py-2.5 px-1.5 w-[8%] text-center">GRADE</th>
-              <th className="py-2.5 px-1.5 w-[13%] text-center">REMARK</th>
+            <tr className="border-b border-gray-300 font-extrabold text-left bg-gray-50/20">
+              <th className="py-2.5 px-2 w-[5%] border-r border-gray-300 text-left">S/N</th>
+              <th className="py-2.5 px-2 w-[15%] border-r border-gray-300 text-left">COURSE CODE</th>
+              <th className="py-2.5 px-2 w-[43%] border-r border-gray-300 text-left">COURSE TITLE</th>
+              <th className="py-2.5 px-2 w-[8%] border-r border-gray-300 text-center">UNIT</th>
+              <th className="py-2.5 px-2 w-[8%] border-r border-gray-300 text-center">SCORE</th>
+              <th className="py-2.5 px-2 w-[8%] border-r border-gray-300 text-center">GRADE</th>
+              <th className="py-2.5 px-2 w-[13%] text-center">REMARK</th>
             </tr>
           </thead>
           <tbody>
             {currentResults.map((r, index) => {
               const remark = r.gradePoint > 0 ? 'PASSED' : 'FAILED';
               return (
-                <tr key={r.id} className="border-b border-gray-300/60 font-semibold">
-                  <td className="py-2 px-1.5 text-left">{index + 1}</td>
-                  <td className="py-2 px-1.5 text-left uppercase">{r.course.code}</td>
-                  <td className="py-2 px-1.5 text-left uppercase">{r.course.title}</td>
-                  <td className="py-2 px-1.5 text-center">{r.course.creditUnits}</td>
-                  <td className="py-2 px-1.5 text-center">{Math.round(r.totalScore)}</td>
-                  <td className="py-2 px-1.5 text-center uppercase">{r.grade}</td>
-                  <td className="py-2 px-1.5 text-center uppercase">{remark}</td>
+                <tr key={r.id} className="border-b border-gray-300 font-semibold">
+                  <td className="py-2 px-2 border-r border-gray-300 text-left">{index + 1}</td>
+                  <td className="py-2 px-2 border-r border-gray-300 text-left uppercase">{r.course.code}</td>
+                  <td className="py-2 px-2 border-r border-gray-300 text-left uppercase">{r.course.title}</td>
+                  <td className="py-2 px-2 border-r border-gray-300 text-center">{r.course.creditUnits}</td>
+                  <td className="py-2 px-2 border-r border-gray-300 text-center">{Math.round(r.totalScore)}</td>
+                  <td className="py-2 px-2 border-r border-gray-300 text-center uppercase">{r.grade}</td>
+                  <td className="py-2 px-2 text-center uppercase">{remark}</td>
                 </tr>
               );
             })}
@@ -220,7 +248,7 @@ export function ResultSlip({
           {/* CURRENT stats */}
           <table className="w-full border-collapse border border-gray-300 font-semibold">
             <thead>
-              <tr className="border-b border-gray-300">
+              <tr className="border-b border-gray-300 bg-gray-50/20">
                 <th colSpan={2} className="py-2 px-3 text-left font-extrabold uppercase">CURRENT</th>
               </tr>
             </thead>
@@ -247,7 +275,7 @@ export function ResultSlip({
           {/* PREVIOUS stats */}
           <table className="w-full border-collapse border border-gray-300 font-semibold">
             <thead>
-              <tr className="border-b border-gray-300">
+              <tr className="border-b border-gray-300 bg-gray-50/20">
                 <th colSpan={2} className="py-2 px-3 text-left font-extrabold uppercase">PREVIOUS</th>
               </tr>
             </thead>
@@ -274,7 +302,7 @@ export function ResultSlip({
           {/* CUMMULATIVE stats */}
           <table className="w-full border-collapse border border-gray-300 font-semibold">
             <thead>
-              <tr className="border-b border-gray-300">
+              <tr className="border-b border-gray-300 bg-gray-50/20">
                 <th colSpan={2} className="py-2 px-3 text-left font-extrabold uppercase">CUMMULATIVE</th>
               </tr>
             </thead>
