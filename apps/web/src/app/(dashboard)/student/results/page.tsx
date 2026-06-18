@@ -16,7 +16,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { BarChart } from '@/components/ui/charts';
+import { PieChart } from '@/components/ui/charts';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ResultSlip } from '@/components/print';
 import {
@@ -251,6 +251,44 @@ export default function StudentResultsPage() {
         </div>
       </div>
 
+      {/* Performance Summary (Horizontal on desktop, stacked on mobile) */}
+      <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-6 print:hidden">
+        {/* Semester GPA */}
+        <div className="flex items-center justify-between p-4 rounded-2xl border border-border/40 bg-card shadow-sm hover:shadow-md transition-shadow">
+          <div>
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Semester GPA</span>
+            <p className="text-2xl font-black text-foreground tabular-nums mt-0.5">{semesterGpa.toFixed(2)}</p>
+          </div>
+          <span className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary">
+            <Award className="h-5 w-5" />
+          </span>
+        </div>
+        
+        {/* Cumulative GPA (CGPA) */}
+        <div className="flex items-center justify-between p-4 rounded-2xl border border-border/40 bg-card shadow-sm hover:shadow-md transition-shadow">
+          <div>
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Cumulative GPA (CGPA)</span>
+            <p className="text-2xl font-black text-foreground tabular-nums mt-0.5">
+              {(resultsQuery.data?.cgpa ?? 0).toFixed(2)}
+            </p>
+          </div>
+          <span className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-500/10 text-emerald-600">
+            <TrendingUp className="h-5 w-5" />
+          </span>
+        </div>
+
+        {/* Semester Credits */}
+        <div className="flex items-center justify-between p-4 rounded-2xl border border-border/40 bg-card shadow-sm hover:shadow-md transition-shadow">
+          <div>
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Semester Credits</span>
+            <p className="text-2xl font-black text-foreground tabular-nums mt-0.5">{totalCreditUnits}</p>
+          </div>
+          <span className="grid h-10 w-10 place-items-center rounded-xl bg-indigo-500/10 text-indigo-600">
+            <BarChart3 className="h-5 w-5" />
+          </span>
+        </div>
+      </div>
+
       {/* Main Two-Column Layout */}
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3 print:hidden">
         
@@ -287,12 +325,12 @@ export default function StudentResultsPage() {
                       <tr className="border-b border-border/30 text-left text-xs uppercase tracking-wider text-muted-foreground pb-2">
                         <th className="py-2.5 font-bold">Code</th>
                         <th className="py-2.5 font-bold">Title</th>
-                        <th className="py-2.5 text-right font-bold">CA</th>
-                        <th className="py-2.5 text-right font-bold">Exam</th>
+                        <th className="py-2.5 text-right font-bold hidden md:table-cell">CA</th>
+                        <th className="py-2.5 text-right font-bold hidden md:table-cell">Exam</th>
                         <th className="py-2.5 text-right font-bold">Total</th>
                         <th className="py-2.5 text-center font-bold">Grade</th>
-                        <th className="py-2.5 text-right font-bold">GP</th>
-                        <th className="py-2.5 text-right font-bold">Units</th>
+                        <th className="py-2.5 text-right font-bold hidden md:table-cell">GP</th>
+                        <th className="py-2.5 text-right font-bold hidden md:table-cell">Units</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border/20">
@@ -300,16 +338,16 @@ export default function StudentResultsPage() {
                         <tr key={r.id} className="hover:bg-muted/15 transition-colors">
                           <td className="py-3 font-semibold text-primary">{r.course.code}</td>
                           <td className="py-3 font-medium text-foreground">{r.course.title}</td>
-                          <td className="py-3 text-right tabular-nums font-medium text-muted-foreground">{r.caScore.toFixed(1)}</td>
-                          <td className="py-3 text-right tabular-nums font-medium text-muted-foreground">{r.examScore.toFixed(1)}</td>
+                          <td className="py-3 text-right tabular-nums font-medium text-muted-foreground hidden md:table-cell">{r.caScore.toFixed(1)}</td>
+                          <td className="py-3 text-right tabular-nums font-medium text-muted-foreground hidden md:table-cell">{r.examScore.toFixed(1)}</td>
                           <td className="py-3 text-right font-bold tabular-nums text-foreground">
                             {r.totalScore.toFixed(1)}
                           </td>
                           <td className="py-3 text-center">
                             <GradeBadge grade={r.grade} />
                           </td>
-                          <td className="py-3 text-right tabular-nums font-semibold text-foreground">{r.gradePoint.toFixed(1)}</td>
-                          <td className="py-3 text-right tabular-nums font-medium text-muted-foreground">{r.course.creditUnits}</td>
+                          <td className="py-3 text-right tabular-nums font-semibold text-foreground hidden md:table-cell">{r.gradePoint.toFixed(1)}</td>
+                          <td className="py-3 text-right tabular-nums font-medium text-muted-foreground hidden md:table-cell">{r.course.creditUnits}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -323,46 +361,6 @@ export default function StudentResultsPage() {
         {/* Right: Summary, Analytics CTA, and Grade Distribution Cards */}
         <div className="space-y-6 lg:col-span-1">
           
-          {/* Key Metrics Stack Card */}
-          <Card className="border border-border/40 shadow-sm">
-            <CardHeader className="pb-3 border-b border-border/30">
-              <CardTitle className="text-sm font-semibold text-muted-foreground">Performance Summary</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-4 space-y-4">
-              <div className="flex items-center justify-between p-3 rounded-xl border bg-muted/10">
-                <div>
-                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Semester GPA</span>
-                  <p className="text-2xl font-bold text-foreground tabular-nums mt-0.5">{semesterGpa.toFixed(2)}</p>
-                </div>
-                <span className="grid h-9 w-9 place-items-center rounded-lg bg-primary/10 text-primary">
-                  <Award className="h-4.5 w-4.5" />
-                </span>
-              </div>
-              
-              <div className="flex items-center justify-between p-3 rounded-xl border bg-muted/10">
-                <div>
-                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Cumulative GPA (CGPA)</span>
-                  <p className="text-2xl font-bold text-foreground tabular-nums mt-0.5">
-                    {(resultsQuery.data?.cgpa ?? 0).toFixed(2)}
-                  </p>
-                </div>
-                <span className="grid h-9 w-9 place-items-center rounded-lg bg-emerald-500/15 text-emerald-600">
-                  <TrendingUp className="h-4.5 w-4.5" />
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between p-3 rounded-xl border bg-muted/10">
-                <div>
-                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Semester Credits</span>
-                  <p className="text-2xl font-bold text-foreground tabular-nums mt-0.5">{totalCreditUnits}</p>
-                </div>
-                <span className="grid h-9 w-9 place-items-center rounded-lg bg-indigo-500/15 text-indigo-600">
-                  <BarChart3 className="h-4.5 w-4.5" />
-                </span>
-              </div>
-            </CardContent>
-          </Card>
-
           {/* Analytics Banner/CTA Card */}
           <Card className="border border-primary/20 bg-gradient-to-br from-primary/[0.03] to-indigo-500/[0.03] shadow-sm relative overflow-hidden">
             <CardContent className="p-5 flex flex-col justify-between h-full gap-4">
@@ -388,24 +386,13 @@ export default function StudentResultsPage() {
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-semibold text-muted-foreground">Grade Distribution</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Visual Chart */}
-                <div className="p-2 border rounded-xl bg-card">
-                  <BarChart data={gradeDistribution} height={140} />
-                </div>
-                
-                {/* Detailed Legends Grid */}
-                <div className="grid grid-cols-3 gap-1.5">
-                  {gradeDistribution.map((g) => (
-                    <div key={g.label} className="flex items-center gap-1.5 rounded-lg border bg-muted/10 px-2 py-1.5 text-[11px] justify-between">
-                      <div className="flex items-center gap-1 min-w-0">
-                        <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: g.color }} />
-                        <span className="font-bold text-foreground">{g.label}</span>
-                      </div>
-                      <span className="font-semibold text-muted-foreground tabular-nums">{g.value}</span>
-                    </div>
-                  ))}
-                </div>
+              <CardContent className="pt-2">
+                <PieChart
+                  data={gradeDistribution.filter((g) => g.value > 0)}
+                  size={150}
+                  centerLabel="Total"
+                  centerValue={rows.length}
+                />
               </CardContent>
             </Card>
           )}
