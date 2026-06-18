@@ -66,7 +66,10 @@ export function RegForm({
           <div>
             <p className="text-[10px] uppercase tracking-widest font-bold">{universityName}</p>
             <h2 className="text-xs font-bold uppercase tracking-wide">
-              Faculty of {settings?.facultyName || 'Computing & Information Sciences'}, Department of {departmentName || '—'}
+              Faculty of {settings?.facultyName || 'Sciences'}
+            </h2>
+            <h2 className="text-xs font-bold uppercase tracking-wide">
+              Department of {departmentName || '—'}
             </h2>
             <p className="text-[9px] uppercase tracking-widest font-semibold">
               Course Registration &amp; Advisement Office
