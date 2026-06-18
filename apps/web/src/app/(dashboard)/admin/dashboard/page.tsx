@@ -30,6 +30,7 @@ import { cn } from '@/lib/utils';
 
 interface AdminAnalytics {
   users: { students: number; lecturers: number; admins: number; total: number };
+  courses: number;
   resources: number;
   announcements: number;
   activeSessions: number;
@@ -207,7 +208,7 @@ export default function AdminDashboardPage() {
       <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard
           label="Courses"
-          value={adminQuery.data?.resources ?? '—'}
+          value={adminQuery.data?.courses ?? '—'}
           icon={BookOpen}
           description="total"
         />

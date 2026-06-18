@@ -51,17 +51,13 @@ export async function uploadBase64(
   if (fileName) {
     const lastDot = fileName.lastIndexOf('.');
     const baseName = lastDot !== -1 ? fileName.substring(0, lastDot) : fileName;
-    const extension = lastDot !== -1 ? fileName.substring(lastDot + 1) : '';
 
     const cleanBaseName = baseName
       .replace(/[^a-zA-Z0-9-_]/g, '_')
       .substring(0, 80);
 
-    if (extension) {
-      options.public_id = `${cleanBaseName}_${Date.now()}.${extension.toLowerCase()}`;
-    } else {
-      options.public_id = `${cleanBaseName}_${Date.now()}`;
-    }
+    // Don't include extension — Cloudinary appends it automatically with resource_type: 'auto'
+    options.public_id = `${cleanBaseName}_${Date.now()}`;
   }
 
   const result = await cloudinary.uploader.upload(dataUri, options);
@@ -105,5 +101,7 @@ export function signedDownloadUrl(publicId: string, mimeTypeOrExtension?: string
     resource_type: resourceType,
     flags: 'attachment',
     secure: true,
+    sign_url: true,
+    type: 'upload',
   });
 }

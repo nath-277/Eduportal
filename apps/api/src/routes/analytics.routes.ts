@@ -13,13 +13,14 @@ import {
 const analyticsRouter = new Hono();
 
 analyticsRouter.get('/admin', authenticate, authorize('ADMIN'), async (_c) => {
-  const [totalStudents, totalLecturers, totalAdmins, totalResources, totalAnnouncements, recentLogs] =
+  const [totalStudents, totalLecturers, totalAdmins, totalResources, totalAnnouncements, totalCourses, recentLogs] =
     await Promise.all([
       prisma.user.count({ where: { role: 'STUDENT' } }),
       prisma.user.count({ where: { role: 'LECTURER' } }),
       prisma.user.count({ where: { role: 'ADMIN' } }),
       prisma.resource.count(),
       prisma.announcement.count(),
+      prisma.course.count(),
       prisma.auditLog.findMany({
         orderBy: { createdAt: 'desc' },
         take: 20,
@@ -36,6 +37,7 @@ analyticsRouter.get('/admin', authenticate, authorize('ADMIN'), async (_c) => {
       admins: totalAdmins,
       total: totalStudents + totalLecturers + totalAdmins,
     },
+    courses: totalCourses,
     resources: totalResources,
     announcements: totalAnnouncements,
     activeSessions,

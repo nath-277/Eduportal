@@ -160,12 +160,20 @@ resourceRouter.post('/:id/download', authenticate, async (c) => {
   });
 
   let downloadUrl = resource.fileUrl;
+
+  // Try to generate a properly signed download URL via Cloudinary
   if (resource.filePublicId && isCloudinaryConfigured()) {
     try {
-      downloadUrl = signedDownloadUrl(resource.filePublicId, resource.fileType);
+      const signed = signedDownloadUrl(resource.filePublicId, resource.fileType);
+      if (signed) downloadUrl = signed;
     } catch (err) {
-      console.warn('Signed URL failed, using raw URL:', err);
+      console.warn('Signed URL failed, falling back to fileUrl:', err);
     }
+  }
+
+  // If we're still using the raw fileUrl, inject fl_attachment to force download
+  if (downloadUrl === resource.fileUrl && downloadUrl.includes('res.cloudinary.com')) {
+    downloadUrl = downloadUrl.replace('/upload/', '/upload/fl_attachment/');
   }
 
   await writeAudit(c, {
