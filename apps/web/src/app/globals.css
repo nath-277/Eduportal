@@ -147,3 +147,11 @@
   .print-page { page-break-after: always; }
   .print-page:last-of-type { page-break-after: auto; }
 }
+
+@utility scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
