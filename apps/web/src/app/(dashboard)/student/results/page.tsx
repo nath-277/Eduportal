@@ -5,9 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import {
   Award,
-  BarChart3,
   Printer,
-  TrendingUp,
   ArrowRight,
 } from 'lucide-react';
 
@@ -201,16 +199,16 @@ export default function StudentResultsPage() {
       <div className="print:hidden">
         <PageHeader
           title="Academic results"
-          subtitle="View published results for each session and semester."
+          subtitle={<span className="hidden sm:inline">View published results for each session and semester.</span>}
         />
       </div>
 
       {/* Selectors Bar */}
-      <div className="mt-6 flex flex-wrap items-center justify-between gap-4 print:hidden bg-card border border-border/40 p-3 rounded-2xl shadow-xs">
-        <div className="flex flex-wrap items-center gap-3">
+      <div className="mt-3 sm:mt-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 print:hidden bg-card border border-border/40 p-2 sm:p-3 rounded-xl sm:rounded-2xl shadow-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
           {/* Custom Select Dropdown */}
           <Select value={activeSessionId || undefined} onValueChange={setSelectedSession}>
-            <SelectTrigger className="w-[260px] bg-background">
+            <SelectTrigger className="w-full sm:w-[220px] h-9 text-xs bg-background rounded-lg sm:rounded-xl">
               <SelectValue placeholder="Select session" />
             </SelectTrigger>
             <SelectContent>
@@ -223,14 +221,14 @@ export default function StudentResultsPage() {
           </Select>
 
           {/* Semesters Tabs Bar */}
-          <div className="inline-flex rounded-xl border bg-muted/20 p-1">
+          <div className="inline-flex w-full sm:w-auto rounded-lg sm:rounded-xl border bg-muted/20 p-1">
             {(['FIRST', 'SECOND'] as const).map((s) => (
               <button
                 key={s}
                 type="button"
                 onClick={() => setSelectedSemester(s)}
                 className={cn(
-                  'rounded-lg px-4 py-1.5 text-xs font-semibold transition-all duration-200',
+                  'flex-1 sm:flex-none text-center rounded-md sm:rounded-lg px-3 py-1 text-[11px] sm:text-xs font-semibold transition-all duration-200',
                   selectedSemester === s
                     ? 'bg-primary text-primary-foreground shadow-xs'
                     : 'text-muted-foreground hover:text-foreground hover:bg-muted/40',
@@ -242,66 +240,46 @@ export default function StudentResultsPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-end w-full sm:w-auto gap-2">
           {/* Print Button */}
-          <Button variant="outline" size="sm" onClick={handlePrint} className="gap-1.5 font-semibold rounded-xl bg-background shadow-xs hover:bg-muted/40">
-            <Printer className="h-4 w-4" />
+          <Button variant="outline" size="sm" onClick={handlePrint} className="w-full sm:w-auto h-9 gap-1.5 text-xs font-semibold rounded-lg sm:rounded-xl bg-background shadow-xs hover:bg-muted/40">
+            <Printer className="h-3.5 w-3.5" />
             Print slip
           </Button>
         </div>
       </div>
 
-      {/* Performance Summary (Horizontal on desktop, stacked on mobile) */}
-      <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-6 print:hidden">
-        {/* Semester GPA */}
-        <div className="flex items-center justify-between p-4 rounded-2xl border border-border/40 bg-card shadow-sm hover:shadow-md transition-shadow">
-          <div>
-            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Semester GPA</span>
-            <p className="text-2xl font-black text-foreground tabular-nums mt-0.5">{semesterGpa.toFixed(2)}</p>
-          </div>
-          <span className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary">
-            <Award className="h-5 w-5" />
-          </span>
-        </div>
-        
-        {/* Cumulative GPA (CGPA) */}
-        <div className="flex items-center justify-between p-4 rounded-2xl border border-border/40 bg-card shadow-sm hover:shadow-md transition-shadow">
-          <div>
-            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Cumulative GPA (CGPA)</span>
-            <p className="text-2xl font-black text-foreground tabular-nums mt-0.5">
-              {(resultsQuery.data?.cgpa ?? 0).toFixed(2)}
-            </p>
-          </div>
-          <span className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-500/10 text-emerald-600">
-            <TrendingUp className="h-5 w-5" />
-          </span>
-        </div>
-
-        {/* Semester Credits */}
-        <div className="flex items-center justify-between p-4 rounded-2xl border border-border/40 bg-card shadow-sm hover:shadow-md transition-shadow">
-          <div>
-            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Semester Credits</span>
-            <p className="text-2xl font-black text-foreground tabular-nums mt-0.5">{totalCreditUnits}</p>
-          </div>
-          <span className="grid h-10 w-10 place-items-center rounded-xl bg-indigo-500/10 text-indigo-600">
-            <BarChart3 className="h-5 w-5" />
-          </span>
-        </div>
-      </div>
-
       {/* Main Two-Column Layout */}
-      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3 print:hidden">
+      <div className="mt-4 sm:mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3 print:hidden">
         
         {/* Left: Results Table Card (Spans 2 columns) */}
         <div className="space-y-6 lg:col-span-2">
           <Card className="border border-border/40 shadow-sm">
-            <CardHeader className="border-b border-border/30 pb-3">
+            <CardHeader className="border-b border-border/30 pb-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div>
-                <CardTitle className="text-base font-bold text-foreground">Semester Results</CardTitle>
-                <p className="text-xs text-muted-foreground mt-0.5">
+                <CardTitle className="text-sm sm:text-base font-bold text-foreground">Semester Results</CardTitle>
+                <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5">
                   Showing results for {selectedSemester === 'FIRST' ? 'First Semester' : 'Second Semester'} of{' '}
                   <span className="font-semibold text-foreground">{activeOptionLabel.split(' · ').pop() ?? 'Selected Session'}</span>
                 </p>
+              </div>
+
+              {/* Performance Summary - Inline Row */}
+              <div className="flex items-center justify-between sm:justify-start gap-2 sm:gap-4 text-[10px] sm:text-xs font-semibold text-muted-foreground bg-muted/20 px-2.5 py-1.5 rounded-lg sm:rounded-xl border border-border/10">
+                <div className="flex items-center gap-1">
+                  <span>GPA:</span>
+                  <span className="font-extrabold text-foreground text-xs sm:text-sm">{semesterGpa.toFixed(2)}</span>
+                </div>
+                <div className="h-3 w-px bg-border/30" />
+                <div className="flex items-center gap-1">
+                  <span>CGPA:</span>
+                  <span className="font-extrabold text-emerald-600 text-xs sm:text-sm">{(resultsQuery.data?.cgpa ?? 0).toFixed(2)}</span>
+                </div>
+                <div className="h-3 w-px bg-border/30" />
+                <div className="flex items-center gap-1">
+                  <span>Credits:</span>
+                  <span className="font-extrabold text-indigo-600 text-xs sm:text-sm">{totalCreditUnits}</span>
+                </div>
               </div>
             </CardHeader>
             <CardContent className="pt-4">
