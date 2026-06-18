@@ -67,10 +67,33 @@ enrollmentRouter.post('/', authenticate, authorize('STUDENT'), async (c) => {
     return badRequest('One or more courseIds are invalid');
   }
 
-  const wrongLevel = courses.find((crs) => crs.level !== student.level);
+  // Retrieve student's active carry-over courses
+  const allResults = await prisma.result.findMany({
+    where: { studentId: userId, status: 'PUBLISHED' },
+  });
+
+  const failedCourseIds = new Set<string>();
+  const passedCourseIds = new Set<string>();
+
+  for (const r of allResults) {
+    if (r.totalScore < 40 || r.grade === 'F') {
+      failedCourseIds.add(r.courseId);
+    } else {
+      passedCourseIds.add(r.courseId);
+    }
+  }
+
+  const activeCarryOverCourseIds = [...failedCourseIds].filter((id) => !passedCourseIds.has(id));
+
+  const wrongLevel = courses.find((crs) => {
+    if (crs.level === student.level) return false;
+    if (activeCarryOverCourseIds.includes(crs.id)) return false;
+    return true;
+  });
+
   if (wrongLevel) {
     return badRequest(
-      `Course ${wrongLevel.code} (${wrongLevel.level}) does not match student level (${student.level})`
+      `Course ${wrongLevel.code} (${wrongLevel.level}) does not match student level (${student.level}) and is not a carry-over course`
     );
   }
 

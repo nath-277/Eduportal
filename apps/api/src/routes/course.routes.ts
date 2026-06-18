@@ -25,9 +25,49 @@ courseRouter.get('/', async (c) => {
       semester: c.req.query('semester'),
       departmentId: c.req.query('departmentId'),
       programmeId: c.req.query('programmeId'),
+      studentId: c.req.query('studentId'),
     });
   } catch (e) {
     return c.var.handleZodError(e);
+  }
+
+  let carryOverCourses: any[] = [];
+  if (query.studentId) {
+    const allResults = await prisma.result.findMany({
+      where: { studentId: query.studentId, status: 'PUBLISHED' },
+    });
+
+    const failedCourseIds = new Set<string>();
+    const passedCourseIds = new Set<string>();
+
+    for (const r of allResults) {
+      if (r.totalScore < 40 || r.grade === 'F') {
+        failedCourseIds.add(r.courseId);
+      } else {
+        passedCourseIds.add(r.courseId);
+      }
+    }
+
+    const activeCarryOverCourseIds = [...failedCourseIds].filter((id) => !passedCourseIds.has(id));
+
+    if (activeCarryOverCourseIds.length > 0) {
+      const carryOverWhere: Record<string, any> = {
+        id: { in: activeCarryOverCourseIds },
+      };
+      if (query.semester) {
+        carryOverWhere.semester = query.semester;
+      }
+      carryOverCourses = await prisma.course.findMany({
+        where: carryOverWhere,
+        include: {
+          department: true,
+          programme: true,
+          assignments: {
+            include: { lecturer: { select: { id: true, fullname: true, email: true } } },
+          },
+        },
+      });
+    }
   }
 
   const where: Record<string, unknown> = {};
@@ -42,7 +82,7 @@ courseRouter.get('/', async (c) => {
     ];
   }
 
-  const courses = await prisma.course.findMany({
+  const standardCourses = await prisma.course.findMany({
     where,
     orderBy: [{ level: 'asc' }, { code: 'asc' }],
     include: {
@@ -54,8 +94,16 @@ courseRouter.get('/', async (c) => {
     },
   });
 
+  const allCourses = [...standardCourses];
+  const standardIds = new Set(standardCourses.map((c) => c.id));
+  for (const c of carryOverCourses) {
+    if (!standardIds.has(c.id)) {
+      allCourses.push(c);
+    }
+  }
+
   return ok(
-    courses.map((course) => ({
+    allCourses.map((course) => ({
       ...course,
       lecturers: course.assignments.map((a) => a.lecturer),
       assignments: undefined,

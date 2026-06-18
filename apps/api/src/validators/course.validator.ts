@@ -5,6 +5,7 @@ export const listCoursesSchema = z.object({
   semester: z.enum(['FIRST', 'SECOND']).optional(),
   departmentId: z.string().optional(),
   programmeId: z.string().optional(),
+  studentId: z.string().optional(),
 });
 
 export type ListCoursesQuery = z.infer<typeof listCoursesSchema>;

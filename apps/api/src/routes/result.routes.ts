@@ -148,7 +148,7 @@ resultRouter.get(
       where: { sessionId, status: { in: ['SUBMITTED', 'APPROVED', 'PUBLISHED'] } },
       include: {
         student: { select: { id: true, fullname: true, matricNumber: true } },
-        course: { include: { department: true } },
+        course: { include: { department: true, programme: true } },
         session: true,
       },
       orderBy: [{ course: { code: 'asc' } }, { student: { matricNumber: 'asc' } }],
