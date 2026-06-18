@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import type { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { authenticate, authorize } from '../middleware/auth.js';
 import { writeAudit } from '../lib/audit.js';
@@ -31,45 +32,6 @@ courseRouter.get('/', async (c) => {
     return c.var.handleZodError(e);
   }
 
-  let carryOverCourses: any[] = [];
-  if (query.studentId) {
-    const allResults = await prisma.result.findMany({
-      where: { studentId: query.studentId, status: 'PUBLISHED' },
-    });
-
-    const failedCourseIds = new Set<string>();
-    const passedCourseIds = new Set<string>();
-
-    for (const r of allResults) {
-      if (r.totalScore < 40 || r.grade === 'F') {
-        failedCourseIds.add(r.courseId);
-      } else {
-        passedCourseIds.add(r.courseId);
-      }
-    }
-
-    const activeCarryOverCourseIds = [...failedCourseIds].filter((id) => !passedCourseIds.has(id));
-
-    if (activeCarryOverCourseIds.length > 0) {
-      const carryOverWhere: Record<string, any> = {
-        id: { in: activeCarryOverCourseIds },
-      };
-      if (query.semester) {
-        carryOverWhere.semester = query.semester;
-      }
-      carryOverCourses = await prisma.course.findMany({
-        where: carryOverWhere,
-        include: {
-          department: true,
-          programme: true,
-          assignments: {
-            include: { lecturer: { select: { id: true, fullname: true, email: true } } },
-          },
-        },
-      });
-    }
-  }
-
   const where: Record<string, unknown> = {};
   if (query.level) where.level = query.level;
   if (query.semester) where.semester = query.semester;
@@ -93,6 +55,45 @@ courseRouter.get('/', async (c) => {
       },
     },
   });
+
+  let carryOverCourses: typeof standardCourses = [];
+  if (query.studentId) {
+    const allResults = await prisma.result.findMany({
+      where: { studentId: query.studentId, status: 'PUBLISHED' },
+    });
+
+    const failedCourseIds = new Set<string>();
+    const passedCourseIds = new Set<string>();
+
+    for (const r of allResults) {
+      if (r.totalScore < 40 || r.grade === 'F') {
+        failedCourseIds.add(r.courseId);
+      } else {
+        passedCourseIds.add(r.courseId);
+      }
+    }
+
+    const activeCarryOverCourseIds = [...failedCourseIds].filter((id) => !passedCourseIds.has(id));
+
+    if (activeCarryOverCourseIds.length > 0) {
+      const carryOverWhere: Prisma.CourseWhereInput = {
+        id: { in: activeCarryOverCourseIds },
+      };
+      if (query.semester) {
+        carryOverWhere.semester = query.semester;
+      }
+      carryOverCourses = await prisma.course.findMany({
+        where: carryOverWhere,
+        include: {
+          department: true,
+          programme: true,
+          assignments: {
+            include: { lecturer: { select: { id: true, fullname: true, email: true } } },
+          },
+        },
+      });
+    }
+  }
 
   const allCourses = [...standardCourses];
   const standardIds = new Set(standardCourses.map((c) => c.id));
