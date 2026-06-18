@@ -142,7 +142,7 @@ export function ResultSlip({
   }
 
   const sessionName = sessions.find((s) => s.id === activeSessionId)?.name || '';
-  const facultyName = settings?.facultyName || 'Science';
+  const facultyName = settings?.facultyName || 'Sciences';
   const departmentNameVal = departmentName || student.department?.name || 'Computing';
   const programmeName = student.programme?.name || 'B.Sc. Computer Science';
   const universityName = settings?.displayName || 'ANCHOR UNIVERSITY, LAGOS';
@@ -150,17 +150,34 @@ export function ResultSlip({
 
   return (
     <div className="print-only print-page hidden">
-      <div className="mx-auto max-w-4xl bg-white p-6 font-sans text-black text-[11px] leading-normal">
+      {/* Print styles to force A4 fitting cleanly without compressing height */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        @media print {
+          html, body {
+            background-color: #ffffff;
+          }
+          @page {
+            size: A4;
+            margin: 15mm 15mm 15mm 15mm !important;
+          }
+          .print-page {
+            display: block !important;
+            page-break-inside: avoid;
+          }
+        }
+      `}} />
+
+      <div className="mx-auto max-w-4xl bg-white font-sans text-black text-[10px] leading-normal">
         {/* Top Box: University Identity & Logo Header */}
-        <div className="w-full border border-gray-300 p-4 mb-4 flex flex-col items-center justify-center text-center gap-3">
-          <h1 className="text-2xl font-extrabold uppercase tracking-wide text-foreground/90">
+        <div className="w-full border border-gray-300 p-4 mb-4 flex flex-col items-center justify-center text-center gap-2">
+          <h1 className="text-2xl font-extrabold uppercase tracking-wide text-foreground/95">
             {universityName}
           </h1>
           {portalLogoUrl ? (
             <img
               src={portalLogoUrl}
               alt="University Logo"
-              className="h-16 w-auto object-contain mx-auto"
+              className="h-14 w-auto object-contain mx-auto"
             />
           ) : (
             <div className="grid h-12 w-12 place-items-center rounded-full border border-gray-400">
@@ -197,7 +214,7 @@ export function ResultSlip({
         </table>
 
         {/* Box 2: Student Identity */}
-        <table className="w-full border-collapse border border-gray-300 text-[10px] mb-6">
+        <table className="w-full border-collapse border border-gray-300 text-[10px] mb-4">
           <tbody>
             <tr>
               <td className="py-2.5 px-3 w-[15%] font-extrabold text-left align-middle">NAME:</td>
@@ -209,16 +226,16 @@ export function ResultSlip({
         </table>
 
         {/* Main Results Table (Full Grid styling matching screenshot) */}
-        <table className="w-full border-collapse border border-gray-300 text-[10px] mb-8">
+        <table className="w-full border-collapse border border-gray-300 text-[10px] mb-6">
           <thead>
-            <tr className="border-b border-gray-300 font-extrabold text-left bg-gray-50/20">
-              <th className="py-2.5 px-2 w-[5%] border-r border-gray-300 text-left">S/N</th>
-              <th className="py-2.5 px-2 w-[15%] border-r border-gray-300 text-left">COURSE CODE</th>
-              <th className="py-2.5 px-2 w-[43%] border-r border-gray-300 text-left">COURSE TITLE</th>
-              <th className="py-2.5 px-2 w-[8%] border-r border-gray-300 text-center">UNIT</th>
-              <th className="py-2.5 px-2 w-[8%] border-r border-gray-300 text-center">SCORE</th>
-              <th className="py-2.5 px-2 w-[8%] border-r border-gray-300 text-center">GRADE</th>
-              <th className="py-2.5 px-2 w-[13%] text-center">REMARK</th>
+            <tr className="border-b border-gray-300 font-extrabold text-left bg-gray-50/10">
+              <th className="py-2 px-2.5 w-[5%] border-r border-gray-300 text-left">S/N</th>
+              <th className="py-2 px-2.5 w-[15%] border-r border-gray-300 text-left">COURSE CODE</th>
+              <th className="py-2 px-2.5 w-[43%] border-r border-gray-300 text-left">COURSE TITLE</th>
+              <th className="py-2 px-2.5 w-[8%] border-r border-gray-300 text-center">UNIT</th>
+              <th className="py-2 px-2.5 w-[8%] border-r border-gray-300 text-center">SCORE</th>
+              <th className="py-2 px-2.5 w-[8%] border-r border-gray-300 text-center">GRADE</th>
+              <th className="py-2 px-2.5 w-[13%] text-center">REMARK</th>
             </tr>
           </thead>
           <tbody>
@@ -226,13 +243,13 @@ export function ResultSlip({
               const remark = r.gradePoint > 0 ? 'PASSED' : 'FAILED';
               return (
                 <tr key={r.id} className="border-b border-gray-300 font-semibold">
-                  <td className="py-2 px-2 border-r border-gray-300 text-left">{index + 1}</td>
-                  <td className="py-2 px-2 border-r border-gray-300 text-left uppercase">{r.course.code}</td>
-                  <td className="py-2 px-2 border-r border-gray-300 text-left uppercase">{r.course.title}</td>
-                  <td className="py-2 px-2 border-r border-gray-300 text-center">{r.course.creditUnits}</td>
-                  <td className="py-2 px-2 border-r border-gray-300 text-center">{Math.round(r.totalScore)}</td>
-                  <td className="py-2 px-2 border-r border-gray-300 text-center uppercase">{r.grade}</td>
-                  <td className="py-2 px-2 text-center uppercase">{remark}</td>
+                  <td className="py-2 px-2.5 border-r border-gray-300 text-left">{index + 1}</td>
+                  <td className="py-2 px-2.5 border-r border-gray-300 text-left uppercase">{r.course.code}</td>
+                  <td className="py-2 px-2.5 border-r border-gray-300 text-left uppercase">{r.course.title}</td>
+                  <td className="py-2 px-2.5 border-r border-gray-300 text-center">{r.course.creditUnits}</td>
+                  <td className="py-2 px-2.5 border-r border-gray-300 text-center">{Math.round(r.totalScore)}</td>
+                  <td className="py-2 px-2.5 border-r border-gray-300 text-center uppercase">{r.grade}</td>
+                  <td className="py-2 px-2.5 text-center uppercase">{remark}</td>
                 </tr>
               );
             })}
@@ -240,11 +257,11 @@ export function ResultSlip({
         </table>
 
         {/* Bottom Performance Blocks */}
-        <div className="grid grid-cols-3 gap-6 text-[10px] mb-12">
+        <div className="grid grid-cols-3 gap-6 text-[10px] mb-8">
           {/* CURRENT stats */}
           <table className="w-full border-collapse border border-gray-300 font-semibold">
             <thead>
-              <tr className="border-b border-gray-300 bg-gray-50/20">
+              <tr className="border-b border-gray-300 bg-gray-50/10">
                 <th colSpan={2} className="py-2 px-3 text-left font-extrabold uppercase">CURRENT</th>
               </tr>
             </thead>
@@ -271,7 +288,7 @@ export function ResultSlip({
           {/* PREVIOUS stats */}
           <table className="w-full border-collapse border border-gray-300 font-semibold">
             <thead>
-              <tr className="border-b border-gray-300 bg-gray-50/20">
+              <tr className="border-b border-gray-300 bg-gray-50/10">
                 <th colSpan={2} className="py-2 px-3 text-left font-extrabold uppercase">PREVIOUS</th>
               </tr>
             </thead>
@@ -298,7 +315,7 @@ export function ResultSlip({
           {/* CUMMULATIVE stats */}
           <table className="w-full border-collapse border border-gray-300 font-semibold">
             <thead>
-              <tr className="border-b border-gray-300 bg-gray-50/20">
+              <tr className="border-b border-gray-300 bg-gray-50/10">
                 <th colSpan={2} className="py-2 px-3 text-left font-extrabold uppercase">CUMMULATIVE</th>
               </tr>
             </thead>
@@ -324,7 +341,7 @@ export function ResultSlip({
         </div>
 
         {/* Signature & Stamp for Officials (Registrar) */}
-        <div className="mt-16 grid grid-cols-2 gap-16 text-[10px] font-bold">
+        <div className="mt-14 grid grid-cols-2 gap-16 text-[9.5px] font-bold">
           <div className="flex flex-col items-start">
             <div className="border-t border-black border-dashed pt-2 w-48 text-center uppercase">
               Registrar Sign & Stamp
