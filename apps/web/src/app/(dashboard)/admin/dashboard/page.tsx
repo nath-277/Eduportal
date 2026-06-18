@@ -11,11 +11,8 @@ import {
   Clock,
   Database,
   Download,
-  GraduationCap,
   LineChart as LineChartIcon,
   ShieldCheck,
-  UserCheck,
-  Users,
 } from 'lucide-react';
 
 import { AdminShell } from '@/components/layout/admin-shell';
@@ -46,6 +43,13 @@ interface AdminAnalytics {
     createdAt: string;
     user: { id: string; fullname: string; email: string; role: string } | null;
   }>;
+}
+
+interface Session {
+  id: string;
+  name: string;
+  isCurrent: boolean;
+  currentSemester: 'FIRST' | 'SECOND';
 }
 
 interface DepartmentAnalytics {
@@ -135,6 +139,14 @@ export default function AdminDashboardPage() {
     },
   });
 
+  const sessionsQuery = useQuery({
+    queryKey: ['sessions', 'all'],
+    queryFn: async () => api.get<Session[]>('/sessions'),
+  });
+
+  const sessions = sessionsQuery.data ?? [];
+  const currentSession = sessions.find((s) => s.isCurrent);
+
   const resourcesQuery = useQuery({
     queryKey: ['resources', 'all', 'top'],
     queryFn: async () => {
@@ -192,19 +204,7 @@ export default function AdminDashboardPage() {
         subtitle="System health, governance, and department-wide activity."
       />
 
-      <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-        <StatCard
-          label="Students"
-          value={adminQuery.data?.users.students ?? '—'}
-          icon={GraduationCap}
-          description="enrolled"
-        />
-        <StatCard
-          label="Lecturers"
-          value={adminQuery.data?.users.lecturers ?? '—'}
-          icon={UserCheck}
-          description="active"
-        />
+      <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard
           label="Courses"
           value={adminQuery.data?.resources ?? '—'}
@@ -218,10 +218,10 @@ export default function AdminDashboardPage() {
           description="uploaded"
         />
         <StatCard
-          label="Active sessions"
-          value={adminQuery.data?.activeSessions ?? '—'}
+          label="Active Session"
+          value={sessionsQuery.isLoading ? '...' : (currentSession ? currentSession.name : '—')}
           icon={Activity}
-          description="current"
+          description={currentSession ? `${currentSession.currentSemester === 'FIRST' ? 'First' : 'Second'} Semester` : 'current'}
         />
         <StatCard
           label="Uptime"
@@ -295,7 +295,7 @@ export default function AdminDashboardPage() {
                     <tr>
                       <th className="px-3 py-2 font-medium">User</th>
                       <th className="px-3 py-2 font-medium">Action</th>
-                      <th className="px-3 py-2 font-medium">Entity</th>
+                      <th className="px-3 py-2 font-medium hidden sm:table-cell">Entity</th>
                       <th className="px-3 py-2 text-right font-medium">When</th>
                     </tr>
                   </thead>
@@ -345,7 +345,7 @@ export default function AdminDashboardPage() {
                               {log.action}
                             </Badge>
                           </td>
-                          <td className="px-3 py-2 font-mono text-xs text-muted-foreground">
+                          <td className="px-3 py-2 font-mono text-xs text-muted-foreground hidden sm:table-cell">
                             {log.entity ?? '—'}
                             {log.entityId ? ` · ${log.entityId.slice(0, 8)}` : ''}
                           </td>
