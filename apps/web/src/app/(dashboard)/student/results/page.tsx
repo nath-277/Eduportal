@@ -29,7 +29,7 @@ import {
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth.store';
 import { cn } from '@/lib/utils';
-import type { Course, Result, ResultStatus, Semester } from '@eduportal/shared';
+import type { ResultStatus, Semester } from '@eduportal/shared';
 
 interface ResultRow {
   id: string;
@@ -191,41 +191,7 @@ export default function StudentResultsPage() {
     if (typeof window !== 'undefined') window.print();
   };
 
-  const printResults: Result[] = useMemo(
-    () =>
-      rows.map((r) => ({
-        id: r.id,
-        studentId: user?.id ?? '',
-        courseId: r.course.id,
-        sessionId: r.session.id,
-        semester: r.semester,
-        caScore: r.caScore,
-        examScore: r.examScore,
-        totalScore: r.totalScore,
-        grade: r.grade,
-        gradePoint: r.gradePoint,
-        isPublished: true,
-        status: 'PUBLISHED' as const,
-        createdAt: '',
-        updatedAt: '',
-      })),
-    [rows, user?.id],
-  );
 
-  const printCourses: Array<Pick<Course, 'id' | 'code' | 'title' | 'creditUnits'>> = useMemo(() => {
-    const seen = new Map<string, Pick<Course, 'id' | 'code' | 'title' | 'creditUnits'>>();
-    for (const r of rows) {
-      if (!seen.has(r.course.id)) {
-        seen.set(r.course.id, {
-          id: r.course.id,
-          code: r.course.code,
-          title: r.course.title,
-          creditUnits: r.course.creditUnits,
-        });
-      }
-    }
-    return Array.from(seen.values());
-  }, [rows]);
 
   const activeOptionLabel = sessionOptions.find((opt) => opt.value === activeSessionId)?.label ?? '';
 
@@ -451,17 +417,10 @@ export default function StudentResultsPage() {
       {user && (
         <ResultSlip
           student={user}
-          results={printResults}
-          session={
-            filtered.length === 1
-              ? filtered[0].sessionName
-              : filtered.length > 1
-                ? 'All sessions'
-                : sessionsQuery.data?.find((s) => s.isCurrent)?.name ?? ''
-          }
-          gpa={semesterGpa}
-          cgpa={resultsQuery.data?.cgpa ?? 0}
-          courses={printCourses}
+          allSemesters={resultsQuery.data?.semesters || []}
+          activeSessionId={activeSessionId}
+          selectedSemester={selectedSemester}
+          sessions={sessionsQuery.data || []}
           departmentName={departmentName}
         />
       )}

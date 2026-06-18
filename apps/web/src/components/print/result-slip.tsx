@@ -1,52 +1,91 @@
-import { Award, BookOpen, GraduationCap } from 'lucide-react';
-import Image from 'next/image';
-
-import { cn } from '@/lib/utils';
+import type { Semester, User } from '@eduportal/shared';
 import { useSettings } from '@/hooks/use-settings';
-import type { Course, Result, User } from '@eduportal/shared';
+
+export interface ResultRow {
+  id: string;
+  caScore: number;
+  examScore: number;
+  totalScore: number;
+  grade: string;
+  gradePoint: number;
+  course: {
+    id: string;
+    code: string;
+    title: string;
+    creditUnits: number;
+    level: string;
+  };
+  session: { id: string; name: string };
+  semester: Semester;
+}
+
+export interface SemesterSummary {
+  sessionId: string;
+  sessionName: string;
+  semester: Semester;
+  gpa: number;
+  results: ResultRow[];
+}
+
+export interface Session {
+  id: string;
+  name: string;
+  isCurrent: boolean;
+}
 
 export interface ResultSlipProps {
   student: User;
-  results: Result[];
-  session: string;
-  gpa: number;
-  cgpa: number;
-  courses: Array<Pick<Course, 'id' | 'code' | 'title' | 'creditUnits'>>;
+  allSemesters: SemesterSummary[];
+  activeSessionId: string;
+  selectedSemester: Semester;
+  sessions: Session[];
   departmentName?: string;
 }
 
-const gradeTone: Record<string, string> = {
-  A: 'border-emerald-700 text-emerald-800 bg-emerald-50',
-  B: 'border-blue-700 text-blue-800 bg-blue-50',
-  C: 'border-amber-700 text-amber-800 bg-amber-50',
-  D: 'border-orange-700 text-orange-800 bg-orange-50',
-  E: 'border-rose-700 text-rose-800 bg-rose-50',
-  F: 'border-red-800 text-red-900 bg-red-100',
-};
-
 export function ResultSlip({
   student,
-  results,
-  session,
-  gpa,
-  cgpa,
-  courses,
+  allSemesters,
+  activeSessionId,
+  selectedSemester,
+  sessions,
   departmentName,
 }: ResultSlipProps) {
   const { data: settings } = useSettings();
-  const universityName = settings?.displayName || 'University of EduPortal';
-  const portalShortName = settings?.portalName || 'EduPortal';
-  const portalLogoUrl = settings?.portalLogoUrl;
 
-  if (results.length === 0) {
+  // If missing critical selection parameters, return null
+  if (!activeSessionId || !selectedSemester || sessions.length === 0) {
+    return null;
+  }
+
+  // 1. Sort sessions chronologically by name
+  const sortedSessions = [...sessions].sort((a, b) => a.name.localeCompare(b.name));
+
+  // Helper to get semester chronological rank
+  const getSemesterRank = (sessId: string, sem: Semester) => {
+    const idx = sortedSessions.findIndex((s) => s.id === sessId);
+    if (idx === -1) return -1;
+    return idx * 2 + (sem === 'FIRST' ? 0 : 1);
+  };
+
+  const currentRank = getSemesterRank(activeSessionId, selectedSemester);
+
+  // Filter results into CURRENT, PREVIOUS, and CUMMULATIVE
+  const currentSemesterSummary = allSemesters.find(
+    (sem) => sem.sessionId === activeSessionId && sem.semester === selectedSemester
+  );
+  const currentResults = currentSemesterSummary?.results || [];
+
+  // If no results for the current semester, show a clean message
+  if (currentResults.length === 0) {
+    const sessionName = sessions.find((s) => s.id === activeSessionId)?.name || 'selected';
     return (
       <div className="print-only print-page hidden">
-        <div className="mx-auto max-w-3xl border-2 border-black p-10 font-mono text-black">
+        <div className="mx-auto max-w-4xl border border-black p-10 font-sans text-black">
           <div className="text-center">
-            <h1 className="text-2xl font-bold">STATEMENT OF RESULT</h1>
-            <p className="mt-1 text-xs">No published results for {session}</p>
+            <h1 className="text-xl font-bold uppercase tracking-wider">STATEMENT OF RESULT</h1>
+            <p className="mt-2 text-xs">No published results for {sessionName} ({selectedSemester === 'FIRST' ? 'First' : 'Second'} Semester)</p>
           </div>
-          <p className="mt-12 text-center text-sm">
+          <p className="mt-12 text-center text-xs text-gray-500">
             Results will appear here once your lecturers publish them.
           </p>
         </div>
@@ -54,188 +93,211 @@ export function ResultSlip({
     );
   }
 
-  const totalUnits = results.reduce((acc, r) => {
-    const c = courses.find((x) => x.id === r.courseId);
-    return acc + (c?.creditUnits ?? 0);
-  }, 0);
+  const previousResults: ResultRow[] = [];
+  const cumulativeResults: ResultRow[] = [];
 
-  const grouped = results.reduce<Record<string, typeof results>>((acc, r) => {
-    const key = r.semester;
-    if (!acc[key]) acc[key] = [];
-    acc[key].push(r);
-    return acc;
-  }, {});
+  allSemesters.forEach((sem) => {
+    const rk = getSemesterRank(sem.sessionId, sem.semester);
+    if (rk !== -1) {
+      if (rk < currentRank) {
+        previousResults.push(...sem.results);
+      }
+      if (rk <= currentRank) {
+        cumulativeResults.push(...sem.results);
+      }
+    }
+  });
+
+  // Calculate statistics
+  const calculateStats = (rows: ResultRow[]) => {
+    const tcc = rows.reduce((acc, r) => acc + (r.course.creditUnits ?? 0), 0);
+    const tce = rows.reduce((acc, r) => acc + (r.gradePoint > 0 ? (r.course.creditUnits ?? 0) : 0), 0);
+    const tgp = rows.reduce((acc, r) => acc + (r.gradePoint * (r.course.creditUnits ?? 0)), 0);
+    const gpa = tcc === 0 ? 0 : tgp / tcc;
+    return { tcc, tce, tgp, gpa };
+  };
+
+  const currentStats = calculateStats(currentResults);
+  const previousStats = calculateStats(previousResults);
+  const cumulativeStats = calculateStats(cumulativeResults);
+
+  // Extract level dynamically from course levels
+  const getSessionLevel = (rows: ResultRow[]): string => {
+    if (rows.length === 0) return '';
+    const levels = rows.map((r) => r.course.level).filter(Boolean);
+    if (levels.length === 0) return '';
+    const numericLevels = levels.map((l) => {
+      const match = l.match(/\d+/);
+      return match ? parseInt(match[0], 10) : 0;
+    });
+    const maxLevel = Math.max(...numericLevels);
+    return maxLevel > 0 ? `${maxLevel}` : '';
+  };
+
+  let levelStr = getSessionLevel(currentResults);
+  if (!levelStr && student.level) {
+    const match = student.level.match(/\d+/);
+    levelStr = match ? match[0] : '';
+  }
+
+  const sessionName = sessions.find((s) => s.id === activeSessionId)?.name || '';
+  const facultyName = settings?.facultyName || 'Science';
+  const departmentNameVal = departmentName || student.department?.name || 'Computing';
+  const programmeName = student.programme?.name || 'B.Sc. Computer Science';
 
   return (
     <div className="print-only print-page hidden">
-      <div className="relative mx-auto max-w-3xl space-y-6 border-2 border-black bg-white p-10 font-mono text-black overflow-hidden">
-        {/* Elegant Watermark Background */}
-        <div className="absolute inset-0 pointer-events-none flex items-center justify-center opacity-[0.03] select-none" aria-hidden="true">
-          <GraduationCap className="w-96 h-96 text-black" />
-        </div>
+      <div className="mx-auto max-w-4xl bg-white p-6 font-sans text-black text-[11px] leading-normal">
+        {/* Box 1: Academic & Faculty Information */}
+        <table className="w-full border-collapse border border-gray-300 text-[10px] mb-4">
+          <tbody>
+            <tr>
+              <td className="py-2 px-3 w-[15%] font-extrabold text-left align-top">FACULTY:</td>
+              <td className="py-2 px-3 w-[45%] font-bold text-left align-top uppercase">{facultyName}</td>
+              <td className="py-2 px-3 w-[15%] font-extrabold text-left align-top">SESSION:</td>
+              <td className="py-2 px-3 w-[25%] font-bold text-left align-top uppercase">{sessionName}</td>
+            </tr>
+            <tr>
+              <td className="py-2 px-3 font-extrabold text-left align-top">DEPARTMENT:</td>
+              <td className="py-2 px-3 font-bold text-left align-top uppercase">{departmentNameVal}</td>
+              <td className="py-2 px-3 font-extrabold text-left align-top">SEMESTER:</td>
+              <td className="py-2 px-3 font-bold text-left align-top uppercase">{selectedSemester}</td>
+            </tr>
+            <tr>
+              <td className="py-2 px-3 font-extrabold text-left align-top">PROGRAMME:</td>
+              <td className="py-2 px-3 font-bold text-left align-top uppercase">{programmeName}</td>
+              <td className="py-2 px-3 font-extrabold text-left align-top">LEVEL:</td>
+              <td className="py-2 px-3 font-bold text-left align-top uppercase">{levelStr}</td>
+            </tr>
+          </tbody>
+        </table>
 
-        <div className="relative z-10 space-y-6">
-          <Header
-            universityName={universityName}
-            portalLogoUrl={portalLogoUrl}
-            facultyName={settings?.facultyName}
-            departmentName={departmentName}
-          />
+        {/* Box 2: Student Identity */}
+        <table className="w-full border-collapse border border-gray-300 text-[10px] mb-6">
+          <tbody>
+            <tr>
+              <td className="py-2.5 px-3 w-[15%] font-extrabold text-left align-middle">NAME:</td>
+              <td className="py-2.5 px-3 w-[45%] font-bold text-left align-middle uppercase">{student.fullname}</td>
+              <td className="py-2.5 px-3 w-[15%] font-extrabold text-left align-middle">MATRIC NO:</td>
+              <td className="py-2.5 px-3 w-[25%] font-bold text-left align-middle uppercase">{student.matricNumber ?? '—'}</td>
+            </tr>
+          </tbody>
+        </table>
 
-          <div className="text-center">
-            <h1 className="text-2xl font-bold tracking-wide">STATEMENT OF RESULT</h1>
-            <p className="mt-1 text-xs uppercase tracking-wider">{student.level?.replace('L', '')}L {session} Academic Session</p>
-          </div>
+        {/* Main Results Table */}
+        <table className="w-full border-collapse text-[10px] mb-8">
+          <thead>
+            <tr className="border-y border-black font-extrabold text-left">
+              <th className="py-2.5 px-1.5 w-[5%]">S/N</th>
+              <th className="py-2.5 px-1.5 w-[15%]">COURSE CODE</th>
+              <th className="py-2.5 px-1.5 w-[43%]">COURSE TITLE</th>
+              <th className="py-2.5 px-1.5 w-[8%] text-center">UNIT</th>
+              <th className="py-2.5 px-1.5 w-[8%] text-center">SCORE</th>
+              <th className="py-2.5 px-1.5 w-[8%] text-center">GRADE</th>
+              <th className="py-2.5 px-1.5 w-[13%] text-center">REMARK</th>
+            </tr>
+          </thead>
+          <tbody>
+            {currentResults.map((r, index) => {
+              const remark = r.gradePoint > 0 ? 'PASSED' : 'FAILED';
+              return (
+                <tr key={r.id} className="border-b border-gray-300/60 font-semibold">
+                  <td className="py-2 px-1.5 text-left">{index + 1}</td>
+                  <td className="py-2 px-1.5 text-left uppercase">{r.course.code}</td>
+                  <td className="py-2 px-1.5 text-left uppercase">{r.course.title}</td>
+                  <td className="py-2 px-1.5 text-center">{r.course.creditUnits}</td>
+                  <td className="py-2 px-1.5 text-center">{Math.round(r.totalScore)}</td>
+                  <td className="py-2 px-1.5 text-center uppercase">{r.grade}</td>
+                  <td className="py-2 px-1.5 text-center uppercase">{remark}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
 
-          <table className="w-full border-collapse text-sm">
-            <tbody>
-              <tr className="border-b border-black/40">
-                <td className="w-1/3 py-1.5 font-semibold">Name:</td>
-                <td className="py-1.5">{student.fullname}</td>
-                <td className="w-1/4 py-1.5 font-semibold">Matric No:</td>
-                <td className="py-1.5">{student.matricNumber ?? '—'}</td>
+        {/* Bottom Performance Blocks */}
+        <div className="grid grid-cols-3 gap-6 text-[10px]">
+          {/* CURRENT stats */}
+          <table className="w-full border-collapse border border-gray-300 font-semibold">
+            <thead>
+              <tr className="border-b border-gray-300">
+                <th colSpan={2} className="py-2 px-3 text-left font-extrabold uppercase">CURRENT</th>
               </tr>
-              <tr className="border-b border-black/40">
-                <td className="py-1.5 font-semibold">Level:</td>
-                <td className="py-1.5">{student.level?.replace('L', 'Level ') ?? '—'}</td>
-                <td className="py-1.5 font-semibold">Department:</td>
-                <td className="py-1.5">{departmentName ?? '—'}</td>
+            </thead>
+            <tbody>
+              <tr className="border-b border-gray-300">
+                <td className="py-2 px-3 w-[70%] text-left">TCC</td>
+                <td className="py-2 px-3 w-[30%] text-center border-l border-gray-300">{currentStats.tcc}</td>
+              </tr>
+              <tr className="border-b border-gray-300">
+                <td className="py-2 px-3 text-left">TCE</td>
+                <td className="py-2 px-3 text-center border-l border-gray-300">{currentStats.tce}</td>
+              </tr>
+              <tr className="border-b border-gray-300">
+                <td className="py-2 px-3 text-left">TGP</td>
+                <td className="py-2 px-3 text-center border-l border-gray-300">{currentStats.tgp}</td>
               </tr>
               <tr>
-                <td className="py-1.5 font-semibold">Session:</td>
-                <td className="py-1.5" colSpan={3}>
-                  {session}
-                </td>
+                <td className="py-2 px-3 text-left">GPA</td>
+                <td className="py-2 px-3 text-center border-l border-gray-300">{currentStats.gpa.toFixed(2)}</td>
               </tr>
             </tbody>
           </table>
 
-          {Object.entries(grouped).map(([sem, rows]) => (
-            <section key={sem}>
-              <h2 className="mb-2 flex items-center gap-2 border-b-2 border-black pb-1 text-sm font-bold uppercase tracking-wider">
-                <BookOpen className="h-4 w-4" />
-                {sem === 'FIRST' ? 'First' : 'Second'} Semester
-              </h2>
-              <table className="w-full border-collapse text-xs">
-                <thead>
-                  <tr className="border-b-2 border-black text-left">
-                    <th className="py-1.5">Code</th>
-                    <th className="py-1.5">Title</th>
-                    <th className="py-1.5 text-right">Units</th>
-                    <th className="py-1.5 text-right">CA</th>
-                    <th className="py-1.5 text-right">Exam</th>
-                    <th className="py-1.5 text-right">Total</th>
-                    <th className="py-1.5 text-center">Grade</th>
-                    <th className="py-1.5 text-right">GP</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((r) => {
-                    const c = courses.find((x) => x.id === r.courseId);
-                    return (
-                      <tr key={r.id} className="border-b border-black/30">
-                        <td className="py-1.5 font-semibold">{c?.code ?? '—'}</td>
-                        <td className="py-1.5">{c?.title ?? '—'}</td>
-                        <td className="py-1.5 text-right tabular-nums">{c?.creditUnits ?? '—'}</td>
-                        <td className="py-1.5 text-right tabular-nums">{r.caScore.toFixed(1)}</td>
-                        <td className="py-1.5 text-right tabular-nums">{r.examScore.toFixed(1)}</td>
-                        <td className="py-1.5 text-right font-semibold tabular-nums">
-                          {r.totalScore.toFixed(1)}
-                        </td>
-                        <td className="py-1.5 text-center">
-                          <span
-                            className={cn(
-                              'inline-flex h-5 w-5 items-center justify-center rounded border text-[10px] font-bold',
-                              gradeTone[r.grade] ?? 'border-black text-black',
-                            )}
-                          >
-                            {r.grade}
-                          </span>
-                        </td>
-                        <td className="py-1.5 text-right tabular-nums">{r.gradePoint.toFixed(1)}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </section>
-          ))}
+          {/* PREVIOUS stats */}
+          <table className="w-full border-collapse border border-gray-300 font-semibold">
+            <thead>
+              <tr className="border-b border-gray-300">
+                <th colSpan={2} className="py-2 px-3 text-left font-extrabold uppercase">PREVIOUS</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="border-b border-gray-300">
+                <td className="py-2 px-3 w-[70%] text-left">TCC</td>
+                <td className="py-2 px-3 w-[30%] text-center border-l border-gray-300">{previousStats.tcc}</td>
+              </tr>
+              <tr className="border-b border-gray-300">
+                <td className="py-2 px-3 text-left">TCE</td>
+                <td className="py-2 px-3 text-center border-l border-gray-300">{previousStats.tce}</td>
+              </tr>
+              <tr className="border-b border-gray-300">
+                <td className="py-2 px-3 text-left">TGP</td>
+                <td className="py-2 px-3 text-center border-l border-gray-300">{previousStats.tgp}</td>
+              </tr>
+              <tr>
+                <td className="py-2 px-3 text-left">GPA</td>
+                <td className="py-2 px-3 text-center border-l border-gray-300">{previousStats.gpa.toFixed(2)}</td>
+              </tr>
+            </tbody>
+          </table>
 
-          <div className="grid grid-cols-2 gap-4 border-t-2 border-black pt-3 text-sm">
-            <div className="flex items-center justify-between">
-              <span className="font-semibold">Semester GPA:</span>
-              <span className="text-base font-bold tabular-nums">{gpa.toFixed(2)} / 5.00</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="font-semibold">CGPA:</span>
-              <span className="text-base font-bold tabular-nums">{cgpa.toFixed(2)} / 5.00</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="font-semibold">Total credit units:</span>
-              <span className="font-bold tabular-nums">{totalUnits}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="font-semibold">Courses passed:</span>
-              <span className="font-bold tabular-nums">
-                {results.filter((r) => r.gradePoint >= 1).length} / {results.length}
-              </span>
-            </div>
-          </div>
-
-          <div className="mt-12 grid grid-cols-2 gap-12 text-sm">
-            <div>
-              <div className="border-t border-black border-dashed pt-2">Dean&apos;s Signature &amp; Stamp</div>
-            </div>
-            <div>
-              <div className="border-t border-black border-dashed pt-2">Date Issued</div>
-            </div>
-          </div>
-
-          <footer className="border-t border-black/45 pt-2 text-center text-[10px] uppercase tracking-widest text-black/60">
-            This is a computer-generated document · {portalShortName}
-            <span className="ml-2 inline-flex items-center gap-1 font-semibold text-emerald-700">
-              <Award className="h-3 w-3" /> Verified
-            </span>
-          </footer>
+          {/* CUMMULATIVE stats */}
+          <table className="w-full border-collapse border border-gray-300 font-semibold">
+            <thead>
+              <tr className="border-b border-gray-300">
+                <th colSpan={2} className="py-2 px-3 text-left font-extrabold uppercase">CUMMULATIVE</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="border-b border-gray-300">
+                <td className="py-2 px-3 w-[70%] text-left">TCC</td>
+                <td className="py-2 px-3 w-[30%] text-center border-l border-gray-300">{cumulativeStats.tcc}</td>
+              </tr>
+              <tr className="border-b border-gray-300">
+                <td className="py-2 px-3 text-left">TCE</td>
+                <td className="py-2 px-3 text-center border-l border-gray-300">{cumulativeStats.tce}</td>
+              </tr>
+              <tr className="border-b border-gray-300">
+                <td className="py-2 px-3 text-left">TGP</td>
+                <td className="py-2 px-3 text-center border-l border-gray-300">{cumulativeStats.tgp}</td>
+              </tr>
+              <tr>
+                <td className="py-2 px-3 text-left">GPA</td>
+                <td className="py-2 px-3 text-center border-l border-gray-300">{cumulativeStats.gpa.toFixed(2)}</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
-      </div>
-    </div>
-  );
-}
-
-function Header({
-  universityName,
-  portalLogoUrl,
-  facultyName,
-  departmentName,
-}: {
-  universityName: string;
-  portalLogoUrl?: string | null;
-  facultyName?: string;
-  departmentName?: string;
-}) {
-  return (
-    <div className="flex flex-col items-center text-center border-b-2 border-black pb-3 gap-2">
-      {portalLogoUrl ? (
-        <Image
-          src={portalLogoUrl}
-          alt="Logo"
-          width={150}
-          height={64}
-          unoptimized
-          className="h-16 w-auto max-w-[200px] object-contain"
-        />
-      ) : (
-        <div className="grid h-12 w-12 place-items-center rounded-full border-2 border-black">
-          <GraduationCap className="h-6 w-6" />
-        </div>
-      )}
-      <div>
-        <p className="text-[10px] uppercase tracking-widest font-bold">{universityName}</p>
-        <h2 className="text-base font-bold uppercase tracking-wide">
-          Faculty of {facultyName || 'Computing & Information Sciences'}, Department of {departmentName || '—'}
-        </h2>
-        <p className="text-[10px] uppercase tracking-widest font-semibold">Departmental Examination Board</p>
       </div>
     </div>
   );
