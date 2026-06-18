@@ -78,7 +78,7 @@ export default function StudentCoursesPage() {
     : true;
 
   const coursesQuery = useQuery({
-    queryKey: ['courses', 'available', studentLevel, semester, user?.departmentId, user?.programmeId],
+    queryKey: ['courses', 'available', studentLevel, semester, user?.departmentId, user?.programmeId, user?.id],
     queryFn: async () => {
       const params: Record<string, string> = {
         level: studentLevel,
@@ -86,6 +86,7 @@ export default function StudentCoursesPage() {
       };
       if (user?.departmentId) params.departmentId = user.departmentId;
       if (user?.programmeId) params.programmeId = user.programmeId;
+      if (user?.id) params.studentId = user.id;
       return api.get<Course[]>('/courses', params);
     },
   });
@@ -297,18 +298,25 @@ export default function StudentCoursesPage() {
                 />
               ) : (
                 <ul className="space-y-2">
-                  {currentEnrollments.map((e) => (
-                    <li
-                      key={e.id}
-                      className="flex flex-col gap-2 rounded-lg border bg-card p-3 sm:flex-row sm:items-center sm:justify-between"
-                    >
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="text-xs font-semibold uppercase tracking-wider text-primary">
-                            {e.course.code}
-                          </span>
-                          <Badge variant="secondary">{e.course.creditUnits} units</Badge>
-                        </div>
+                  {currentEnrollments.map((e) => {
+                    const isCarryOver = e.course.level !== studentLevel;
+                    return (
+                      <li
+                        key={e.id}
+                        className="flex flex-col gap-2 rounded-lg border bg-card p-3 sm:flex-row sm:items-center sm:justify-between"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-xs font-semibold uppercase tracking-wider text-primary">
+                              {e.course.code}
+                            </span>
+                            {isCarryOver && (
+                              <Badge variant="secondary" className="bg-amber-500/10 text-amber-700 border-amber-200 text-[10px] py-0 px-1.5">
+                                Carry-over ({e.course.level})
+                              </Badge>
+                            )}
+                            <Badge variant="secondary">{e.course.creditUnits} units</Badge>
+                          </div>
                         <p className="mt-0.5 line-clamp-1 text-sm font-medium">{e.course.title}</p>
                         {e.course.lecturers && e.course.lecturers.length > 0 && (
                           <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
@@ -327,8 +335,9 @@ export default function StudentCoursesPage() {
                         <Trash2 className="h-4 w-4" />
                         Drop
                       </Button>
-                    </li>
-                  ))}
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
             </CardContent>
@@ -356,6 +365,7 @@ export default function StudentCoursesPage() {
                   {availableCourses.map((c) => {
                     const selected = pending.has(c.id);
                     const wouldExceed = currentUnits + pendingUnits + c.creditUnits > MAX_UNITS;
+                    const isCarryOver = c.level !== studentLevel;
                     return (
                       <button
                         key={c.id}
@@ -374,9 +384,16 @@ export default function StudentCoursesPage() {
                         )}
                       >
                         <div className="flex w-full items-center justify-between">
-                          <span className="text-xs font-semibold uppercase tracking-wider text-primary">
-                            {c.code}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-semibold uppercase tracking-wider text-primary">
+                              {c.code}
+                            </span>
+                            {isCarryOver && (
+                              <Badge variant="secondary" className="bg-amber-500/10 text-amber-700 border-amber-200 text-[10px] py-0 px-1.5">
+                                Carry-over ({c.level})
+                              </Badge>
+                            )}
+                          </div>
                           <Badge variant="secondary">{c.creditUnits} units</Badge>
                         </div>
                         <p className="text-sm font-medium leading-tight">{c.title}</p>

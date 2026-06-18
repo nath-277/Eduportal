@@ -339,14 +339,56 @@ function PersonalStep({
 }) {
   const isStudent = role === 'STUDENT';
 
+  const displayDomainHint = useMemo(() => {
+    if (!allowedEmailDomain) return '';
+    const domains = allowedEmailDomain.split(',').map(d => d.trim().toLowerCase()).filter(Boolean);
+    if (domains.length === 0) return '';
+    
+    const studentDomains = domains.filter(d => d.includes('student') || d.includes('std.'));
+    const staffDomains = domains.filter(d => !d.includes('student') && !d.includes('std.'));
+    
+    if (isStudent) {
+      return studentDomains.length > 0 ? studentDomains.join(' or ') : domains.join(' or ');
+    } else {
+      return staffDomains.length > 0 ? staffDomains.join(' or ') : domains.join(' or ');
+    }
+  }, [allowedEmailDomain, isStudent]);
+
   const personalSchema = useMemo(() => {
     return z.object({
       fullname: z.string().min(2, 'Full name is required'),
       email: z.string().email('Enter a valid email').refine((email) => {
         if (!allowedEmailDomain) return true;
-        return email.toLowerCase().endsWith(`@${allowedEmailDomain.toLowerCase()}`);
+        const domains = allowedEmailDomain.split(',').map(d => d.trim().toLowerCase()).filter(Boolean);
+        if (domains.length === 0) return true;
+        const emailLower = email.trim().toLowerCase();
+
+        const matchedDomain = domains.find(
+          (d) => emailLower.endsWith(`@${d}`) || emailLower.endsWith(`.${d}`)
+        );
+        if (!matchedDomain) return false;
+
+        const studentDomains = domains.filter((d) => d.includes('student') || d.includes('std.'));
+        const staffDomains = domains.filter((d) => !d.includes('student') && !d.includes('std.'));
+
+        if (isStudent) {
+          if (studentDomains.length > 0) {
+            return studentDomains.some(
+              (d) => emailLower.endsWith(`@${d}`) || emailLower.endsWith(`.${d}`)
+            );
+          }
+        } else {
+          if (staffDomains.length > 0) {
+            return staffDomains.some(
+              (d) => emailLower.endsWith(`@${d}`) || emailLower.endsWith(`.${d}`)
+            );
+          }
+        }
+        return true;
       }, {
-        message: allowedEmailDomain ? `Email must end with @${allowedEmailDomain}` : 'Invalid email domain',
+        message: isStudent
+          ? 'Students must register with a student email domain.'
+          : 'Staff members must register with a staff email domain.',
       }),
       departmentId: z.string().min(1, 'Department is required'),
       programmeId: z.string().optional(),
@@ -434,9 +476,9 @@ function PersonalStep({
             <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input id="email" type="email" className="pl-9" {...register('email')} />
           </div>
-          {allowedEmailDomain && (
+          {displayDomainHint && (
             <p className="text-xs text-muted-foreground">
-              Please register using your school email ending in <span className="font-semibold text-primary">@{allowedEmailDomain}</span>.
+              Please register using your school email ending in <span className="font-semibold text-primary">@{displayDomainHint}</span>.
             </p>
           )}
           {errors.email && (

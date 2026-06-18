@@ -475,7 +475,10 @@ export default function AdminSettingsPage() {
                               placeholder="e.g. eduportal.com"
                             />
                           </div>
-                          <p className="text-[11px] text-muted-foreground">Example domain: `eduportal.com` or `university.edu`.</p>
+                          <p className="text-[11px] text-muted-foreground">
+                            Specify multiple domains separated by commas (e.g. <code>aul.edu.ng, student.aul.edu.ng</code>). 
+                            Student signups will match domains containing &quot;student&quot; or &quot;std.&quot;, while staff/admin will match other domains.
+                          </p>
                         </div>
 
                         <div className="grid gap-6 sm:grid-cols-2">
