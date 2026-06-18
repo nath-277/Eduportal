@@ -225,340 +225,327 @@ export default function StudentDashboardPage() {
       </motion.div>
 
       {/* Main Responsive Grid Container */}
-      <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 grid-flow-row-dense">
         
-        {/* Main Content Area (Spans 2 columns on lg screens) */}
-        <div className="space-y-6 lg:col-span-2">
-          
-          {/* GPA snapshot & At a Glance row */}
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-            
-            {/* GPA snapshot Card */}
-            <Card className="border border-border/40 shadow-sm flex flex-col justify-between">
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">
-                    GPA snapshot
-                  </CardTitle>
-                  <Award className="h-4 w-4 text-muted-foreground" />
-                </div>
-              </CardHeader>
-              <CardContent className="flex-1 flex flex-col justify-center">
-                {resultsQuery.isLoading ? (
-                  <div className="space-y-3">
-                    <Skeleton className="h-10 w-24" />
-                    <Skeleton className="h-9 w-full" />
-                  </div>
-                ) : resultsQuery.data?.semesters?.length === 0 ? (
-                  <EmptyGpa />
-                ) : (
-                  <>
-                    <div className="flex items-baseline gap-3">
-                      <p className="text-4xl font-semibold tabular-nums">{cgpa.toFixed(2)}</p>
-                      <Badge variant="secondary" className="gap-1 text-xs bg-primary/10 text-primary border-primary/20 font-bold">
-                        <TrendingUp className="h-3 w-3" />
-                        CGPA
-                      </Badge>
-                    </div>
-                    <p className="mt-1.5 text-xs text-muted-foreground font-medium">
-                      Current semester: <span className="font-semibold text-foreground">{currentGpa.toFixed(2)}</span>
-                    </p>
-                    <div className="mt-3">
-                      <Sparkline data={gradeSparkline} height={36} />
-                    </div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* At a glance Card (Shrinked & Horizontal layout) */}
-            <Card className="border border-border/40 shadow-sm flex flex-col justify-between">
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">
-                    At a glance
-                  </CardTitle>
-                  <Compass className="h-4 w-4 text-muted-foreground" />
-                </div>
-              </CardHeader>
-              <CardContent className="flex-1 flex flex-col justify-center">
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="flex flex-col items-center justify-center rounded-xl border bg-muted/20 p-3 text-center transition hover:border-primary/20 hover:bg-muted/40">
-                    <BookOpen className="h-5 w-5 text-primary shrink-0" />
-                    <span className="mt-1.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Registered</span>
-                    <span className="mt-0.5 text-base font-bold tabular-nums text-foreground">{enrolledCourses.length}</span>
-                  </div>
-                  <div className="flex flex-col items-center justify-center rounded-xl border bg-muted/20 p-3 text-center transition hover:border-primary/20 hover:bg-muted/40">
-                    <GraduationCap className="h-5 w-5 text-primary shrink-0" />
-                    <span className="mt-1.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Credits</span>
-                    <span className="mt-0.5 text-base font-bold tabular-nums text-foreground">{totalCredits}</span>
-                  </div>
-                  <div className="flex flex-col items-center justify-center rounded-xl border bg-muted/20 p-3 text-center transition hover:border-primary/20 hover:bg-muted/40">
-                    <Bell className="h-5 w-5 text-primary shrink-0" />
-                    <span className="mt-1.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Unread</span>
-                    <span className="mt-0.5 text-base font-bold tabular-nums text-foreground">{unreadCount}</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Registered Courses widget (2x2 Grid of Cards with Horizontal snap scrolling) */}
-          <Card className="border border-border/40 shadow-sm">
-            <CardHeader className="pb-3 border-b border-border/30">
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-base font-bold text-foreground">Registered Courses</CardTitle>
-                  <p className="text-xs text-muted-foreground mt-0.5">Your current study schedule for this semester.</p>
-                </div>
-                <Link
-                  href="/student/courses"
-                  className="text-xs font-semibold text-primary hover:underline hover:text-indigo-600 transition"
-                >
-                  Manage Courses
-                </Link>
+        {/* GPA snapshot Card */}
+        <Card className="order-2 md:order-1 md:col-span-1 lg:order-1 lg:col-span-1 border border-border/40 shadow-sm flex flex-col justify-between">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                GPA snapshot
+              </CardTitle>
+              <Award className="h-4 w-4 text-muted-foreground" />
+            </div>
+          </CardHeader>
+          <CardContent className="flex-1 flex flex-col justify-center">
+            {resultsQuery.isLoading ? (
+              <div className="space-y-3">
+                <Skeleton className="h-10 w-24" />
+                <Skeleton className="h-9 w-full" />
               </div>
-            </CardHeader>
-            <CardContent className="pt-4">
-              {enrollmentsQuery.isLoading ? (
-                <div className="grid grid-cols-2 gap-3">
-                  <Skeleton className="h-24 w-full" />
-                  <Skeleton className="h-24 w-full" />
+            ) : resultsQuery.data?.semesters?.length === 0 ? (
+              <EmptyGpa />
+            ) : (
+              <>
+                <div className="flex items-baseline gap-3">
+                  <p className="text-4xl font-semibold tabular-nums">{cgpa.toFixed(2)}</p>
+                  <Badge variant="secondary" className="gap-1 text-xs bg-primary/10 text-primary border-primary/20 font-bold">
+                    <TrendingUp className="h-3 w-3" />
+                    CGPA
+                  </Badge>
                 </div>
-              ) : enrolledCourses.length === 0 ? (
-                <EmptyState
-                  icon={BookOpen}
-                  title="No courses yet"
-                  description="Start registration to see your courses here."
-                  className="m-0 border-0 bg-transparent p-3"
-                  action={
-                    <Button asChild size="sm" variant="outline" className="gap-1.5">
-                      <Link href="/student/courses">
-                        <Plus className="h-3.5 w-3.5" />
-                        Register now
-                      </Link>
-                    </Button>
-                  }
-                />
-              ) : (
-                <div className="space-y-4">
-                  <div
-                    className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-2 scrollbar-none"
-                    onScroll={handleCourseScroll}
-                    style={{ scrollBehavior: 'smooth' }}
-                  >
-                    {courseChunks.map((chunk, chunkIdx) => (
-                      <div
-                        key={chunkIdx}
-                        className="grid grid-cols-2 gap-3 min-w-full shrink-0 snap-center"
-                      >
-                        {chunk.map((e) => (
-                          <div
-                            key={e.id}
-                            className="flex flex-col justify-between rounded-xl border bg-card/60 p-4 transition hover:border-primary/40 hover:shadow-sm"
-                          >
-                            <div className="min-w-0">
-                              <span className="text-[10px] font-bold uppercase tracking-wider text-primary">
-                                {e.course.code}
-                              </span>
-                              <h3 className="mt-1 line-clamp-2 text-sm font-semibold leading-tight text-foreground">
-                                {e.course.title}
-                              </h3>
-                            </div>
-                            <div className="mt-3 flex items-center justify-between border-t border-border/40 pt-2.5 text-xs text-muted-foreground">
-                              <span>{e.course.creditUnits} Units</span>
-                              <Badge variant="secondary" className="text-[10px] py-0 px-1.5 font-semibold bg-muted/60 text-muted-foreground">
-                                {e.course.level}
-                              </Badge>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ))}
-                  </div>
-
-                  {courseChunks.length > 1 && (
-                    <div className="flex justify-center gap-1.5">
-                      {courseChunks.map((_, idx) => (
-                        <div
-                          key={idx}
-                          className={cn(
-                            "h-1.5 rounded-full transition-all duration-300",
-                            activeCoursePage === idx ? "w-4 bg-primary" : "w-1.5 bg-muted-foreground/30"
-                          )}
-                        />
-                      ))}
-                    </div>
-                  )}
+                <p className="mt-1.5 text-xs text-muted-foreground font-medium">
+                  Current semester: <span className="font-semibold text-foreground">{currentGpa.toFixed(2)}</span>
+                </p>
+                <div className="mt-3">
+                  <Sparkline data={gradeSparkline} height={36} />
                 </div>
-              )}
-            </CardContent>
-          </Card>
+              </>
+            )}
+          </CardContent>
+        </Card>
 
-          {/* Announcements & Recent resources list side-by-side */}
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-            
-            {/* Announcements Card */}
-            <Card className="border border-border/40 shadow-sm">
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">
-                    Announcements
-                  </CardTitle>
-                  <Megaphone className="h-4 w-4 text-muted-foreground" />
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {announcementsQuery.isLoading ? (
-                  <div className="space-y-2">
-                    <Skeleton className="h-14 w-full" />
-                    <Skeleton className="h-14 w-full" />
-                  </div>
-                ) : announcements.length === 0 ? (
-                  <EmptyState
-                    icon={Megaphone}
-                    title="No announcements yet"
-                    description="Departmental updates will appear here."
-                    className="m-0 border-0 bg-transparent p-3"
-                  />
-                ) : (
-                  announcements.map((a) => (
-                    <div key={a.id} className="rounded-lg border bg-card p-3 shadow-sm hover:border-primary/20 transition">
-                      <div className="flex items-start gap-2">
-                        {a.isPinned && <Pin className="mt-0.5 h-3.5 w-3.5 text-primary shrink-0" />}
-                        <div className="min-w-0 flex-1">
-                          <p className="line-clamp-1 text-sm font-medium text-foreground">{a.title}</p>
-                          <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
-                            {a.body}
-                          </p>
-                          <p className="mt-1 text-[10px] text-muted-foreground">
-                            {a.author.fullname} · {formatTimeAgo(a.createdAt)}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </CardContent>
-            </Card>
+        {/* At a glance Card (Shrinked & Horizontal layout) */}
+        <Card className="order-3 md:order-2 md:col-span-1 lg:order-2 lg:col-span-1 border border-border/40 shadow-sm flex flex-col justify-between">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                At a glance
+              </CardTitle>
+              <Compass className="h-4 w-4 text-muted-foreground" />
+            </div>
+          </CardHeader>
+          <CardContent className="flex-1 flex flex-col justify-center">
+            <div className="grid grid-cols-3 gap-2">
+              <div className="flex flex-col items-center justify-center rounded-xl border bg-muted/20 p-3 text-center transition hover:border-primary/20 hover:bg-muted/40">
+                <BookOpen className="h-5 w-5 text-primary shrink-0" />
+                <span className="mt-1.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Registered</span>
+                <span className="mt-0.5 text-base font-bold tabular-nums text-foreground">{enrolledCourses.length}</span>
+              </div>
+              <div className="flex flex-col items-center justify-center rounded-xl border bg-muted/20 p-3 text-center transition hover:border-primary/20 hover:bg-muted/40">
+                <GraduationCap className="h-5 w-5 text-primary shrink-0" />
+                <span className="mt-1.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Credits</span>
+                <span className="mt-0.5 text-base font-bold tabular-nums text-foreground">{totalCredits}</span>
+              </div>
+              <div className="flex flex-col items-center justify-center rounded-xl border bg-muted/20 p-3 text-center transition hover:border-primary/20 hover:bg-muted/40">
+                <Bell className="h-5 w-5 text-primary shrink-0" />
+                <span className="mt-1.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Unread</span>
+                <span className="mt-0.5 text-base font-bold tabular-nums text-foreground">{unreadCount}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-            {/* Recent resources Card */}
-            <Card className="border border-border/40 shadow-sm">
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">
-                    Recent resources
-                  </CardTitle>
-                  <Link
-                    href="/student/resources"
-                    className="text-xs font-semibold text-primary hover:underline transition"
-                  >
-                    Browse
-                  </Link>
-                </div>
-              </CardHeader>
-              <CardContent className="grid grid-cols-2 gap-2">
-                {resourcesQuery.isLoading ? (
-                  <div className="col-span-2 space-y-2">
-                    <Skeleton className="h-20 w-full" />
-                    <Skeleton className="h-20 w-full" />
-                  </div>
-                ) : resources.length === 0 ? (
-                  <div className="col-span-2">
-                    <EmptyState
-                      icon={FileText}
-                      title="No resources yet"
-                      description="Materials will appear here once uploaded."
-                      className="m-0 border-0 bg-transparent p-4"
-                    />
-                  </div>
-                ) : (
-                  resources.map((r) => (
-                    <a
-                      key={r.id}
-                      href={r.fileUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="group flex flex-col rounded-xl border bg-card p-3 shadow-sm transition hover:border-primary/40 hover:shadow-sm"
-                    >
-                      <div className="flex items-center justify-between text-[10px] uppercase tracking-wider text-muted-foreground font-bold">
-                        <span>{r.type}</span>
-                        <ArrowUpRight className="h-3 w-3 opacity-0 transition group-hover:opacity-100 text-primary" />
-                      </div>
-                      <p className="mt-1 line-clamp-2 text-xs font-medium text-foreground leading-snug">{r.title}</p>
-                      {r.course && (
-                        <p className="mt-auto pt-1 text-[9px] font-bold text-primary uppercase tracking-wider">
-                          {r.course.code}
-                        </p>
-                      )}
-                    </a>
-                  ))
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-
-        {/* Sidebar Area (Spans 1 column on all screens) */}
-        <div className="space-y-6 lg:col-span-1">
-          
-          {/* Quick Actions Card */}
-          <Card className="border border-border/40 shadow-sm">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Quick actions</CardTitle>
-            </CardHeader>
-            <CardContent className="grid grid-cols-3 gap-2">
+        {/* Quick actions Card */}
+        <Card className="order-1 md:order-3 md:col-span-1 lg:order-3 lg:col-span-1 border border-border/40 shadow-sm flex flex-col justify-between">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Quick actions</CardTitle>
+          </CardHeader>
+          <CardContent className="flex-1 flex flex-col justify-center">
+            <div className="grid grid-cols-3 gap-2">
               <ActionTile href="/student/courses" icon={BookOpen} label="Register" />
               <ActionTile href="/student/results" icon={Award} label="Results" />
               <ActionTile href="/student/resources" icon={FileText} label="Resources" />
-            </CardContent>
-          </Card>
+            </div>
+          </CardContent>
+        </Card>
 
-          {/* Latest Alerts Card */}
-          <Card className="border border-border/40 shadow-sm">
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Latest alerts
-                </CardTitle>
-                <Clock className="h-4 w-4 text-muted-foreground" />
+        {/* Registered Courses widget (2x2 Grid of Cards with Horizontal snap scrolling) */}
+        <Card className="order-4 md:order-5 md:col-span-2 lg:order-4 lg:col-span-2 border border-border/40 shadow-sm">
+          <CardHeader className="py-3 border-b border-border/30">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-base font-bold text-foreground">Registered Courses</CardTitle>
+                <p className="text-xs text-muted-foreground mt-0.5">Your current study schedule for this semester.</p>
               </div>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {notificationsQuery.isLoading ? (
-                <div className="space-y-2">
-                  <Skeleton className="h-10 w-full" />
-                  <Skeleton className="h-10 w-full" />
+              <Link
+                href="/student/courses"
+                className="text-xs font-semibold text-primary hover:underline hover:text-indigo-600 transition"
+              >
+                Manage Courses
+              </Link>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-3">
+            {enrollmentsQuery.isLoading ? (
+              <div className="grid grid-cols-2 gap-3">
+                <Skeleton className="h-24 w-full" />
+                <Skeleton className="h-24 w-full" />
+              </div>
+            ) : enrolledCourses.length === 0 ? (
+              <EmptyState
+                icon={BookOpen}
+                title="No courses yet"
+                description="Start registration to see your courses here."
+                className="m-0 border-0 bg-transparent p-3"
+                action={
+                  <Button asChild size="sm" variant="outline" className="gap-1.5">
+                    <Link href="/student/courses">
+                      <Plus className="h-3.5 w-3.5" />
+                      Register now
+                    </Link>
+                  </Button>
+                }
+              />
+            ) : (
+              <div className="space-y-4">
+                <div
+                  className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-2 scrollbar-none"
+                  onScroll={handleCourseScroll}
+                  style={{ scrollBehavior: 'smooth' }}
+                >
+                  {courseChunks.map((chunk, chunkIdx) => (
+                    <div
+                      key={chunkIdx}
+                      className="grid grid-cols-2 gap-3 min-w-full shrink-0 snap-center"
+                    >
+                      {chunk.map((e) => (
+                        <div
+                          key={e.id}
+                          className="flex flex-col justify-between rounded-xl border bg-card/60 p-3 transition hover:border-primary/40 hover:shadow-sm"
+                        >
+                          <div className="min-w-0">
+                            <span className="text-[9px] font-bold uppercase tracking-wider text-primary">
+                              {e.course.code}
+                            </span>
+                            <h3 className="mt-0.5 line-clamp-2 text-xs font-semibold leading-tight text-foreground">
+                              {e.course.title}
+                            </h3>
+                          </div>
+                          <div className="mt-2 flex items-center justify-between border-t border-border/30 pt-1.5 text-[11px] text-muted-foreground">
+                            <span>{e.course.creditUnits} Units</span>
+                            <Badge variant="secondary" className="text-[9px] py-0 px-1 font-semibold bg-muted/60 text-muted-foreground">
+                              {e.course.level}
+                            </Badge>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
                 </div>
-              ) : notifications.length === 0 ? (
+
+                {courseChunks.length > 1 && (
+                  <div className="flex justify-center gap-1.5">
+                    {courseChunks.map((_, idx) => (
+                      <div
+                        key={idx}
+                        className={cn(
+                          "h-1.5 rounded-full transition-all duration-300",
+                          activeCoursePage === idx ? "w-4 bg-primary" : "w-1.5 bg-muted-foreground/30"
+                        )}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Recent resources Card */}
+        <Card className="order-5 md:order-7 md:col-span-1 lg:order-5 lg:col-span-1 border border-border/40 shadow-sm flex flex-col">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Recent resources
+              </CardTitle>
+              <Link
+                href="/student/resources"
+                className="text-xs font-semibold text-primary hover:underline transition"
+              >
+                Browse
+              </Link>
+            </div>
+          </CardHeader>
+          <CardContent className="flex-1 grid grid-cols-2 gap-2">
+            {resourcesQuery.isLoading ? (
+              <div className="col-span-2 space-y-2">
+                <Skeleton className="h-20 w-full" />
+                <Skeleton className="h-20 w-full" />
+              </div>
+            ) : resources.length === 0 ? (
+              <div className="col-span-2">
                 <EmptyState
-                  icon={Bell}
-                  title="You're all caught up!"
-                  description="New alerts will show up here."
-                  className="m-0 border-0 bg-transparent p-3"
+                  icon={FileText}
+                  title="No resources yet"
+                  description="Materials will appear here once uploaded."
+                  className="m-0 border-0 bg-transparent p-4"
                 />
-              ) : (
-                notifications.map((n) => (
-                  <div
-                    key={n.id}
-                    className="flex items-start gap-2 rounded-lg border bg-card p-2.5 shadow-sm hover:border-primary/20 transition"
-                  >
-                    <div className="mt-1 h-2 w-2 shrink-0 rounded-full bg-primary" />
+              </div>
+            ) : (
+              resources.map((r) => (
+                <a
+                  key={r.id}
+                  href={r.fileUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group flex flex-col rounded-xl border bg-card p-3 shadow-sm transition hover:border-primary/40 hover:shadow-sm"
+                >
+                  <div className="flex items-center justify-between text-[10px] uppercase tracking-wider text-muted-foreground font-bold">
+                    <span>{r.type}</span>
+                    <ArrowUpRight className="h-3 w-3 opacity-0 transition group-hover:opacity-100 text-primary" />
+                  </div>
+                  <p className="mt-1 line-clamp-2 text-xs font-medium text-foreground leading-snug">{r.title}</p>
+                  {r.course && (
+                    <p className="mt-auto pt-1 text-[9px] font-bold text-primary uppercase tracking-wider">
+                      {r.course.code}
+                    </p>
+                  )}
+                </a>
+              ))
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Announcements Card */}
+        <Card className="order-6 md:order-6 md:col-span-1 lg:order-6 lg:col-span-2 border border-border/40 shadow-sm flex flex-col">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Announcements
+              </CardTitle>
+              <Megaphone className="h-4 w-4 text-muted-foreground" />
+            </div>
+          </CardHeader>
+          <CardContent className="flex-1 space-y-3">
+            {announcementsQuery.isLoading ? (
+              <div className="space-y-2">
+                <Skeleton className="h-14 w-full" />
+                <Skeleton className="h-14 w-full" />
+              </div>
+            ) : announcements.length === 0 ? (
+              <EmptyState
+                icon={Megaphone}
+                title="No announcements yet"
+                description="Departmental updates will appear here."
+                className="m-0 border-0 bg-transparent p-3"
+              />
+            ) : (
+              announcements.map((a) => (
+                <div key={a.id} className="rounded-lg border bg-card p-3 shadow-sm hover:border-primary/20 transition">
+                  <div className="flex items-start gap-2">
+                    {a.isPinned && <Pin className="mt-0.5 h-3.5 w-3.5 text-primary shrink-0" />}
                     <div className="min-w-0 flex-1">
-                      <p className="line-clamp-1 text-xs font-semibold text-foreground">{n.title}</p>
-                      <p className="line-clamp-1 text-xs text-muted-foreground">
-                        {n.message}
+                      <p className="line-clamp-1 text-sm font-medium text-foreground">{a.title}</p>
+                      <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
+                        {a.body}
+                      </p>
+                      <p className="mt-1 text-[10px] text-muted-foreground">
+                        {a.author.fullname} · {formatTimeAgo(a.createdAt)}
                       </p>
                     </div>
-                    <span className="shrink-0 text-[9px] text-muted-foreground font-medium">
-                      {formatTimeAgo(n.createdAt)}
-                    </span>
                   </div>
-                ))
-              )}
-            </CardContent>
-          </Card>
-        </div>
+                </div>
+              ))
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Latest alerts Card */}
+        <Card className="order-7 md:order-4 md:col-span-1 lg:order-7 lg:col-span-1 border border-border/40 shadow-sm flex flex-col">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Latest alerts
+              </CardTitle>
+              <Clock className="h-4 w-4 text-muted-foreground" />
+            </div>
+          </CardHeader>
+          <CardContent className="flex-1 space-y-2">
+            {notificationsQuery.isLoading ? (
+              <div className="space-y-2">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            ) : notifications.length === 0 ? (
+              <EmptyState
+                icon={Bell}
+                title="You're all caught up!"
+                description="New alerts will show up here."
+                className="m-0 border-0 bg-transparent p-3"
+              />
+            ) : (
+              notifications.map((n) => (
+                <div
+                  key={n.id}
+                  className="flex items-start gap-2 rounded-lg border bg-card p-2.5 shadow-sm hover:border-primary/20 transition"
+                >
+                  <div className="mt-1 h-2 w-2 shrink-0 rounded-full bg-primary" />
+                  <div className="min-w-0 flex-1">
+                    <p className="line-clamp-1 text-xs font-semibold text-foreground">{n.title}</p>
+                    <p className="line-clamp-1 text-xs text-muted-foreground">
+                      {n.message}
+                    </p>
+                  </div>
+                  <span className="shrink-0 text-[9px] text-muted-foreground font-medium">
+                    {formatTimeAgo(n.createdAt)}
+                  </span>
+                </div>
+              ))
+            )}
+          </CardContent>
+        </Card>
+
       </div>
       <FeedbackSurveyModal />
     </StudentShell>
