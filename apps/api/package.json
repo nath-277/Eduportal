@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "bun --watch src/index.ts",
-    "build": "tsc",
+    "build": "bun build ./src/index.ts --outdir ./dist --target bun",
     "start": "bun dist/index.js",
     "lint": "eslint .",
     "type-check": "tsc --noEmit",
