@@ -1,11 +1,10 @@
-import bcrypt from 'bcryptjs';
-
-const SALT_ROUNDS = 12;
-
 export async function hashPassword(password: string): Promise<string> {
-  return bcrypt.hash(password, SALT_ROUNDS);
+  return Bun.password.hash(password, {
+    algorithm: 'bcrypt',
+    cost: 12,
+  });
 }
 
 export async function comparePassword(password: string, hash: string): Promise<boolean> {
-  return bcrypt.compare(password, hash);
+  return Bun.password.verify(password, hash);
 }

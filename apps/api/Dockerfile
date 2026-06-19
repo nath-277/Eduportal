@@ -25,7 +25,7 @@ COPY apps/api/package.json apps/api/
 COPY packages/shared/package.json packages/shared/
 RUN pnpm install --prod --frozen-lockfile --filter @eduportal/api... --filter @eduportal/shared...
 
-FROM node:20-alpine AS runner
+FROM oven/bun:1.1-alpine AS runner
 RUN apk add --no-cache openssl
 ENV NODE_ENV=production
 ENV PORT=3001
@@ -44,4 +44,4 @@ COPY --from=build /app/pnpm-workspace.yaml ./pnpm-workspace.yaml
 USER app
 EXPOSE 3001
 WORKDIR /app/apps/api
-CMD ["node", "dist/index.js"]
+CMD ["bun", "dist/index.js"]
