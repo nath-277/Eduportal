@@ -1,5 +1,4 @@
 import { PrismaClient, Level, Semester, UserRole, ResultStatus, Course, User } from '@prisma/client';
-import bcrypt from 'bcryptjs';
 import { syncUserCommunities } from '../src/lib/community.js';
 
 const prisma = new PrismaClient();
@@ -99,9 +98,9 @@ async function main(): Promise<void> {
     sessionNameToId[s.name] = s.id;
   }
 
-  const adminHash = await bcrypt.hash('Admin@1234', 12);
-  const lecturerHash = await bcrypt.hash('Lecturer@1234', 12);
-  const studentHash = await bcrypt.hash('Student@1234', 12);
+  const adminHash = await Bun.password.hash('Admin@1234', { algorithm: 'bcrypt', cost: 12 });
+  const lecturerHash = await Bun.password.hash('Lecturer@1234', { algorithm: 'bcrypt', cost: 12 });
+  const studentHash = await Bun.password.hash('Student@1234', { algorithm: 'bcrypt', cost: 12 });
 
   const admin = await prisma.user.create({
     data: {
