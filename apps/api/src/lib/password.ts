@@ -1,3 +1,5 @@
+/// <reference types="bun" />
+
 export async function hashPassword(password: string): Promise<string> {
   return Bun.password.hash(password, {
     algorithm: 'bcrypt',

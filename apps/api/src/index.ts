@@ -1,3 +1,5 @@
+/// <reference types="bun" />
+
 import { config } from './config.js';
 import { app } from './app.js';
 

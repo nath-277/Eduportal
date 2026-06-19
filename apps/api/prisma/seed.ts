@@ -1,3 +1,5 @@
+/// <reference types="bun" />
+
 import { PrismaClient, Level, Semester, UserRole, ResultStatus, Course, User } from '@prisma/client';
 import { syncUserCommunities } from '../src/lib/community.js';
 
