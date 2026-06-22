@@ -1,12 +1,11 @@
-/// <reference types="bun" />
+import bcrypt from 'bcryptjs';
+
+const SALT_ROUNDS = 12;
 
 export async function hashPassword(password: string): Promise<string> {
-  return Bun.password.hash(password, {
-    algorithm: 'bcrypt',
-    cost: 12,
-  });
+  return bcrypt.hash(password, SALT_ROUNDS);
 }
 
 export async function comparePassword(password: string, hash: string): Promise<boolean> {
-  return Bun.password.verify(password, hash);
+  return bcrypt.compare(password, hash);
 }
