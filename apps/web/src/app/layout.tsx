@@ -19,6 +19,11 @@ export const metadata: Metadata = {
   description:
     'A Web-Based Departmental Student Information and Collaborative Resource Portal.',
   manifest: '/manifest.json',
+  icons: {
+    icon: '/icon.svg',
+    shortcut: '/icon.svg',
+    apple: '/icon.svg',
+  },
   other: {
     'theme-color': '#3b82f6',
     'mobile-web-app-capable': 'yes',
