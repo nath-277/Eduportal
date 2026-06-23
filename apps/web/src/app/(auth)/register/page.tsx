@@ -66,6 +66,7 @@ const personalSchema = z.object({
   level: z.string().min(1, 'Level is required'),
   matricNumber: z.string().min(3, 'Matric number is required'),
   staffId: z.string().optional(),
+  title: z.string().optional(),
 });
 
 const passwordSchema = z
@@ -138,7 +139,10 @@ export default function RegisterPage() {
     setSubmitting(true);
     try {
       const payload: Record<string, unknown> = {
-        fullname: data.fullname,
+        fullname:
+          data.role === 'LECTURER' && data.title
+            ? `${data.title} ${data.fullname}`
+            : data.fullname,
         email: data.email,
         password: data.password,
         role: data.role,
@@ -395,6 +399,7 @@ function PersonalStep({
       level: z.string(),
       matricNumber: z.string(),
       staffId: z.string().optional(),
+      title: z.string().optional(),
     }).refine((data) => {
       if (isStudent && !data.programmeId) return false;
       return true;
@@ -413,6 +418,12 @@ function PersonalStep({
     }, {
       path: ['matricNumber'],
       message: 'Matric number is required (at least 3 characters)',
+    }).refine((data) => {
+      if (!isStudent && (!data.title || data.title.trim().length === 0)) return false;
+      return true;
+    }, {
+      path: ['title'],
+      message: 'Title is required',
     });
   }, [allowedEmailDomain, isStudent]);
 
@@ -433,12 +444,14 @@ function PersonalStep({
       level: defaults.level ?? '',
       matricNumber: defaults.matricNumber ?? '',
       staffId: defaults.staffId ?? '',
+      title: defaults.title ?? '',
     },
   });
 
   const departmentId = watch('departmentId');
   const programmeId = watch('programmeId') ?? '';
   const level = watch('level') ?? '';
+  const title = watch('title') ?? '';
 
   const programmesQuery = useQuery({
     queryKey: ['programmes', 'by-department', departmentId],
@@ -581,10 +594,36 @@ function PersonalStep({
             </div>
           </>
         ) : (
-          <div className="space-y-2 sm:col-span-2">
-            <Label htmlFor="staffId">Staff ID (optional)</Label>
-            <Input id="staffId" placeholder="STF001" {...register('staffId')} />
-          </div>
+          <>
+            <div className="space-y-2">
+              <Label>Title</Label>
+              <Select
+                value={title}
+                onValueChange={(v: string) =>
+                  setValue('title', v, { shouldValidate: true })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select title" />
+                </SelectTrigger>
+                <SelectContent>
+                  {['Prof.', 'Dr.', 'Mr.', 'Mrs.', 'Ms.', 'Miss'].map((t) => (
+                    <SelectItem key={t} value={t}>
+                      {t}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.title && (
+                <p className="text-xs text-destructive">{errors.title.message}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="staffId">Staff ID (optional)</Label>
+              <Input id="staffId" placeholder="STF001" {...register('staffId')} />
+            </div>
+          </>
         )}
       </div>
 
