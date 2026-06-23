@@ -561,55 +561,57 @@ export function NotificationMenu({
               </AnimatePresence>
             </Button>
 
-            <AnimatePresence>
-              {open && mounted && typeof document !== 'undefined' ? (
-                createPortal(
-                  <motion.div
-                    className="fixed inset-0 z-[70] flex items-end justify-center"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                    role="dialog"
-                    aria-modal="true"
-                    aria-label="Notifications Drawer"
-                  >
-                    <button
-                      type="button"
-                      aria-label="Close notifications"
-                      className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
-                      onClick={() => handleOpenChange(false)}
-                    />
+            {mounted && typeof document !== 'undefined' ? (
+              createPortal(
+                <AnimatePresence>
+                  {open ? (
                     <motion.div
-                      className="relative w-full max-w-md h-[50vh] overflow-hidden rounded-t-3xl border-t border-border bg-background shadow-2xl pb-[env(safe-area-inset-bottom)] flex flex-col z-10"
-                      initial={{ y: '100%' }}
-                      animate={{ y: 0 }}
-                      exit={{ y: '100%' }}
-                      transition={{ type: 'spring', damping: 28, stiffness: 260 }}
-                      drag="y"
-                      dragConstraints={{ top: 0, bottom: 0 }}
-                      dragElastic={0.15}
-                      onDragEnd={(_, info) => {
-                        if (info.offset.y > 80 || info.velocity.y > 500) {
-                          handleOpenChange(false);
-                        }
-                      }}
+                      className="fixed inset-0 z-[70] flex items-end justify-center"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      role="dialog"
+                      aria-modal="true"
+                      aria-label="Notifications Drawer"
                     >
-                      {/* Drag handle */}
-                      <div className="flex justify-center pb-1 pt-3 shrink-0">
-                        <div className="h-1.5 w-12 rounded-full bg-muted-foreground/30" />
-                      </div>
+                      <button
+                        type="button"
+                        aria-label="Close notifications"
+                        className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
+                        onClick={() => handleOpenChange(false)}
+                      />
+                      <motion.div
+                        className="relative w-full max-w-md h-[50vh] overflow-hidden rounded-t-3xl border-t border-border bg-background shadow-2xl pb-[env(safe-area-inset-bottom)] flex flex-col z-10"
+                        initial={{ y: '100%' }}
+                        animate={{ y: 0 }}
+                        exit={{ y: '100%' }}
+                        transition={{ type: 'spring', damping: 28, stiffness: 260 }}
+                        drag="y"
+                        dragConstraints={{ top: 0, bottom: 0 }}
+                        dragElastic={0.15}
+                        onDragEnd={(_, info) => {
+                          if (info.offset.y > 80 || info.velocity.y > 500) {
+                            handleOpenChange(false);
+                          }
+                        }}
+                      >
+                        {/* Drag handle */}
+                        <div className="flex justify-center pb-1 pt-3 shrink-0">
+                          <div className="h-1.5 w-12 rounded-full bg-muted-foreground/30" />
+                        </div>
 
-                      {/* Notifications content */}
-                      <div className="flex-1 min-h-0">
-                        {notificationsList(true)}
-                      </div>
+                        {/* Notifications content */}
+                        <div className="flex-1 min-h-0">
+                          {notificationsList(true)}
+                        </div>
+                      </motion.div>
                     </motion.div>
-                  </motion.div>,
-                  document.body
-                )
-              ) : null}
-            </AnimatePresence>
+                  ) : null}
+                </AnimatePresence>,
+                document.body
+              )
+            ) : null}
           </>
         ) : (
           <Button
