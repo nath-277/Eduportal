@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -77,6 +77,25 @@ export function NotificationMenu({
   const [localOpen, setLocalOpen] = useState(false);
   const open = controlledOpen !== undefined ? controlledOpen : localOpen;
   const setOpen = controlledOnOpenChange !== undefined ? controlledOnOpenChange : setLocalOpen;
+
+  const [mounted, setMounted] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia('(max-width: 767px)').matches;
+  });
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setMounted(true);
+    }, 0);
+    const media = window.matchMedia('(max-width: 767px)');
+    const listener = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    media.addEventListener('change', listener);
+    return () => {
+      clearTimeout(timer);
+      media.removeEventListener('change', listener);
+    };
+  }, []);
 
   const queryKey = ['notifications', 'mine', role.toLowerCase()];
 
@@ -360,12 +379,61 @@ export function NotificationMenu({
     <>
       {/* Desktop View: Popover */}
       <div className="hidden md:block">
-        <Popover open={open} onOpenChange={handleOpenChange}>
-          <PopoverTrigger asChild>
+        {!mounted || !isMobile ? (
+          <Popover open={open} onOpenChange={handleOpenChange}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
+                className="relative"
+              >
+                <Bell className={cn('h-5 w-5', unreadCount > 0 && 'text-foreground')} />
+                <AnimatePresence>
+                  {unreadCount > 0 ? (
+                    <motion.span
+                      key="badge"
+                      initial={{ scale: 0.6, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      exit={{ scale: 0.6, opacity: 0 }}
+                      transition={{ type: 'spring', damping: 18, stiffness: 320 }}
+                      className="absolute right-1.5 top-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-medium tabular-nums text-primary-foreground"
+                    >
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </motion.span>
+                  ) : null}
+                </AnimatePresence>
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent
+              align="end"
+              sideOffset={8}
+              className="w-[380px] overflow-hidden p-0"
+            >
+              {notificationsList(false)}
+            </PopoverContent>
+          </Popover>
+        ) : (
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
+            className="relative"
+          >
+            <Bell className={cn('h-5 w-5', unreadCount > 0 && 'text-foreground')} />
+          </Button>
+        )}
+      </div>
+
+      {/* Mobile View: Slide Up Bottom Drawer */}
+      <div className="block md:hidden">
+        {mounted && isMobile ? (
+          <>
             <Button
               variant="ghost"
               size="icon"
               aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
+              onClick={() => handleOpenChange(true)}
               className="relative"
             >
               <Bell className={cn('h-5 w-5', unreadCount > 0 && 'text-foreground')} />
@@ -384,87 +452,62 @@ export function NotificationMenu({
                 ) : null}
               </AnimatePresence>
             </Button>
-          </PopoverTrigger>
-          <PopoverContent
-            align="end"
-            sideOffset={8}
-            className="w-[380px] overflow-hidden p-0"
+
+            <AnimatePresence>
+              {open ? (
+                <motion.div
+                  className="fixed inset-0 z-[60] flex items-end justify-center"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  role="dialog"
+                  aria-modal="true"
+                  aria-label="Notifications Drawer"
+                >
+                  <button
+                    type="button"
+                    aria-label="Close notifications"
+                    className="absolute inset-0 bg-black/40"
+                    onClick={() => handleOpenChange(false)}
+                  />
+                  <motion.div
+                    className="relative w-full max-w-md overflow-hidden rounded-t-3xl border-t border-border bg-background shadow-2xl pb-[env(safe-area-inset-bottom)]"
+                    initial={{ y: '100%' }}
+                    animate={{ y: 0 }}
+                    exit={{ y: '100%' }}
+                    transition={{ type: 'spring', damping: 28, stiffness: 260 }}
+                    drag="y"
+                    dragConstraints={{ top: 0, bottom: 0 }}
+                    dragElastic={0.15}
+                    onDragEnd={(_, info) => {
+                      if (info.offset.y > 80 || info.velocity.y > 500) {
+                        handleOpenChange(false);
+                      }
+                    }}
+                  >
+                    {/* Drag handle */}
+                    <div className="flex justify-center pb-2 pt-3">
+                      <div className="h-1.5 w-12 rounded-full bg-muted-foreground/30" />
+                    </div>
+
+                    {/* Notifications content */}
+                    {notificationsList(true)}
+                  </motion.div>
+                </motion.div>
+              ) : null}
+            </AnimatePresence>
+          </>
+        ) : (
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
+            className="relative"
           >
-            {notificationsList(false)}
-          </PopoverContent>
-        </Popover>
-      </div>
-
-      {/* Mobile View: Slide Up Bottom Drawer */}
-      <div className="block md:hidden">
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
-          onClick={() => handleOpenChange(true)}
-          className="relative"
-        >
-          <Bell className={cn('h-5 w-5', unreadCount > 0 && 'text-foreground')} />
-          <AnimatePresence>
-            {unreadCount > 0 ? (
-              <motion.span
-                key="badge"
-                initial={{ scale: 0.6, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.6, opacity: 0 }}
-                transition={{ type: 'spring', damping: 18, stiffness: 320 }}
-                className="absolute right-1.5 top-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-medium tabular-nums text-primary-foreground"
-              >
-                {unreadCount > 9 ? '9+' : unreadCount}
-              </motion.span>
-            ) : null}
-          </AnimatePresence>
-        </Button>
-
-        <AnimatePresence>
-          {open ? (
-            <motion.div
-              className="fixed inset-0 z-[60] flex items-end justify-center"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              role="dialog"
-              aria-modal="true"
-              aria-label="Notifications Drawer"
-            >
-              <button
-                type="button"
-                aria-label="Close notifications"
-                className="absolute inset-0 bg-black/40"
-                onClick={() => handleOpenChange(false)}
-              />
-              <motion.div
-                className="relative w-full max-w-md overflow-hidden rounded-t-3xl border-t border-border bg-background shadow-2xl pb-[env(safe-area-inset-bottom)]"
-                initial={{ y: '100%' }}
-                animate={{ y: 0 }}
-                exit={{ y: '100%' }}
-                transition={{ type: 'spring', damping: 28, stiffness: 260 }}
-                drag="y"
-                dragConstraints={{ top: 0, bottom: 0 }}
-                dragElastic={0.15}
-                onDragEnd={(_, info) => {
-                  if (info.offset.y > 80 || info.velocity.y > 500) {
-                    handleOpenChange(false);
-                  }
-                }}
-              >
-                {/* Drag handle */}
-                <div className="flex justify-center pb-2 pt-3">
-                  <div className="h-1.5 w-12 rounded-full bg-muted-foreground/30" />
-                </div>
-
-                {/* Notifications content */}
-                {notificationsList(true)}
-              </motion.div>
-            </motion.div>
-          ) : null}
-        </AnimatePresence>
+            <Bell className={cn('h-5 w-5', unreadCount > 0 && 'text-foreground')} />
+          </Button>
+        )}
       </div>
     </>
   );
