@@ -29,7 +29,10 @@ export function useAuthGuard() {
     return useAuthStore.persist.hasHydrated();
   });
   const [mounted, setMounted] = useState(false);
-  const [minLoadingDone, setMinLoadingDone] = useState(false);
+  const [minLoadingDone, setMinLoadingDone] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return sessionStorage.getItem('has_started_app') === 'true';
+  });
 
   useEffect(() => {
     setTimeout(() => {
@@ -39,13 +42,23 @@ export function useAuthGuard() {
       setHasHydrated(true);
     });
 
-    const timer = setTimeout(() => {
-      setMinLoadingDone(true);
-    }, 3000); // 3 seconds minimum display duration
+    const isFirstStart = typeof window !== 'undefined' && sessionStorage.getItem('has_started_app') !== 'true';
+
+    let timer: NodeJS.Timeout | null = null;
+    if (isFirstStart) {
+      timer = setTimeout(() => {
+        setMinLoadingDone(true);
+        sessionStorage.setItem('has_started_app', 'true');
+      }, 3000); // 3 seconds minimum display duration for splash
+    } else {
+      setTimeout(() => {
+        setMinLoadingDone(true);
+      }, 0);
+    }
 
     return () => {
       unsub();
-      clearTimeout(timer);
+      if (timer) clearTimeout(timer);
     };
   }, []);
 
