@@ -65,7 +65,10 @@ export function BottomNavDock({
         )}
         aria-label="Primary"
       >
-        <ul className="mx-auto grid max-w-md grid-cols-5 px-2 py-2">
+        <ul
+          className="mx-auto grid max-w-md px-2 py-2"
+          style={{ gridTemplateColumns: `repeat(${primaryItems.length}, minmax(0, 1fr))` }}
+        >
           {primaryItems.map((item) => {
             const Icon = item.icon;
             const expand = isExpandTrigger(item);

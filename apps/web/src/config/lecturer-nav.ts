@@ -1,6 +1,5 @@
 import {
   BarChart3,
-  Bell,
   BookOpen,
   LayoutDashboard,
   LineChart,
@@ -45,7 +44,6 @@ export const lecturerDockPrimary: NavItem[] = [
   { icon: LayoutDashboard, label: 'Home', href: '/lecturer/dashboard' },
   { icon: Upload, label: 'Upload', href: '/lecturer/results/upload' },
   { icon: MessageSquare, label: 'Forum', href: '/lecturer/forum' },
-  { icon: Bell, label: 'Alerts', href: '/lecturer/notifications' },
   { icon: Menu, label: 'More', onClick: 'expand' },
 ];
 

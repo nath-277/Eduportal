@@ -1,6 +1,5 @@
 import {
   BarChart3,
-  Bell,
   BookOpen,
   Building2,
   CalendarRange,
@@ -52,7 +51,6 @@ export const adminSidebarItems: SidebarItem[] = [
 export const adminDockPrimary: NavItem[] = [
   { icon: LayoutDashboard, label: 'Home', href: '/admin/dashboard' },
   { icon: Users, label: 'Users', href: '/admin/users' },
-  { icon: Bell, label: 'Alerts', href: '/admin/notifications' },
   { icon: ShieldAlert, label: 'Logs', href: '/admin/logs' },
   { icon: Menu, label: 'More', onClick: 'expand' },
 ];

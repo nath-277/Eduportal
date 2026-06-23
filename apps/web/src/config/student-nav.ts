@@ -43,7 +43,6 @@ export const studentSidebarItems: SidebarItem[] = [
 export const studentDockPrimary: NavItem[] = [
   { icon: LayoutDashboard, label: 'Home', href: '/student/dashboard' },
   { icon: FolderOpen, label: 'Resources', href: '/student/resources' },
-  { icon: Bell, label: 'Alerts', href: '/student/notifications' },
   { icon: MessageSquare, label: 'Forum', href: '/student/forum' },
   { icon: Menu, label: 'More', onClick: 'expand' },
 ];

@@ -72,15 +72,12 @@ export function DashboardShell({
       label: 'Support',
       href: '/support',
     },
-    ...(notificationCount > 0
-      ? [
-          {
-            icon: Bell,
-            label: 'Notifications',
-            onClick: () => setIsNotificationsOpen(true),
-          } satisfies NavItem,
-        ]
-      : []),
+    {
+      icon: Bell,
+      label: 'Notifications',
+      badge: notificationCount,
+      onClick: () => setIsNotificationsOpen(true),
+    },
     ...(expandedHasLogout ? [] : [logoutItem]),
   ];
 
