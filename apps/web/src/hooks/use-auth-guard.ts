@@ -29,6 +29,7 @@ export function useAuthGuard() {
     return useAuthStore.persist.hasHydrated();
   });
   const [mounted, setMounted] = useState(false);
+  const [minLoadingDone, setMinLoadingDone] = useState(false);
 
   useEffect(() => {
     setTimeout(() => {
@@ -37,7 +38,15 @@ export function useAuthGuard() {
     const unsub = useAuthStore.persist.onFinishHydration(() => {
       setHasHydrated(true);
     });
-    return () => unsub();
+
+    const timer = setTimeout(() => {
+      setMinLoadingDone(true);
+    }, 3000); // 3 seconds minimum display duration
+
+    return () => {
+      unsub();
+      clearTimeout(timer);
+    };
   }, []);
 
   const isPublic = pathname === null ? false : PUBLIC_PATHS.has(pathname) || pathname.startsWith('/reset-password');
@@ -62,6 +71,6 @@ export function useAuthGuard() {
     role: user?.role ?? null,
     token,
     isAuthenticated,
-    isLoading: !mounted || !hasHydrated,
+    isLoading: !mounted || !hasHydrated || (!isPublic && !minLoadingDone),
   };
 }
