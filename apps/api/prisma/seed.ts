@@ -1,4 +1,4 @@
-import { PrismaClient, Level, Semester, UserRole, ResultStatus, Course, User } from '@prisma/client';
+import { PrismaClient, Level, Semester, UserRole, ResultStatus, Course } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import { syncUserCommunities } from '../src/lib/community.js';
 
@@ -129,33 +129,7 @@ async function main(): Promise<void> {
     },
   });
 
-  const lecturerTuring = await prisma.user.create({
-    data: {
-      fullname: 'Dr. Alan Turing',
-      email: 'turing@eduportal.com',
-      passwordHash: lecturerHash,
-      role: UserRole.LECTURER,
-      staffId: 'STF002',
-      isActive: true,
-      isEmailVerified: true,
-      departmentId: department.id,
-    },
-  });
-
-  const lecturerHopper = await prisma.user.create({
-    data: {
-      fullname: 'Dr. Grace Hopper',
-      email: 'hopper@eduportal.com',
-      passwordHash: lecturerHash,
-      role: UserRole.LECTURER,
-      staffId: 'STF003',
-      isActive: true,
-      isEmailVerified: true,
-      departmentId: department.id,
-    },
-  });
-
-  const lecturers = [lecturerAda, lecturerTuring, lecturerHopper];
+  const lecturers = [lecturerAda];
   console.log('Lecturers created.');
 
   // Create Courses
@@ -195,7 +169,7 @@ async function main(): Promise<void> {
           });
           courseList.push(course);
 
-          // Assign round robin
+          // Assign round robin (only lecturerAda is in lecturers array)
           const assignedLecturer = lecturers[courseAssignIndex % lecturers.length];
           courseAssignIndex++;
 
@@ -216,42 +190,23 @@ async function main(): Promise<void> {
 
   const levelOrder = [Level.L100, Level.L200, Level.L300, Level.L400];
 
-  const getAdmissionYearShort = (currentLevel: Level): string => {
-    const currentIdx = levelOrder.indexOf(currentLevel);
-    const currentSessionYear = 2025; // start year of 2025/2026
-    const admissionYear = currentSessionYear - currentIdx;
-    return String(admissionYear).substring(2);
-  };
-
-  // Create Students
-  const studentsList: User[] = [];
-  for (const { prog } of programmesList) {
-    for (const level of levelKeys) {
-      const levelNum = level.substring(1);
-      const email = `student.${prog.code.toLowerCase()}.${levelNum}@eduportal.com`;
-      const fullname = `${prog.code} L${levelNum} Demo Student`;
-      
-      const admissionYearShort = getAdmissionYearShort(level);
-      const matricNumber = `AUL/${prog.code}/${admissionYearShort}/001`;
-
-      const student = await prisma.user.create({
-        data: {
-          fullname,
-          email,
-          passwordHash: studentHash,
-          role: UserRole.STUDENT,
-          matricNumber,
-          level,
-          semester: Semester.FIRST,
-          isActive: true,
-          isEmailVerified: true,
-          departmentId: department.id,
-          programmeId: prog.id,
-        },
-      });
-      studentsList.push(student);
-    }
-  }
+  // Create Single Student
+  const student = await prisma.user.create({
+    data: {
+      fullname: 'CS L400 Demo Student',
+      email: 'student@eduportal.com',
+      passwordHash: studentHash,
+      role: UserRole.STUDENT,
+      matricNumber: 'AUL/CS/22/001',
+      level: Level.L400,
+      semester: Semester.FIRST,
+      isActive: true,
+      isEmailVerified: true,
+      departmentId: department.id,
+      programmeId: compSciProg.id,
+    },
+  });
+  const studentsList = [student];
   console.log('Students created.');
 
   const getCoursesForLevelAndSemester = (progId: string, lvl: Level, sem: Semester) => {
@@ -387,85 +342,72 @@ async function main(): Promise<void> {
       },
     });
 
-    // Thread 2: Dr. Alan Turing
+    // Thread 2: Dr. Ada Lovelace
     const post2 = await prisma.forumPost.create({
       data: {
         title: 'Research Project Openings: AI and ML',
         body: 'I am looking for L400 Computer Science or Software Engineering students interested in collaborating on machine learning research projects. If you have programming experience in Python and are interested in neural networks, please leave a comment with your interest.',
-        authorId: lecturerTuring.id,
+        authorId: lecturerAda.id,
         tags: ['ai', 'research', 'projects'],
         communityId: generalComm.id,
       },
     });
 
-    // Find student for replies
-    const cs400Student = studentsList.find(s => s.email.includes('student.cs.400'));
-    const se300Student = studentsList.find(s => s.email.includes('student.se.300'));
-    const it200Student = studentsList.find(s => s.email.includes('student.it.200'));
+    const demoStudent = student;
 
-    if (cs400Student) {
-      await prisma.forumReply.create({
-        data: {
-          body: 'Thank you Dr. Alan! I am highly interested in this. I will send my CV and past projects to your email today.',
-          authorId: cs400Student.id,
-          postId: post2.id,
-        },
-      });
-    }
+    await prisma.forumReply.create({
+      data: {
+        body: 'Thank you Dr. Ada! I am highly interested in this. I will send my CV and past projects to your email today.',
+        authorId: demoStudent.id,
+        postId: post2.id,
+      },
+    });
 
-    if (it200Student) {
-      await prisma.forumReply.create({
-        data: {
-          body: 'Welcome Dr. Ada! Looking forward to your Database Management Systems class this semester.',
-          authorId: it200Student.id,
-          postId: post1.id,
-        },
-      });
-    }
+    await prisma.forumReply.create({
+      data: {
+        body: 'Welcome Dr. Ada! Looking forward to your Database Management Systems class this semester.',
+        authorId: demoStudent.id,
+        postId: post1.id,
+      },
+    });
 
     // Thread 3: CS L400 Student
-    if (cs400Student) {
-      const post3 = await prisma.forumPost.create({
-        data: {
-          title: 'Study Group for Advanced Algorithm Design',
-          body: 'Hey guys, I am setting up a weekend study group to tackle some of the advanced algorithm design concepts. We will meet on Saturdays at the computing lab or via Zoom. Let me know if you would like to join!',
-          authorId: cs400Student.id,
-          tags: ['study-group', 'csc411', 'algorithms'],
-          communityId: generalComm.id,
-        },
-      });
+    const post3 = await prisma.forumPost.create({
+      data: {
+        title: 'Study Group for Advanced Algorithm Design',
+        body: 'Hey guys, I am setting up a weekend study group to tackle some of the advanced algorithm design concepts. We will meet on Saturdays at the computing lab or via Zoom. Let me know if you would like to join!',
+        authorId: demoStudent.id,
+        tags: ['study-group', 'csc411', 'algorithms'],
+        communityId: generalComm.id,
+      },
+    });
 
-      if (se300Student) {
-        await prisma.forumReply.create({
-          data: {
-            body: 'Count me in! I could definitely use some collaboration on the graph search algorithms.',
-            authorId: se300Student.id,
-            postId: post3.id,
-          },
-        });
-      }
-    }
+    await prisma.forumReply.create({
+      data: {
+        body: 'Count me in! I could definitely use some collaboration on the graph search algorithms.',
+        authorId: demoStudent.id,
+        postId: post3.id,
+      },
+    });
 
-    // Thread 4: SE L300 Student
-    if (se300Student) {
-      const post4 = await prisma.forumPost.create({
-        data: {
-          title: 'Recommended guides for Design Patterns',
-          body: 'Does anyone have good reference links or guides for learning creational and structural design patterns? I want to practice them ahead of the system architecture project.',
-          authorId: se300Student.id,
-          tags: ['design-patterns', 'software-engineering'],
-          communityId: generalComm.id,
-        },
-      });
+    // Thread 4: CS L400 Student
+    const post4 = await prisma.forumPost.create({
+      data: {
+        title: 'Recommended guides for Design Patterns',
+        body: 'Does anyone have good reference links or guides for learning creational and structural design patterns? I want to practice them ahead of the system architecture project.',
+        authorId: demoStudent.id,
+        tags: ['design-patterns', 'software-engineering'],
+        communityId: generalComm.id,
+      },
+    });
 
-      await prisma.forumReply.create({
-        data: {
-          body: 'I highly recommend the Head First Design Patterns book. It breaks them down with visual guides and very simple Java examples.',
-          authorId: lecturerHopper.id,
-          postId: post4.id,
-        },
-      });
-    }
+    await prisma.forumReply.create({
+      data: {
+        body: 'I highly recommend the Head First Design Patterns book. It breaks them down with visual guides and very simple Java examples.',
+        authorId: lecturerAda.id,
+        postId: post4.id,
+      },
+    });
 
     console.log('Discussion threads seeded.');
   }
@@ -474,9 +416,7 @@ async function main(): Promise<void> {
   console.log('\nCredentials for local development:');
   console.log('  ADMIN     : admin@eduportal.com            / Admin@1234');
   console.log('  LECTURERS : lecturer@eduportal.com        / Lecturer@1234');
-  console.log('              turing@eduportal.com          / Lecturer@1234');
-  console.log('              hopper@eduportal.com          / Lecturer@1234');
-  console.log('  STUDENTS  : student.{cs|it|se}.{100|200|300|400}@eduportal.com / Student@1234');
+  console.log('  STUDENTS  : student@eduportal.com         / Student@1234');
 }
 
 main()

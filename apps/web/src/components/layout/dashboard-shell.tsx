@@ -76,7 +76,7 @@ export function DashboardShell({
       icon: Bell,
       label: 'Notifications',
       badge: notificationCount,
-      onClick: () => setIsNotificationsOpen(true),
+      href: `/${role.toLowerCase()}/notifications`,
     },
     ...(expandedHasLogout ? [] : [logoutItem]),
   ];
@@ -86,8 +86,6 @@ export function DashboardShell({
       return {
         ...item,
         badge: notificationCount,
-        href: undefined,
-        onClick: () => setIsNotificationsOpen(true),
       };
     }
     return item;
