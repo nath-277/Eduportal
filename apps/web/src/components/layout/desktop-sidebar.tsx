@@ -217,7 +217,7 @@ export function DesktopSidebar({ items, role, user, onOpenUserGuide }: DesktopSi
           type="button"
           variant="outline"
           size="sm"
-          className={cn("justify-start gap-2", isCollapsed ? "h-9 w-9 justify-center p-0" : "w-full")}
+          className={cn("justify-start gap-2 text-destructive border-destructive/20 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive", isCollapsed ? "h-9 w-9 justify-center p-0" : "w-full")}
           onClick={handleLogout}
           title={isCollapsed ? "Log out" : undefined}
           aria-label="Log out"

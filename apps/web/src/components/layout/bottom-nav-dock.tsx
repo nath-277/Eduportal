@@ -41,6 +41,13 @@ export function BottomNavDock({
   const router = useRouter();
   const pathname = usePathname();
 
+  const gridItems = expandedItems.filter(
+    (i) => !i.label.toLowerCase().includes('logout') && !i.label.toLowerCase().includes('log out')
+  );
+  const logoutItem = expandedItems.find(
+    (i) => i.label.toLowerCase().includes('logout') || i.label.toLowerCase().includes('log out')
+  );
+
   const triggerItem = (item: NavItem) => {
     if (isExpandTrigger(item)) {
       setOpen(true);
@@ -173,7 +180,7 @@ export function BottomNavDock({
               </div>
 
               <ul className="grid grid-cols-2 gap-2 p-4">
-                {expandedItems.map((item) => {
+                {gridItems.map((item) => {
                   const Icon = item.icon;
                   const active = isItemActive(pathname ?? '', item.href);
                   const inner = (
@@ -222,6 +229,22 @@ export function BottomNavDock({
                   );
                 })}
               </ul>
+
+              {logoutItem && (
+                <div className="border-t border-border p-4 bg-muted/30">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpen(false);
+                      logoutItem.onClick?.();
+                    }}
+                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-destructive/10 hover:bg-destructive/20 text-destructive py-3 px-4 text-sm font-semibold transition"
+                  >
+                    <logoutItem.icon className="h-5 w-5" />
+                    <span>{logoutItem.label}</span>
+                  </button>
+                </div>
+              )}
 
               <div className="h-[env(safe-area-inset-bottom)]" />
             </motion.div>

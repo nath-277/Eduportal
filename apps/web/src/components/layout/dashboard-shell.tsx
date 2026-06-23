@@ -131,7 +131,7 @@ export function DashboardShell({
               size="icon"
               aria-label="Log out"
               onClick={handleLogout}
-              className="hidden md:inline-flex"
+              className="hidden md:inline-flex text-destructive hover:bg-destructive/10 hover:text-destructive"
             >
               <LogOut className="h-5 w-5" />
             </Button>

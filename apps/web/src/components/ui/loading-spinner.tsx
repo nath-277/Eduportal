@@ -3,6 +3,8 @@
 import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+import { SplashScreen } from './splash-screen';
+
 interface LoadingSpinnerProps {
   size?: number;
   className?: string;
@@ -23,9 +25,5 @@ export function LoadingSpinner({ size = 24, className, label }: LoadingSpinnerPr
 }
 
 export function FullPageSpinner({ label }: { label?: string }) {
-  return (
-    <div className="flex min-h-[50vh] items-center justify-center">
-      <LoadingSpinner size={32} label={label} />
-    </div>
-  );
+  return <SplashScreen label={label} />;
 }
