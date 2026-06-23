@@ -60,6 +60,48 @@ function formatTime(d: string): string {
   return new Date(d).toLocaleDateString();
 }
 
+type FilterTab = 'ALL' | 'UNREAD' | 'ANNOUNCEMENT' | 'ACADEMIC' | 'FORUM' | 'SYSTEM';
+
+interface GroupedNotifications {
+  today: Notification[];
+  yesterday: Notification[];
+  older: Notification[];
+}
+
+function groupNotifications(list: Notification[]): GroupedNotifications {
+  const today: Notification[] = [];
+  const yesterday: Notification[] = [];
+  const older: Notification[] = [];
+
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const startOfYesterday = startOfToday - 86400000;
+
+  list.forEach((n) => {
+    const t = new Date(n.createdAt).getTime();
+    if (t >= startOfToday) {
+      today.push(n);
+    } else if (t >= startOfYesterday) {
+      yesterday.push(n);
+    } else {
+      older.push(n);
+    }
+  });
+
+  return { today, yesterday, older };
+}
+
+function tabLabel(tab: FilterTab): string {
+  switch (tab) {
+    case 'ALL': return 'All';
+    case 'UNREAD': return 'Unread';
+    case 'ANNOUNCEMENT': return 'Announcements';
+    case 'ACADEMIC': return 'Academic';
+    case 'FORUM': return 'Forum';
+    case 'SYSTEM': return 'System';
+  }
+}
+
 interface NotificationMenuProps {
   role: UserRole;
   initialUnreadCount: number;
@@ -96,6 +138,8 @@ export function NotificationMenu({
       media.removeEventListener('change', listener);
     };
   }, []);
+
+  const [activeTab, setActiveTab] = useState<FilterTab>('ALL');
 
   const queryKey = ['notifications', 'mine', role.toLowerCase()];
 
@@ -190,7 +234,6 @@ export function NotificationMenu({
 
   const notifications = notificationsQuery.data?.notifications ?? [];
   const unreadCount = notificationsQuery.data?.unreadCount ?? 0;
-  const recent = notifications.slice(0, 6);
 
   function handleOpenChange(next: boolean) {
     setOpen(next);
@@ -199,12 +242,106 @@ export function NotificationMenu({
     }
   }
 
-
   const notificationsHref = `/${role.toLowerCase()}/notifications`;
 
-  const notificationsList = (isMobile: boolean = false) => (
-    <>
-      <header className="flex items-center justify-between border-b bg-muted/30 px-3 py-2.5">
+  const filteredNotifications = notifications.filter((n) => {
+    if (activeTab === 'ALL') return true;
+    if (activeTab === 'UNREAD') return !n.isRead;
+    if (activeTab === 'ACADEMIC') return n.category === 'RESULT' || n.category === 'RESOURCE';
+    return n.category === activeTab;
+  });
+
+  const grouped = groupNotifications(filteredNotifications);
+  const hasNotifications =
+    grouped.today.length > 0 || grouped.yesterday.length > 0 || grouped.older.length > 0;
+
+  const TABS: { id: FilterTab; label: string }[] = [
+    { id: 'ALL', label: 'All' },
+    { id: 'UNREAD', label: 'Unread' },
+    { id: 'ANNOUNCEMENT', label: 'Announcements' },
+    { id: 'ACADEMIC', label: 'Academic' },
+    { id: 'FORUM', label: 'Forum' },
+    { id: 'SYSTEM', label: 'System' },
+  ];
+
+  const renderGroup = (title: string, list: Notification[]) => {
+    if (list.length === 0) return null;
+    return (
+      <div key={title} className="space-y-0.5">
+        <div className="sticky top-0 z-10 bg-background/95 backdrop-blur px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground border-b border-t border-border/40 first:border-t-0">
+          {title}
+        </div>
+        <ul className="divide-y divide-border/20">
+          {list.map((n) => {
+            const meta = CATEGORY_META[n.category] || CATEGORY_META.SYSTEM;
+            const Icon = meta.icon;
+            return (
+              <li key={n.id} className="relative group/item">
+                <div
+                  className={cn(
+                    'flex w-full items-start gap-2.5 p-3 pr-10 text-left transition-colors',
+                    !n.isRead && 'bg-primary/[0.03]',
+                  )}
+                >
+                  <span
+                    className={cn(
+                      'mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full',
+                      meta.tone,
+                    )}
+                  >
+                    <Icon className="h-4 w-4" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <p
+                        className={cn(
+                          'line-clamp-1 text-sm',
+                          !n.isRead ? 'font-semibold' : 'font-medium text-foreground/90',
+                        )}
+                      >
+                        {n.title}
+                      </p>
+                      {!n.isRead ? (
+                        <span
+                          className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary"
+                          aria-label="Unread"
+                        />
+                      ) : null}
+                    </div>
+                    <p className="line-clamp-2 text-xs text-muted-foreground mt-0.5 leading-normal">
+                      {n.message}
+                    </p>
+                    <p className="mt-1 text-[10px] text-muted-foreground/80 flex items-center gap-1.5">
+                      <span>{formatTime(n.createdAt)}</span>
+                      <span>·</span>
+                      <span className="font-medium text-foreground/60">{meta.label}</span>
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    deleteOne.mutate(n.id);
+                  }}
+                  disabled={deleteOne.isPending}
+                  aria-label="Delete notification"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 opacity-0 group-hover/item:opacity-100 focus-visible:opacity-100 transition-opacity grid h-7 w-7 place-items-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    );
+  };
+
+  const notificationsList = (isMobileView: boolean = false) => (
+    <div className={cn("flex flex-col bg-background", isMobileView ? "h-full" : "w-[380px] max-h-[480px]")}>
+      <header className="flex items-center justify-between border-b bg-muted/30 px-3.5 py-2.5 shrink-0">
         <div className="flex items-center gap-2">
           <Bell className="h-4 w-4 text-muted-foreground" />
           <h3 className="text-sm font-semibold">Notifications</h3>
@@ -253,22 +390,47 @@ export function NotificationMenu({
               Clear all
             </Button>
           ) : null}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7"
-            onClick={() => setOpen(false)}
-            aria-label="Close notifications"
-          >
-            <X className="h-3.5 w-3.5" />
-          </Button>
+          {!isMobileView ? (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={() => setOpen(false)}
+              aria-label="Close notifications"
+            >
+              <X className="h-3.5 w-3.5" />
+            </Button>
+          ) : null}
         </div>
       </header>
 
-      <div className={cn(
-        "overflow-y-auto",
-        isMobile ? "max-h-[min(380px,50vh)]" : "max-h-[min(480px,70vh)]"
-      )}>
+      {/* Filter Tabs scrollbar-none */}
+      <div
+        className="flex items-center gap-1.5 overflow-x-auto px-3.5 py-2 border-b bg-background/50 shrink-0"
+        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+      >
+        {TABS.map((tab) => {
+          const active = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              className={cn(
+                "rounded-full px-2.5 py-0.5 text-xs font-medium whitespace-nowrap transition-colors border",
+                active
+                  ? "bg-primary border-primary text-primary-foreground"
+                  : "bg-muted border-transparent text-muted-foreground hover:bg-muted/80 hover:text-foreground"
+              )}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* List content */}
+      <div className="flex-1 overflow-y-auto min-h-0">
         {notificationsQuery.isLoading ? (
           <div className="space-y-1 p-2">
             {Array.from({ length: 4 }).map((_, i) => (
@@ -282,89 +444,34 @@ export function NotificationMenu({
               </div>
             ))}
           </div>
-        ) : recent.length === 0 ? (
-          <div className="flex flex-col items-center gap-2 px-4 py-10 text-center">
-            <div className="grid h-10 w-10 place-items-center rounded-full bg-muted text-muted-foreground">
+        ) : !hasNotifications ? (
+          <div className="flex flex-col items-center gap-2.5 px-4 py-12 text-center my-auto">
+            <div className="grid h-10 w-10 place-items-center rounded-full bg-muted text-muted-foreground animate-pulse">
               <Bell className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-sm font-medium">You&apos;re all caught up!</p>
-              <p className="text-xs text-muted-foreground">
-                New notifications will appear here.
+              <p className="text-sm font-semibold">You&apos;re all caught up!</p>
+              <p className="text-xs text-muted-foreground max-w-[250px] mx-auto mt-1 leading-relaxed">
+                {activeTab === 'ALL'
+                  ? 'New notifications will appear here.'
+                  : `No notifications found matching "${tabLabel(activeTab)}".`}
               </p>
             </div>
           </div>
         ) : (
-          <ul className="divide-y">
-            {recent.map((n) => {
-              const meta = CATEGORY_META[n.category];
-              const Icon = meta.icon;
-              return (
-                <li key={n.id} className="relative group/item">
-                  <div
-                    className={cn(
-                      'flex w-full items-start gap-2.5 p-3 pr-10 text-left transition-colors',
-                      !n.isRead && 'bg-primary/[0.04]',
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        'mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full',
-                        meta.tone,
-                      )}
-                    >
-                      <Icon className="h-4 w-4" />
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-start justify-between gap-2">
-                        <p
-                          className={cn(
-                            'line-clamp-1 text-sm',
-                            !n.isRead ? 'font-semibold' : 'font-medium text-foreground/90',
-                          )}
-                        >
-                          {n.title}
-                        </p>
-                        {!n.isRead ? (
-                          <span
-                            className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary"
-                            aria-label="Unread"
-                          />
-                        ) : null}
-                      </div>
-                      <p className="line-clamp-2 text-xs text-muted-foreground">
-                        {n.message}
-                      </p>
-                      <p className="mt-1 text-[10px] text-muted-foreground">
-                        {formatTime(n.createdAt)} · {meta.label}
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      deleteOne.mutate(n.id);
-                    }}
-                    disabled={deleteOne.isPending}
-                    aria-label="Delete notification"
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 opacity-0 group-hover/item:opacity-100 focus-visible:opacity-100 transition-opacity grid h-7 w-7 place-items-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
+          <div className="flex flex-col">
+            {renderGroup('Today', grouped.today)}
+            {renderGroup('Yesterday', grouped.yesterday)}
+            {renderGroup('Older', grouped.older)}
+          </div>
         )}
       </div>
 
-      <footer className="flex items-center justify-between border-t bg-muted/30 px-3 py-2">
+      <footer className="flex items-center justify-between border-t bg-muted/30 px-3.5 py-2 shrink-0">
         <span className="text-[10px] text-muted-foreground">
-          {notifications.length > 0
-            ? `Showing ${Math.min(recent.length, notifications.length)} of ${notifications.length}`
-            : 'No notifications yet'}
+          {filteredNotifications.length > 0
+            ? `Showing ${filteredNotifications.length} items`
+            : 'No notifications'}
         </span>
         <Button asChild variant="ghost" size="sm" className="h-7 px-2 text-xs">
           <Link href={notificationsHref} onClick={() => setOpen(false)}>
@@ -372,7 +479,7 @@ export function NotificationMenu({
           </Link>
         </Button>
       </footer>
-    </>
+    </div>
   );
 
   return (
@@ -472,7 +579,7 @@ export function NotificationMenu({
                     onClick={() => handleOpenChange(false)}
                   />
                   <motion.div
-                    className="relative w-full max-w-md overflow-hidden rounded-t-3xl border-t border-border bg-background shadow-2xl pb-[env(safe-area-inset-bottom)]"
+                    className="relative w-full max-w-md h-[50vh] overflow-hidden rounded-t-3xl border-t border-border bg-background shadow-2xl pb-[env(safe-area-inset-bottom)] flex flex-col"
                     initial={{ y: '100%' }}
                     animate={{ y: 0 }}
                     exit={{ y: '100%' }}
@@ -487,12 +594,14 @@ export function NotificationMenu({
                     }}
                   >
                     {/* Drag handle */}
-                    <div className="flex justify-center pb-2 pt-3">
+                    <div className="flex justify-center pb-1 pt-3 shrink-0">
                       <div className="h-1.5 w-12 rounded-full bg-muted-foreground/30" />
                     </div>
 
                     {/* Notifications content */}
-                    {notificationsList(true)}
+                    <div className="flex-1 min-h-0">
+                      {notificationsList(true)}
+                    </div>
                   </motion.div>
                 </motion.div>
               ) : null}
@@ -512,3 +621,4 @@ export function NotificationMenu({
     </>
   );
 }
+
