@@ -26,6 +26,11 @@ function clearTokenAndRedirect(): void {
   } catch {
     // ignore
   }
+  try {
+    document.cookie = 'eduportal-token=; Path=/; Max-Age=0; SameSite=Lax';
+  } catch {
+    // ignore
+  }
   if (window.location.pathname !== '/login') {
     window.location.href = '/login';
   }
