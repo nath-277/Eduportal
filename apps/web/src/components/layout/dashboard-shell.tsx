@@ -122,7 +122,7 @@ export function DashboardShell({
               open={isNotificationsOpen}
               onOpenChange={setIsNotificationsOpen}
             />
-            <Avatar className="h-9 w-9">
+            <Avatar className="h-9 w-9" title={user.fullname}>
               {user.avatarUrl ? <AvatarImage src={user.avatarUrl} alt={user.fullname} /> : null}
               <AvatarFallback>{initials(user.fullname)}</AvatarFallback>
             </Avatar>
@@ -130,6 +130,7 @@ export function DashboardShell({
               variant="ghost"
               size="icon"
               aria-label="Log out"
+              title="Log out"
               onClick={handleLogout}
               className="hidden md:inline-flex text-destructive hover:bg-destructive/10 hover:text-destructive"
             >

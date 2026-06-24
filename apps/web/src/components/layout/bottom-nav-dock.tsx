@@ -108,7 +108,7 @@ export function BottomNavDock({
             return (
               <li key={item.label} className="flex items-center justify-center">
                 {item.href && !expand ? (
-                  <Link href={item.href} className="block w-full" aria-current={active ? 'page' : undefined}>
+                  <Link href={item.href} className="block w-full" aria-current={active ? 'page' : undefined} title={item.label}>
                     {inner}
                   </Link>
                 ) : (
@@ -120,6 +120,7 @@ export function BottomNavDock({
                     aria-expanded={expand ? open : undefined}
                     aria-haspopup={expand ? 'dialog' : undefined}
                     aria-label={expand ? 'Open more menu' : item.label}
+                    title={expand ? 'More' : item.label}
                   >
                     {inner}
                   </button>
@@ -174,6 +175,7 @@ export function BottomNavDock({
                   onClick={() => setOpen(false)}
                   className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground transition hover:bg-muted hover:text-foreground"
                   aria-label="Close"
+                  title="Close"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -213,6 +215,7 @@ export function BottomNavDock({
                             item.onClick?.();
                           }}
                           className="block w-full"
+                          title={item.label}
                         >
                           {inner}
                         </button>
@@ -221,6 +224,7 @@ export function BottomNavDock({
                           href={item.href}
                           onClick={() => setOpen(false)}
                           className="block w-full"
+                          title={item.label}
                         >
                           {inner}
                         </Link>
@@ -239,6 +243,7 @@ export function BottomNavDock({
                       logoutItem.onClick?.();
                     }}
                     className="flex w-full items-center justify-center gap-2 rounded-xl bg-destructive/10 hover:bg-destructive/20 text-destructive py-3 px-4 text-sm font-semibold transition"
+                    title={logoutItem.label}
                   >
                     <logoutItem.icon className="h-5 w-5" />
                     <span>{logoutItem.label}</span>

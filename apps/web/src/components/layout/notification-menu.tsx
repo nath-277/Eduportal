@@ -328,6 +328,7 @@ export function NotificationMenu({
                   }}
                   disabled={deleteOne.isPending}
                   aria-label="Delete notification"
+                  title="Delete notification"
                   className="absolute right-2.5 top-1/2 -translate-y-1/2 opacity-0 group-hover/item:opacity-100 focus-visible:opacity-100 transition-opacity grid h-7 w-7 place-items-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
@@ -361,6 +362,7 @@ export function NotificationMenu({
               disabled={markAll.isPending}
               className="h-7 gap-1 px-2 text-xs"
               aria-label="Mark all as read"
+              title="Mark all as read"
             >
               {markAll.isPending ? (
                 <Loader2 className="h-3 w-3 animate-spin" />
@@ -382,6 +384,7 @@ export function NotificationMenu({
               disabled={clearAll.isPending}
               className="h-7 gap-1 px-2 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
               aria-label="Clear all notifications"
+              title="Clear all notifications"
             >
               {clearAll.isPending ? (
                 <Loader2 className="h-3 w-3 animate-spin" />
@@ -398,6 +401,7 @@ export function NotificationMenu({
               className="h-7 w-7"
               onClick={() => setOpen(false)}
               aria-label="Close notifications"
+              title="Close notifications"
             >
               <X className="h-3.5 w-3.5" />
             </Button>
@@ -494,6 +498,7 @@ export function NotificationMenu({
                 variant="ghost"
                 size="icon"
                 aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
+                title={unreadCount > 0 ? `Notifications (${unreadCount} unread)` : 'Notifications'}
                 className="relative"
               >
                 <Bell className={cn('h-5 w-5', unreadCount > 0 && 'text-foreground')} />
@@ -526,6 +531,7 @@ export function NotificationMenu({
             variant="ghost"
             size="icon"
             aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
+            title={unreadCount > 0 ? `Notifications (${unreadCount} unread)` : 'Notifications'}
             className="relative"
           >
             <Bell className={cn('h-5 w-5', unreadCount > 0 && 'text-foreground')} />
@@ -541,6 +547,7 @@ export function NotificationMenu({
               variant="ghost"
               size="icon"
               aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
+              title={unreadCount > 0 ? `Notifications (${unreadCount} unread)` : 'Notifications'}
               onClick={() => handleOpenChange(true)}
               className="relative"
             >
@@ -618,6 +625,7 @@ export function NotificationMenu({
             variant="ghost"
             size="icon"
             aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
+            title={unreadCount > 0 ? `Notifications (${unreadCount} unread)` : 'Notifications'}
             className="relative"
           >
             <Bell className={cn('h-5 w-5', unreadCount > 0 && 'text-foreground')} />

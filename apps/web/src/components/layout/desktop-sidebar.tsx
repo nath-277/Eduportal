@@ -141,7 +141,7 @@ export function DesktopSidebar({ items, role, user, onOpenUserGuide }: DesktopSi
                 key={item.href}
                 href={item.href}
                 aria-current={active ? 'page' : undefined}
-                title={isCollapsed ? item.label : undefined}
+                title={item.label}
                 className={cn(
                   'group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200',
                   active
@@ -179,7 +179,7 @@ export function DesktopSidebar({ items, role, user, onOpenUserGuide }: DesktopSi
             'group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 text-foreground/80 hover:bg-muted hover:text-foreground',
             isCollapsed ? 'justify-center' : 'justify-start'
           )}
-          title={isCollapsed ? "User Guide" : undefined}
+          title="User Guide"
           aria-label="User Guide"
         >
           <BookOpen className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-foreground" />
@@ -191,7 +191,7 @@ export function DesktopSidebar({ items, role, user, onOpenUserGuide }: DesktopSi
             'group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 text-foreground/80 hover:bg-muted hover:text-foreground',
             isCollapsed ? 'justify-center' : 'justify-start'
           )}
-          title={isCollapsed ? "Support" : undefined}
+          title="Support"
           aria-label="Support"
         >
           <HelpCircle className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-foreground" />
@@ -202,7 +202,7 @@ export function DesktopSidebar({ items, role, user, onOpenUserGuide }: DesktopSi
       <Separator />
       <div className={cn("space-y-3 p-3", isCollapsed ? "flex flex-col items-center" : "")}>
         <div className={cn("flex items-center gap-3 rounded-lg w-full", isCollapsed ? "justify-center p-0" : "p-2")}>
-          <Avatar className="h-9 w-9" title={isCollapsed ? user.fullname : undefined}>
+          <Avatar className="h-9 w-9" title={user.fullname}>
             {user.avatarUrl ? <AvatarImage src={user.avatarUrl} alt={user.fullname} /> : null}
             <AvatarFallback>{initials(user.fullname)}</AvatarFallback>
           </Avatar>
@@ -219,7 +219,7 @@ export function DesktopSidebar({ items, role, user, onOpenUserGuide }: DesktopSi
           size="sm"
           className={cn("justify-start gap-2 text-destructive border-destructive/20 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive", isCollapsed ? "h-9 w-9 justify-center p-0" : "w-full")}
           onClick={handleLogout}
-          title={isCollapsed ? "Log out" : undefined}
+          title="Log out"
           aria-label="Log out"
         >
           <LogOut className="h-4 w-4" />
