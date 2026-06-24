@@ -29,6 +29,12 @@ export function RegForm({
     .filter((c): c is Course => Boolean(c));
 
   const totalUnits = expanded.reduce((acc, c) => acc + c.creditUnits, 0);
+  const coreUnits = expanded
+    .filter((c) => c.type === 'CORE')
+    .reduce((acc, c) => acc + c.creditUnits, 0);
+  const electiveUnits = expanded
+    .filter((c) => c.type === 'ELECTIVE')
+    .reduce((acc, c) => acc + c.creditUnits, 0);
 
   if (expanded.length === 0) {
     return (
@@ -115,6 +121,7 @@ export function RegForm({
                 <th className="w-8 py-1 text-center">S/N</th>
                 <th className="py-1">Course Code</th>
                 <th className="py-1">Course Title</th>
+                <th className="py-1 text-center">Type</th>
                 <th className="py-1 text-right">Credit Units</th>
                 <th className="py-1">Assigned Lecturer</th>
               </tr>
@@ -125,15 +132,16 @@ export function RegForm({
                   <td className="py-1 text-center">{i + 1}</td>
                   <td className="py-1 font-semibold">{c.code}</td>
                   <td className="py-1">{c.title}</td>
+                  <td className="py-1 text-center">{c.type === 'CORE' ? 'Core' : 'Elective'}</td>
                   <td className="py-1 text-right tabular-nums">{c.creditUnits}</td>
                   <td className="py-1 italic text-black/60">TBA</td>
                 </tr>
               ))}
               <tr className="border-t border-black font-semibold">
-                <td colSpan={3} className="py-1.5 text-right uppercase">
+                <td colSpan={4} className="py-1.5 text-right uppercase">
                   Total credit units:
                 </td>
-                <td className="py-1.5 text-right tabular-nums">{totalUnits}</td>
+                <td className="py-1.5 text-right tabular-nums">{totalUnits} ({coreUnits} Core, {electiveUnits} Elective)</td>
                 <td />
               </tr>
             </tbody>

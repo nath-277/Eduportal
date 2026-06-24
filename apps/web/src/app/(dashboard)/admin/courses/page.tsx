@@ -15,6 +15,7 @@ import {
   MoreVertical,
   X,
   SlidersHorizontal,
+  Pencil,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -55,6 +56,7 @@ interface Course {
   creditUnits: number;
   level: Level;
   semester: Semester;
+  type: 'CORE' | 'ELECTIVE';
   description?: string | null;
   departmentId: string;
   department?: { id: string; name: string; code: string };
@@ -99,6 +101,7 @@ interface CourseForm {
   semester: Semester;
   departmentId: string;
   programmeId: string;
+  type: 'CORE' | 'ELECTIVE';
 }
 
 interface AssignForm {
@@ -118,6 +121,7 @@ export default function AdminCoursesPage() {
   const [adding, setAdding] = useState(false);
   const [assigning, setAssigning] = useState<Course | null>(null);
   const [deleting, setDeleting] = useState<Course | null>(null);
+  const [editing, setEditing] = useState<Course | null>(null);
 
   const qc = useQueryClient();
 
@@ -372,6 +376,7 @@ export default function AdminCoursesPage() {
                   courses={grouped[lvl].FIRST}
                   onAssign={(c) => setAssigning(c)}
                   onDelete={(c) => setDeleting(c)}
+                  onEdit={(c) => setEditing(c)}
                 />
                 <SemesterTable
                   label="Second semester"
@@ -379,6 +384,7 @@ export default function AdminCoursesPage() {
                   courses={grouped[lvl].SECOND}
                   onAssign={(c) => setAssigning(c)}
                   onDelete={(c) => setDeleting(c)}
+                  onEdit={(c) => setEditing(c)}
                 />
               </>
             )}
@@ -386,10 +392,14 @@ export default function AdminCoursesPage() {
         ))}
       </Tabs>
 
-      {adding ? (
+      {adding || editing ? (
         <AddCourseDialog
+          course={editing ?? undefined}
           departments={deptsQuery.data ?? []}
-          onClose={() => setAdding(false)}
+          onClose={() => {
+            setAdding(false);
+            setEditing(null);
+          }}
         />
       ) : null}
 
@@ -472,12 +482,14 @@ function SemesterTable({
   courses,
   onAssign,
   onDelete,
+  onEdit,
 }: {
   label: string;
   tone: string;
   courses: Course[];
   onAssign: (c: Course) => void;
   onDelete: (c: Course) => void;
+  onEdit: (c: Course) => void;
 }) {
   if (courses.length === 0) {
     return (
@@ -501,6 +513,7 @@ function SemesterTable({
               <th className="px-3 py-1.5 font-medium">Code</th>
               <th className="px-3 py-1.5 font-medium">Title</th>
               <th className="px-3 py-1.5 text-right font-medium">Credits</th>
+              <th className="px-3 py-1.5 font-medium">Type</th>
               <th className="px-3 py-1.5 font-medium">Lecturer</th>
               <th className="px-3 py-1.5 font-medium">Dept/Prog</th>
               <th className="px-3 py-1.5 text-right font-medium">Actions</th>
@@ -512,6 +525,19 @@ function SemesterTable({
                 <td className="px-3 py-1.5 font-mono text-xs font-semibold">{c.code}</td>
                 <td className="px-3 py-1.5 font-medium">{c.title}</td>
                 <td className="px-3 py-1.5 text-right tabular-nums">{c.creditUnits}</td>
+                <td className="px-3 py-1.5">
+                  <Badge
+                    variant="secondary"
+                    className={cn(
+                      'text-[10px] py-0.5 px-1.5 font-semibold',
+                      c.type === 'CORE'
+                        ? 'bg-blue-500/10 text-blue-700 border-blue-200'
+                        : 'bg-purple-500/10 text-purple-700 border-purple-200',
+                    )}
+                  >
+                    {c.type === 'CORE' ? 'Core' : 'Elective'}
+                  </Badge>
+                </td>
                 <td className="px-3 py-1.5">
                   {c.lecturers && c.lecturers.length > 0 ? (
                     <span className="text-xs">
@@ -535,6 +561,10 @@ function SemesterTable({
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => onEdit(c)} className="gap-1.5 text-xs cursor-pointer">
+                        <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+                        Edit Details
+                      </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => onAssign(c)} className="gap-1.5 text-xs cursor-pointer">
                         <UserPlus className="h-3.5 w-3.5 text-muted-foreground" />
                         Assign Lecturer
@@ -558,17 +588,26 @@ function SemesterTable({
   );
 }
 
-function AddCourseDialog({ departments, onClose }: { departments: Department[]; onClose: () => void }) {
+function AddCourseDialog({
+  course,
+  departments,
+  onClose,
+}: {
+  course?: Course;
+  departments: Department[];
+  onClose: () => void;
+}) {
   const qc = useQueryClient();
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<CourseForm>({
     defaultValues: {
-      code: '',
-      title: '',
-      creditUnits: 3,
-      level: 'L100',
-      semester: 'FIRST',
-      departmentId: '',
-      programmeId: 'NONE',
+      code: course?.code ?? '',
+      title: course?.title ?? '',
+      creditUnits: course?.creditUnits ?? 3,
+      level: course?.level ?? 'L100',
+      semester: course?.semester ?? 'FIRST',
+      departmentId: course?.departmentId ?? '',
+      programmeId: course?.programmeId || 'NONE',
+      type: course?.type ?? 'CORE',
     },
   });
 
@@ -584,35 +623,42 @@ function AddCourseDialog({ departments, onClose }: { departments: Department[]; 
     enabled: !!departmentId && departmentId !== 'NONE',
   });
 
-
-
-  const createMutation = useMutation({
-    mutationFn: async (input: CourseForm) =>
-      api.post<Course>('/courses', {
+  const saveMutation = useMutation({
+    mutationFn: async (input: CourseForm) => {
+      const payload = {
         code: input.code.toUpperCase(),
         title: input.title,
         creditUnits: Number(input.creditUnits),
         level: input.level,
         semester: input.semester,
+        type: input.type,
         departmentId: input.departmentId,
         programmeId: input.programmeId && input.programmeId !== 'NONE' ? input.programmeId : null,
-      }),
+      };
+      if (course) {
+        return api.patch<Course>(`/courses/${course.id}`, payload);
+      } else {
+        return api.post<Course>('/courses', payload);
+      }
+    },
     onSuccess: () => {
-      toast.success('Course created');
+      toast.success(course ? 'Course updated' : 'Course created');
       qc.invalidateQueries({ queryKey: ['courses'] });
       onClose();
     },
-    onError: (err: unknown) => toast.error(err instanceof Error ? err.message : 'Create failed'),
+    onError: (err: unknown) => toast.error(err instanceof Error ? err.message : 'Save failed'),
   });
 
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>New course</DialogTitle>
-          <DialogDescription>Add a course to the catalog.</DialogDescription>
+          <DialogTitle>{course ? 'Edit course' : 'New course'}</DialogTitle>
+          <DialogDescription>
+            {course ? 'Update the course details.' : 'Add a course to the catalog.'}
+          </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit((v) => createMutation.mutate(v))} className="space-y-3">
+        <form onSubmit={handleSubmit((v) => saveMutation.mutate(v))} className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="code">Code</Label>
@@ -630,7 +676,7 @@ function AddCourseDialog({ departments, onClose }: { departments: Department[]; 
             <Input id="title" placeholder="Introduction to Computer Science" {...register('title', { required: 'Required', minLength: { value: 3, message: 'At least 3 chars' } })} />
             {errors.title ? <p className="text-xs text-destructive">{errors.title.message}</p> : null}
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <div className="space-y-1.5">
               <Label>Level</Label>
               <Select value={watch('level')} onValueChange={(v) => setValue('level', v as Level)}>
@@ -647,6 +693,16 @@ function AddCourseDialog({ departments, onClose }: { departments: Department[]; 
                 <SelectContent>
                   <SelectItem value="FIRST">First</SelectItem>
                   <SelectItem value="SECOND">Second</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Type</Label>
+              <Select value={watch('type')} onValueChange={(v) => setValue('type', v as 'CORE' | 'ELECTIVE')}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="CORE">Core</SelectItem>
+                  <SelectItem value="ELECTIVE">Elective</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -693,9 +749,15 @@ function AddCourseDialog({ departments, onClose }: { departments: Department[]; 
           )}
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
-            <Button type="submit" disabled={createMutation.isPending} className="gap-1.5">
-              {createMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-              Create
+            <Button type="submit" disabled={saveMutation.isPending} className="gap-1.5">
+              {saveMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : course ? (
+                <Pencil className="h-4 w-4" />
+              ) : (
+                <Plus className="h-4 w-4" />
+              )}
+              {course ? 'Save changes' : 'Create'}
             </Button>
           </DialogFooter>
         </form>

@@ -37,6 +37,7 @@ interface Course {
   creditUnits: number;
   level: Level;
   semester: Semester;
+  type: 'CORE' | 'ELECTIVE';
   description: string | null;
   department?: { id: string; name: string; code: string } | null;
   lecturers?: Array<{ id: string; fullname: string; email: string }>;
@@ -62,6 +63,7 @@ export default function StudentCoursesPage() {
   const qc = useQueryClient();
   const studentLevel = user?.level ?? 'L100';
   const [selectedSemester, setSelectedSemester] = useState<Semester | null>(null);
+  const [typeFilter, setTypeFilter] = useState<'ALL' | 'CORE' | 'ELECTIVE'>('ALL');
   const [pending, setPending] = useState<Set<string>>(new Set());
   const [confirmOpen, setConfirmOpen] = useState(false);
 
@@ -110,12 +112,36 @@ export default function StudentCoursesPage() {
     [currentEnrollments],
   );
 
+  const currentCoreUnits = useMemo(() => {
+    return currentEnrollments
+      .filter((e) => e.course.type === 'CORE')
+      .reduce((acc, e) => acc + (e.course.creditUnits ?? 0), 0);
+  }, [currentEnrollments]);
+
+  const currentElectiveUnits = useMemo(() => {
+    return currentEnrollments
+      .filter((e) => e.course.type === 'ELECTIVE')
+      .reduce((acc, e) => acc + (e.course.creditUnits ?? 0), 0);
+  }, [currentEnrollments]);
+
   const pendingUnits = useMemo(
     () => coursesQuery.data
       ?.filter((c) => pending.has(c.id))
       .reduce((acc, c) => acc + c.creditUnits, 0) ?? 0,
     [coursesQuery.data, pending],
   );
+
+  const pendingCoreUnits = useMemo(() => {
+    return coursesQuery.data
+      ?.filter((c) => pending.has(c.id) && c.type === 'CORE')
+      .reduce((acc, c) => acc + c.creditUnits, 0) ?? 0;
+  }, [coursesQuery.data, pending]);
+
+  const pendingElectiveUnits = useMemo(() => {
+    return coursesQuery.data
+      ?.filter((c) => pending.has(c.id) && c.type === 'ELECTIVE')
+      .reduce((acc, c) => acc + c.creditUnits, 0) ?? 0;
+  }, [coursesQuery.data, pending]);
 
   const totalIfCommitted = currentUnits + pendingUnits;
   const overLimit = totalIfCommitted > MAX_UNITS;
@@ -180,7 +206,7 @@ export default function StudentCoursesPage() {
   };
 
   const availableCourses = (coursesQuery.data ?? []).filter(
-    (c) => !enrolledIds.has(c.id),
+    (c) => !enrolledIds.has(c.id) && (typeFilter === 'ALL' || c.type === typeFilter),
   );
 
   const [activePrint, setActivePrint] = useState<'none' | 'reg' | 'docket'>('none');
@@ -310,6 +336,17 @@ export default function StudentCoursesPage() {
                             <span className="text-xs font-semibold uppercase tracking-wider text-primary">
                               {e.course.code}
                             </span>
+                            <Badge
+                              variant="secondary"
+                              className={cn(
+                                'text-[10px] py-0 px-1.5 font-semibold',
+                                e.course.type === 'CORE'
+                                  ? 'bg-blue-500/10 text-blue-700 border-blue-200'
+                                  : 'bg-purple-500/10 text-purple-700 border-purple-200',
+                              )}
+                            >
+                              {e.course.type === 'CORE' ? 'Core' : 'Elective'}
+                            </Badge>
                             {isCarryOver && (
                               <Badge variant="secondary" className="bg-amber-500/10 text-amber-700 border-amber-200 text-[10px] py-0 px-1.5">
                                 Carry-over ({e.course.level})
@@ -344,8 +381,25 @@ export default function StudentCoursesPage() {
           </Card>
 
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between space-y-0 pb-4">
               <CardTitle className="text-base">Available for {studentLevel.replace('L', 'Level ')}</CardTitle>
+              <div className="flex rounded-md border bg-muted/40 p-0.5 text-xs">
+                {(['ALL', 'CORE', 'ELECTIVE'] as const).map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setTypeFilter(t)}
+                    className={cn(
+                      'rounded px-2.5 py-1 font-medium transition',
+                      typeFilter === t
+                        ? 'bg-card text-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground',
+                    )}
+                  >
+                    {t === 'ALL' ? 'All' : t === 'CORE' ? 'Core' : 'Elective'}
+                  </button>
+                ))}
+              </div>
             </CardHeader>
             <CardContent>
               {coursesQuery.isLoading ? (
@@ -388,6 +442,17 @@ export default function StudentCoursesPage() {
                             <span className="text-xs font-semibold uppercase tracking-wider text-primary">
                               {c.code}
                             </span>
+                            <Badge
+                              variant="secondary"
+                              className={cn(
+                                'text-[10px] py-0 px-1.5 font-semibold',
+                                c.type === 'CORE'
+                                  ? 'bg-blue-500/10 text-blue-700 border-blue-200'
+                                  : 'bg-purple-500/10 text-purple-700 border-purple-200',
+                              )}
+                            >
+                              {c.type === 'CORE' ? 'Core' : 'Elective'}
+                            </Badge>
                             {isCarryOver && (
                               <Badge variant="secondary" className="bg-amber-500/10 text-amber-700 border-amber-200 text-[10px] py-0 px-1.5">
                                 Carry-over ({c.level})
@@ -444,11 +509,34 @@ export default function StudentCoursesPage() {
                 <span className="text-muted-foreground">Enrolled</span>
                 <span className="font-medium tabular-nums">{currentUnits} units</span>
               </div>
-              {pendingUnits > 0 && (
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">To add</span>
-                  <span className="font-medium tabular-nums text-primary">+{pendingUnits} units</span>
+              <div className="pl-3 flex flex-col gap-1 border-l-2 text-[11px] text-muted-foreground">
+                <div className="flex justify-between">
+                  <span>Core courses</span>
+                  <span className="tabular-nums font-medium">{currentCoreUnits} units</span>
                 </div>
+                <div className="flex justify-between">
+                  <span>Elective courses</span>
+                  <span className="tabular-nums font-medium">{currentElectiveUnits} units</span>
+                </div>
+              </div>
+
+              {pendingUnits > 0 && (
+                <>
+                  <div className="flex items-center justify-between text-sm border-t pt-2">
+                    <span className="text-muted-foreground">To add</span>
+                    <span className="font-medium tabular-nums text-primary">+{pendingUnits} units</span>
+                  </div>
+                  <div className="pl-3 flex flex-col gap-1 border-l-2 border-primary/30 text-[11px] text-muted-foreground">
+                    <div className="flex justify-between">
+                      <span>Core courses</span>
+                      <span className="tabular-nums font-medium text-primary">+{pendingCoreUnits} units</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Elective courses</span>
+                      <span className="tabular-nums font-medium text-primary">+{pendingElectiveUnits} units</span>
+                    </div>
+                  </div>
+                </>
               )}
               <div className="border-t pt-3">
                 <div className="flex items-center justify-between text-sm">

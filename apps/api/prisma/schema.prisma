@@ -27,6 +27,12 @@ enum Semester {
   SECOND
 }
 
+enum CourseType {
+  CORE
+  ELECTIVE
+}
+
+
 enum ResourceType {
   LECTURE_NOTE
   PAST_QUESTION
@@ -132,6 +138,7 @@ model Course {
   creditUnits  Int
   level        Level
   semester     Semester
+  type         CourseType          @default(CORE)
   description  String?
   department   Department          @relation(fields: [departmentId], references: [id])
   departmentId String

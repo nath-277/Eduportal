@@ -141,6 +141,7 @@ courseRouter.post('/', authenticate, authorize('ADMIN'), async (c) => {
       creditUnits: body.creditUnits,
       level: body.level,
       semester: body.semester,
+      type: body.type,
       description: body.description,
       departmentId: body.departmentId,
       programmeId: body.programmeId || null,
@@ -172,6 +173,14 @@ courseRouter.patch('/:id', authenticate, authorize('ADMIN'), async (c) => {
   if (body.departmentId) {
     const dept = await prisma.department.findUnique({ where: { id: body.departmentId } });
     if (!dept) return badRequest('Invalid departmentId');
+  }
+
+  if (body.code) {
+    body.code = body.code.toUpperCase();
+    if (body.code !== existing.code) {
+      const codeExists = await prisma.course.findUnique({ where: { code: body.code } });
+      if (codeExists) return conflict('Course code already exists');
+    }
   }
 
   if (body.programmeId !== undefined && body.programmeId !== null) {

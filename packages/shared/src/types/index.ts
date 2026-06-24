@@ -4,6 +4,8 @@ export type Level = 'L100' | 'L200' | 'L300' | 'L400' | 'L500' | 'GRADUATED';
 
 export type Semester = 'FIRST' | 'SECOND';
 
+export type CourseType = 'CORE' | 'ELECTIVE';
+
 export type ResourceType =
   | 'LECTURE_NOTE'
   | 'PAST_QUESTION'
@@ -76,6 +78,7 @@ export interface Course {
   creditUnits: number;
   level: Level;
   semester: Semester;
+  type: CourseType;
   description?: string;
   departmentId: string;
   programmeId?: string;

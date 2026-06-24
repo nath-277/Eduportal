@@ -16,19 +16,22 @@ export const createCourseSchema = z.object({
   creditUnits: z.number().int().min(1).max(6),
   level: z.enum(['L100', 'L200', 'L300', 'L400', 'L500']),
   semester: z.enum(['FIRST', 'SECOND']),
+  type: z.enum(['CORE', 'ELECTIVE']).optional().default('CORE'),
   description: z.string().max(2000).optional(),
   departmentId: z.string().min(1),
-  programmeId: z.string().optional(),
+  programmeId: z.string().nullable().optional(),
 });
 
 export type CreateCourseInput = z.infer<typeof createCourseSchema>;
 
 export const updateCourseSchema = z
   .object({
+    code: z.string().min(2).max(20).regex(/^[A-Z]{2,4}\d{3}$/, 'Code must look like CSC101').optional(),
     title: z.string().min(3).max(150).optional(),
     creditUnits: z.number().int().min(1).max(6).optional(),
     level: z.enum(['L100', 'L200', 'L300', 'L400', 'L500']).optional(),
     semester: z.enum(['FIRST', 'SECOND']).optional(),
+    type: z.enum(['CORE', 'ELECTIVE']).optional(),
     description: z.string().max(2000).nullable().optional(),
     departmentId: z.string().min(1).optional(),
     programmeId: z.string().min(1).nullable().optional(),
