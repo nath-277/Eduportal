@@ -18,7 +18,7 @@ export const metadata: Metadata = {
     template: '%s · EduPortal',
   },
   description:
-    'A Web-Based Departmental Student Information and Collaborative Resource Portal.',
+    'A Web Based Student Information & Collaborative Resource Portal.',
   manifest: '/manifest.json',
   icons: {
     icon: '/icon.svg',
@@ -27,14 +27,14 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: 'EduPortal',
-    description: 'A Web-Based Departmental Student Information and Collaborative Resource Portal.',
+    description: 'A Web Based Student Information & Collaborative Resource Portal.',
     siteName: 'EduPortal',
     images: [
       {
         url: '/og-image.png',
         width: 1200,
-        height: 1200,
-        alt: 'EduPortal - Departmental Student Information & Resource Portal',
+        height: 630,
+        alt: 'EduPortal - Student Information & Collaborative Resource Portal',
       },
     ],
     locale: 'en_US',
@@ -43,7 +43,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'EduPortal',
-    description: 'A Web-Based Departmental Student Information and Collaborative Resource Portal.',
+    description: 'A Web Based Student Information & Collaborative Resource Portal.',
     images: ['/og-image.png'],
   },
   other: {
