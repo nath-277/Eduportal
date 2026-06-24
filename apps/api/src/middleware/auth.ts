@@ -2,6 +2,7 @@ import { createMiddleware } from 'hono/factory';
 import type { UserRole } from '@prisma/client';
 import type { ApiResponse } from '@eduportal/shared';
 import { verifyToken } from '../lib/jwt.js';
+import { prisma } from '../lib/prisma.js';
 
 const BEARER_PREFIX = 'Bearer ';
 
@@ -34,6 +35,13 @@ export const authenticate = createMiddleware(async (c, next) => {
 
   try {
     const payload = verifyToken(token);
+    const user = await prisma.user.findUnique({
+      where: { id: payload.userId },
+      select: { id: true, role: true, isActive: true },
+    });
+    if (!user || !user.isActive) {
+      return unauthorized('Invalid or expired token');
+    }
     c.set('user', { userId: payload.userId, role: payload.role });
     await next();
   } catch (_error) {
