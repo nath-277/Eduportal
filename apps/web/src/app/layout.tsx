@@ -12,6 +12,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001'),
   title: {
     default: 'EduPortal',
     template: '%s · EduPortal',
@@ -23,6 +24,27 @@ export const metadata: Metadata = {
     icon: '/icon.svg',
     shortcut: '/icon.svg',
     apple: '/icon.svg',
+  },
+  openGraph: {
+    title: 'EduPortal',
+    description: 'A Web-Based Departmental Student Information and Collaborative Resource Portal.',
+    siteName: 'EduPortal',
+    images: [
+      {
+        url: '/og-image.png',
+        width: 1200,
+        height: 1200,
+        alt: 'EduPortal - Departmental Student Information & Resource Portal',
+      },
+    ],
+    locale: 'en_US',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'EduPortal',
+    description: 'A Web-Based Departmental Student Information and Collaborative Resource Portal.',
+    images: ['/og-image.png'],
   },
   other: {
     'theme-color': '#3b82f6',
